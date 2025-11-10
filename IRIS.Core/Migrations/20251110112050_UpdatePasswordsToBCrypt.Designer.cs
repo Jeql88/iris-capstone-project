@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251110112050_UpdatePasswordsToBCrypt")]
+    partial class UpdatePasswordsToBCrypt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -578,7 +581,7 @@ namespace IRIS.Core.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            PasswordHash = "$2a$11$e6AtSfzSfXfCHsk5yjXWIuzIGGfaXRe/Z1GnuMxYx1nfSXlVepAN.",
+                            PasswordHash = "$2a$11$8EqYytf5J07NnC6me1jaAOGPnPfXqXV3Ue6qVnvqZJxqjqjqjqjqm",
                             Role = "SystemAdministrator",
                             Username = "admin"
                         },
@@ -587,7 +590,7 @@ namespace IRIS.Core.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            PasswordHash = "$2a$11$1Unk6pMkXdwNQjxP3m96M.DggxMbjbSx57fN9TQ6YWwtObK5SFwwO",
+                            PasswordHash = "$2a$11$8EqYytf5J07NnC6me1jaAOGPnPfXqXV3Ue6qVnvqZJxqjqjqjqjqm",
                             Role = "ITPersonnel",
                             Username = "itperson"
                         },
@@ -596,7 +599,7 @@ namespace IRIS.Core.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            PasswordHash = "$2a$11$TMXewyIW8gRGGutz2DDDbeVLEMp9mVyhlijNJvMXzbV5tdZwH07Si",
+                            PasswordHash = "$2a$11$8EqYytf5J07NnC6me1jaAOGPnPfXqXV3Ue6qVnvqZJxqjqjqjqjqm",
                             Role = "Faculty",
                             Username = "faculty"
                         });

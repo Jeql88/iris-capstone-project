@@ -1,17 +1,9 @@
-﻿<Window x:Class="IRIS.UI.MainWindow"
+<Window x:Class="IRIS.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:IRIS.UI"
-        mc:Ignorable="d"
-        Title="IRIS - Main Dashboard" Height="600" Width="1200"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
-        <TextBlock Text="Welcome to IRIS Dashboard"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   FontSize="24"
-                   FontWeight="Bold"/>
-    </Grid>
+        xmlns:views="clr-namespace:IRIS.UI.Views"
+        Title="IRIS - Dashboard" Height="800" Width="1400"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
+    <views:DashboardView/>
 </Window>

@@ -51,13 +51,16 @@ namespace IRIS.UI
             // Services
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
+            services.AddScoped<IMonitoringService, MonitoringService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();
+            services.AddTransient<DashboardViewModel>();
 
             // Views
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
+            services.AddTransient<DashboardView>();
         }
     }
 }

@@ -1,6 +1,4 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using IRIS.Core.Models;
 
@@ -57,13 +55,13 @@ namespace IRIS.Core.Data
             ConfigurePolicy(modelBuilder);
             ConfigurePCHardwareConfig(modelBuilder);
 
-            // Seed test users with SHA256 hashed passwords
+            // Seed test users with BCrypt hashed passwords (password: "admin")
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
                     Id = 1,
                     Username = "admin",
-                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    PasswordHash = "$2a$11$e6AtSfzSfXfCHsk5yjXWIuzIGGfaXRe/Z1GnuMxYx1nfSXlVepAN.",
                     Role = UserRole.SystemAdministrator,
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -73,7 +71,7 @@ namespace IRIS.Core.Data
                 {
                     Id = 2,
                     Username = "itperson",
-                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    PasswordHash = "$2a$11$1Unk6pMkXdwNQjxP3m96M.DggxMbjbSx57fN9TQ6YWwtObK5SFwwO",
                     Role = UserRole.ITPersonnel,
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -83,7 +81,7 @@ namespace IRIS.Core.Data
                 {
                     Id = 3,
                     Username = "faculty",
-                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    PasswordHash = "$2a$11$TMXewyIW8gRGGutz2DDDbeVLEMp9mVyhlijNJvMXzbV5tdZwH07Si",
                     Role = UserRole.Faculty,
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
