@@ -7,22 +7,24 @@ namespace IRIS.UI.Views
 {
     public partial class LoginWindow : Window
     {
-        public LoginWindow()
+        public LoginWindow(IAuthenticationService authService)
         {
             InitializeComponent();
 
-            // Get authentication service from DI container or create instance
-            var authService = new AuthenticationService(null!); // TODO: Inject proper context
             DataContext = new LoginViewModel(authService);
 
             // Bind password box to view model
-            PasswordBox.PasswordChanged += (s, e) =>
+            var passwordBox = (PasswordBox)FindName("PasswordBox");
+            if (passwordBox != null)
             {
-                if (DataContext is LoginViewModel vm)
+                passwordBox.PasswordChanged += (s, e) =>
                 {
-                    vm.Password = PasswordBox.Password;
-                }
-            };
+                    if (DataContext is LoginViewModel vm)
+                    {
+                        vm.Password = passwordBox.Password;
+                    }
+                };
+            }
         }
     }
 }

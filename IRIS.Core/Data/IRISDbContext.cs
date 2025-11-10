@@ -1,3 +1,6 @@
+using System;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using IRIS.Core.Models;
 
@@ -7,6 +10,15 @@ namespace IRIS.Core.Data
     {
         public IRISDbContext(DbContextOptions<IRISDbContext> options) : base(options)
         {
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            // Only configure if not already configured (for design-time)
+            if (!optionsBuilder.IsConfigured)
+            {
+                // This will be overridden by DI configuration at runtime
+            }
         }
 
         // DbSets for all entities
@@ -44,6 +56,40 @@ namespace IRIS.Core.Data
             ConfigureAlert(modelBuilder);
             ConfigurePolicy(modelBuilder);
             ConfigurePCHardwareConfig(modelBuilder);
+
+            // Seed test users with SHA256 hashed passwords
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    Id = 1,
+                    Username = "admin",
+                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    Role = UserRole.SystemAdministrator,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    LastLoginAt = null
+                },
+                new User
+                {
+                    Id = 2,
+                    Username = "itperson",
+                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    Role = UserRole.ITPersonnel,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    LastLoginAt = null
+                },
+                new User
+                {
+                    Id = 3,
+                    Username = "faculty",
+                    PasswordHash = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    Role = UserRole.Faculty,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    LastLoginAt = null
+                }
+            );
         }
 
         private void ConfigureUser(ModelBuilder modelBuilder)

@@ -18,25 +18,40 @@ namespace IRIS.Core.Services
 
         public async Task<User?> AuthenticateAsync(string username, string password)
         {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
+            try
+            {
+                if (_context == null)
+                    throw new InvalidOperationException("Database context is not available. Please ensure the database is properly configured and running.");
 
-            if (user == null)
-                return null;
+                // Ensure database is created
+                await _context.Database.EnsureCreatedAsync();
 
-            if (!VerifyPassword(password, user.PasswordHash))
-                return null;
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
 
-            // Update last login
-            user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                if (user == null)
+                    return null;
 
-            _currentUser = user;
+                if (!VerifyPassword(password, user.PasswordHash))
+                    return null;
 
-            // Log successful login
-            await LogUserActionAsync("Login", $"User {username} logged in");
+                // Update last login
+                user.LastLoginAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return user;
+                _currentUser = user;
+
+                // Log successful login
+                await LogUserActionAsync("Login", $"User {username} logged in");
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                // Log the error for debugging
+                System.Diagnostics.Debug.WriteLine($"Authentication error: {ex.Message}");
+                throw new InvalidOperationException($"Authentication failed: {ex.Message}", ex);
+            }
         }
 
         public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
@@ -106,11 +121,12 @@ namespace IRIS.Core.Services
         {
             using var sha256 = SHA256.Create();
             var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(hashedBytes);
+            return Convert.ToHexString(hashedBytes).ToLowerInvariant();
         }
 
         private static bool VerifyPassword(string password, string hash)
         {
+            // Hash the input password and compare with stored hash
             return HashPassword(password) == hash;
         }
 

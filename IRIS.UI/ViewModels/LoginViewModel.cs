@@ -2,7 +2,9 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 using IRIS.Core.Services;
+using IRIS.Core.Models;
 
 namespace IRIS.UI.ViewModels
 {
@@ -13,6 +15,7 @@ namespace IRIS.UI.ViewModels
         private string _password = string.Empty;
         private string _errorMessage = string.Empty;
         private bool _isLoading;
+        private User? _currentUser;
 
         public LoginViewModel(IAuthenticationService authService)
         {
@@ -62,6 +65,8 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public User? CurrentUser => _currentUser;
+
         public ICommand LoginCommand { get; }
 
         private bool CanLogin() => !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrWhiteSpace(Password) && !IsLoading;
@@ -77,18 +82,29 @@ namespace IRIS.UI.ViewModels
 
                 if (user != null)
                 {
-                    // TODO: Navigate to main window based on role
-                    // For now, just show success message
-                    MessageBox.Show($"Login successful! Welcome {user.Username} ({user.Role})",
-                                  "Login Success",
-                                  MessageBoxButton.OK,
-                                  MessageBoxImage.Information);
+                    _currentUser = user;
 
-                    // Close login window
-                    Application.Current.Windows
+                    // Close login window and show main window
+                    var loginWindow = Application.Current.Windows
                         .OfType<Window>()
-                        .FirstOrDefault(w => w.DataContext == this)?
-                        .Close();
+                        .FirstOrDefault(w => w.DataContext == this);
+
+                    if (loginWindow != null)
+                    {
+                        // Create and show main window
+                        var app = (App)Application.Current;
+                        var serviceProvider = app.GetServiceProvider();
+                        var mainWindow = serviceProvider.GetService<MainWindow>();
+                        if (mainWindow != null)
+                        {
+                            mainWindow.Show();
+                            // Set as main window
+                            Application.Current.MainWindow = mainWindow;
+                        }
+
+                        // Close login window
+                        loginWindow.Close();
+                    }
                 }
                 else
                 {
