@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +21,17 @@ namespace IRIS.Core.Services
                 if (_context == null)
                     throw new InvalidOperationException("Database context is not available. Please ensure the database is properly configured and running.");
 
-                // Ensure database is created
-                await _context.Database.EnsureCreatedAsync();
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    return null;
+
+                if (username.Length > 100)
+                    return null;
+
+
 
                 var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
+                    .FirstOrDefaultAsync(u => u.Username == username && u.IsActive)
+                    .ConfigureAwait(false);
 
                 if (user == null)
                     return null;
@@ -37,7 +41,14 @@ namespace IRIS.Core.Services
 
                 // Update last login
                 user.LastLoginAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception saveEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to update last login: {saveEx.Message}");
+                }
 
                 _currentUser = user;
 
@@ -56,27 +67,56 @@ namespace IRIS.Core.Services
 
         public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
         {
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
+            try
+            {
+                if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+                    return false;
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return false;
+
+                if (!VerifyPassword(currentPassword, user.PasswordHash))
+                    return false;
+
+                user.PasswordHash = HashPassword(newPassword);
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception saveEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to save password change: {saveEx.Message}");
+                    return false;
+                }
+
+                await LogUserActionAsync("Password Changed", $"User {user.Username} changed password");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Password change error: {ex.Message}");
                 return false;
-
-            if (!VerifyPassword(currentPassword, user.PasswordHash))
-                return false;
-
-            user.PasswordHash = HashPassword(newPassword);
-            await _context.SaveChangesAsync();
-
-            await LogUserActionAsync("Password Changed", $"User {user.Username} changed password");
-
-            return true;
+            }
         }
 
         public async Task LogoutAsync()
         {
             if (_currentUser != null)
             {
-                await LogUserActionAsync("Logout", $"User {_currentUser.Username} logged out");
-                _currentUser = null;
+                try
+                {
+                    await LogUserActionAsync("Logout", $"User {_currentUser.Username} logged out");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to log logout action: {ex.Message}");
+                }
+                finally
+                {
+                    _currentUser = null;
+                }
             }
         }
 
@@ -101,33 +141,44 @@ namespace IRIS.Core.Services
 
         public async Task LogUserActionAsync(string action, string? details = null, int? pcId = null)
         {
-            if (_currentUser == null)
+            if (_currentUser == null || string.IsNullOrWhiteSpace(action))
                 return;
 
-            var log = new UserLog
+            try
             {
-                UserId = _currentUser.Id,
-                PCId = pcId,
-                Action = action,
-                Details = details,
-                IpAddress = GetLocalIPAddress()
-            };
+                var log = new UserLog
+                {
+                    UserId = _currentUser.Id,
+                    PCId = pcId,
+                    Action = action,
+                    Details = details,
+                    IpAddress = GetLocalIPAddress()
+                };
 
-            _context.UserLogs.Add(log);
-            await _context.SaveChangesAsync();
+                _context.UserLogs.Add(log);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to log user action: {ex.Message}");
+            }
         }
 
         private static string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToHexString(hashedBytes).ToLowerInvariant();
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         private static bool VerifyPassword(string password, string hash)
         {
-            // Hash the input password and compare with stored hash
-            return HashPassword(password) == hash;
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify(password, hash);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string GetLocalIPAddress()
@@ -143,9 +194,9 @@ namespace IRIS.Core.Services
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore exceptions
+                System.Diagnostics.Debug.WriteLine($"Failed to get local IP address: {ex.Message}");
             }
             return "Unknown";
         }
