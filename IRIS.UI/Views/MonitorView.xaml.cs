@@ -35,8 +35,11 @@ namespace IRIS.UI.Views
                 popup.IsOpen = false;
             }
             
-            // TODO: Implement view screen functionality
-            MessageBox.Show("View Screen functionality will be implemented later.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            var dashboardView = FindParent<DashboardView>(this);
+            if (dashboardView != null)
+            {
+                dashboardView.ShowViewScreenPage();
+            }
         }
 
         private void LockScreen_Click(object sender, RoutedEventArgs e)

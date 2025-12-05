@@ -7,6 +7,7 @@ namespace IRIS.UI.Views
     {
         private ScrollViewer dashboardContent;
         private MonitorView monitorView;
+        private ViewScreenPage viewScreenPage;
 
         public DashboardView()
         {
@@ -15,8 +16,9 @@ namespace IRIS.UI.Views
             // Store the original dashboard content (the ScrollViewer)
             dashboardContent = MainContent.Content as ScrollViewer;
             
-            // Initialize monitor view
+            // Initialize views
             monitorView = new MonitorView();
+            viewScreenPage = new ViewScreenPage();
         }
 
         private void DashboardBtn_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -38,6 +40,11 @@ namespace IRIS.UI.Views
 
         private void MonitorBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
+            ShowMonitorView();
+        }
+
+        public void ShowMonitorView()
+        {
             // Reset button styles
             DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
             MonitorBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
@@ -51,6 +58,23 @@ namespace IRIS.UI.Views
             
             // Show monitor view
             MainContent.Content = monitorView;
+        }
+
+        public void ShowViewScreenPage()
+        {
+            // Keep monitor button highlighted
+            DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
+            MonitorBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            
+            // Hide right sidebar
+            var grid = this.FindName("MainGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count > 2)
+            {
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+            
+            // Show view screen page
+            MainContent.Content = viewScreenPage;
         }
     }
 }
