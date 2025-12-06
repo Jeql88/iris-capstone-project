@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using IRIS.Core.Services;
 using IRIS.Core.Models;
+using IRIS.UI.Helpers;
 
 namespace IRIS.UI.ViewModels
 {
@@ -126,32 +127,6 @@ namespace IRIS.UI.ViewModels
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
-
-    public class RelayCommand : ICommand
-    {
-        private readonly Func<Task> _execute;
-        private readonly Func<bool> _canExecute;
-
-        public RelayCommand(Func<Task> execute, Func<bool> canExecute)
-        {
-            _execute = execute;
-            _canExecute = canExecute;
-        }
-
-        public event EventHandler? CanExecuteChanged;
-
-        public bool CanExecute(object? parameter) => _canExecute();
-
-        public async void Execute(object? parameter)
-        {
-            await _execute();
-        }
-
-        public void RaiseCanExecuteChanged()
-        {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

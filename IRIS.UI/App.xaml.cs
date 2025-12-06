@@ -8,6 +8,7 @@ using IRIS.Core.Data;
 using IRIS.Core.Services;
 using IRIS.UI.Views;
 using IRIS.UI.ViewModels;
+using IRIS.UI.Services;
 
 namespace IRIS.UI
 {
@@ -52,15 +53,20 @@ namespace IRIS.UI
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IMonitoringService, MonitoringService>();
+            services.AddSingleton<INavigationService, NavigationService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();
             services.AddTransient<DashboardViewModel>();
+            services.AddTransient<MonitorViewModel>();
+            services.AddTransient<ViewScreenViewModel>();
 
             // Views
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
             services.AddTransient<DashboardView>();
+            services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
+            services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
         }
     }
 }
