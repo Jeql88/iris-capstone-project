@@ -19,7 +19,7 @@
                 <Button x:Name="DashboardBtn" Content="Dashboard" Background="#8B0000" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="DashboardBtn_Click"/>
                 <Button x:Name="MonitorBtn" Content="Monitor" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="MonitorBtn_Click"/>
                 <Button Content="Software Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="Policy Enforcement" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
+                <Button x:Name="PolicyBtn" Content="Policy Enforcement" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="PolicyBtn_Click"/>
                 <Button Content="Access Logs" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
                 <Button Content="User Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
                 <Button Content="Usage Metrics" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>

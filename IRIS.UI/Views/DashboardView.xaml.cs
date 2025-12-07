@@ -44,6 +44,7 @@ namespace IRIS.UI.Views
         {
             DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
             MonitorBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
             
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
@@ -52,6 +53,21 @@ namespace IRIS.UI.Views
             }
             
             _navigationService?.NavigateTo("Monitor");
+        }
+
+        private void PolicyBtn_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
+            MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            
+            var grid = this.FindName("MainGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count > 2)
+            {
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+            
+            _navigationService?.NavigateTo("PolicyEnforcement");
         }
     }
 }
