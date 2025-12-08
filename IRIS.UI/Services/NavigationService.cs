@@ -29,6 +29,7 @@ namespace IRIS.UI.Services
             _viewRegistry["Monitor"] = typeof(Views.MonitorView);
             _viewRegistry["ViewScreen"] = typeof(Views.ViewScreenPage);
             _viewRegistry["PolicyEnforcement"] = typeof(Views.PolicyEnforcementView);
+            _viewRegistry["SoftwareManagement"] = typeof(Views.SoftwareManagementView);
         }
 
         public void NavigateTo(string viewKey, object? parameter = null)

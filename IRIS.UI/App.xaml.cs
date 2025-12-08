@@ -60,6 +60,7 @@ namespace IRIS.UI
             services.AddTransient<DashboardViewModel>();
             services.AddTransient<MonitorViewModel>();
             services.AddTransient<ViewScreenViewModel>();
+            services.AddTransient<SoftwareManagementViewModel>();
 
             // Views
             services.AddTransient<LoginWindow>();
@@ -67,6 +68,7 @@ namespace IRIS.UI
             services.AddTransient<DashboardView>();
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
             services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
+            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
         }
     }
 }
