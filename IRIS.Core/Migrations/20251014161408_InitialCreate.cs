@@ -498,11 +498,37 @@ namespace IRIS.Core.Migrations
                 name: "IX_WebsiteUsageHistory_PCId_VisitedAt",
                 table: "WebsiteUsageHistory",
                 columns: new[] { "PCId", "VisitedAt" });
+
+            // Seed default users with BCrypt hashed passwords (password: "admin")
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "Username", "PasswordHash", "Role", "FullName", "IsActive", "CreatedAt", "LastLoginAt" },
+                values: new object[,]
+                {
+                    { 1, "admin", "$2a$11$e6AtSfzSfXfCHsk5yjXWIuzIGGfaXRe/Z1GnuMxYx1nfSXlVepAN.", "SystemAdministrator", null, true, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null },
+                    { 2, "itperson", "$2a$11$1Unk6pMkXdwNQjxP3m96M.DggxMbjbSx57fN9TQ6YWwtObK5SFwwO", "ITPersonnel", null, true, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null },
+                    { 3, "faculty", "$2a$11$TMXewyIW8gRGGutz2DDDbeVLEMp9mVyhlijNJvMXzbV5tdZwH07Si", "Faculty", null, true, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null }
+                });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DeleteData(
+                table: "Users",
+                keyColumn: "Id",
+                keyValue: 1);
+
+            migrationBuilder.DeleteData(
+                table: "Users",
+                keyColumn: "Id",
+                keyValue: 2);
+
+            migrationBuilder.DeleteData(
+                table: "Users",
+                keyColumn: "Id",
+                keyValue: 3);
+
             migrationBuilder.DropTable(
                 name: "Alerts");
 
