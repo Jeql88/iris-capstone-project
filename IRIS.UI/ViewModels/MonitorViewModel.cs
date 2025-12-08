@@ -3,23 +3,36 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.Core.Services;
 
 namespace IRIS.UI.ViewModels
 {
     public class MonitorViewModel : INotifyPropertyChanged
     {
         private readonly INavigationService _navigationService;
+        private readonly IMonitoringService _monitoringService;
+        private readonly DispatcherTimer _refreshTimer;
         private string _searchText = string.Empty;
         private string _selectedLab = "Archi Lab 1";
+        private int _onlineCount;
+        private int _offlineCount;
+        private int _warningCount;
 
-        public MonitorViewModel(INavigationService navigationService)
+        public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService)
         {
             _navigationService = navigationService;
+            _monitoringService = monitoringService;
             ViewScreenCommand = new RelayCommand(async () => await ViewScreenAsync(), () => SelectedPC != null);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
-            LoadPCData();
+            
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
+            _refreshTimer.Start();
+            
+            _ = LoadPCDataAsync();
         }
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
@@ -33,7 +46,25 @@ namespace IRIS.UI.ViewModels
         public string SelectedLab
         {
             get => _selectedLab;
-            set { _selectedLab = value; OnPropertyChanged(); LoadPCData(); }
+            set { _selectedLab = value; OnPropertyChanged(); _ = LoadPCDataAsync(); }
+        }
+
+        public int OnlineCount
+        {
+            get => _onlineCount;
+            set { _onlineCount = value; OnPropertyChanged(); }
+        }
+
+        public int OfflineCount
+        {
+            get => _offlineCount;
+            set { _offlineCount = value; OnPropertyChanged(); }
+        }
+
+        public int WarningCount
+        {
+            get => _warningCount;
+            set { _warningCount = value; OnPropertyChanged(); }
         }
 
         private PCDisplayModel? _selectedPC;
@@ -52,7 +83,45 @@ namespace IRIS.UI.ViewModels
         public ICommand ViewScreenCommand { get; }
         public ICommand LockScreenCommand { get; }
 
-        private void LoadPCData()
+        private async Task LoadPCDataAsync()
+        {
+            try
+            {
+                var pcs = await _monitoringService.GetPCsForMonitorAsync();
+                var counts = await _monitoringService.GetPCStatusCountsAsync();
+                
+                PCs.Clear();
+                
+                foreach (var pc in pcs)
+                {
+                    var statusColor = pc.Status == "Online" ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) :
+                                     pc.Status == "Offline" ? new SolidColorBrush(Color.FromRgb(239, 68, 68)) :
+                                     new SolidColorBrush(Color.FromRgb(245, 158, 11));
+
+                    PCs.Add(new PCDisplayModel
+                    {
+                        Name = pc.Name,
+                        IP = $"IP: {pc.IpAddress}",
+                        OS = $"OS: {pc.OperatingSystem}",
+                        CPU = $"CPU: {pc.CpuUsage:F0}%",
+                        Network = $"Network: {pc.NetworkUsage:F1} Mbps",
+                        RAM = $"RAM: {pc.RamUsage:F0}%",
+                        User = string.IsNullOrEmpty(pc.User) ? "" : $"User: {pc.User}",
+                        StatusColor = statusColor
+                    });
+                }
+                
+                OnlineCount = counts.OnlineCount;
+                OfflineCount = counts.OfflineCount;
+                WarningCount = counts.WarningCount;
+            }
+            catch
+            {
+                // Fallback to empty if error
+            }
+        }
+
+        private void LoadPCData_OLD()
         {
             PCs.Clear();
             var pcData = new[]
