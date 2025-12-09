@@ -4,12 +4,15 @@ using System.Windows;
 using System.Windows.Input;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.Core.Services;
 
 namespace IRIS.UI.ViewModels
 {
     public class ViewScreenViewModel : INotifyPropertyChanged
     {
         private readonly INavigationService _navigationService;
+        private readonly IMonitoringService _monitoringService;
+        private int _pcId;
         private bool _isDetailsExpanded;
         private string _pcName = "LB448";
         private string _pcNumber = "PC12";
@@ -28,9 +31,10 @@ namespace IRIS.UI.ViewModels
         private string _storagePrimary = "Storage (Primary): Samsung 990 PRO 2TB NVMe SSD";
         private string _storageSecondary = "Storage (Secondary): Seagate Barracuda 4TB HDD (7200 RPM)";
 
-        public ViewScreenViewModel(INavigationService navigationService)
+        public ViewScreenViewModel(INavigationService navigationService, IMonitoringService monitoringService)
         {
             _navigationService = navigationService;
+            _monitoringService = monitoringService;
             ToggleDetailsCommand = new RelayCommand(async () => await ToggleDetailsAsync(), () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => true);
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
@@ -76,8 +80,9 @@ namespace IRIS.UI.ViewModels
         public ICommand RemoteDesktopCommand { get; }
         public ICommand BackCommand { get; }
 
-        public void LoadPCData(PCDisplayModel pc)
+        public async void LoadPCData(PCDisplayModel pc)
         {
+            _pcId = pc.Id;
             PCName = "LB448";
             PCNumber = pc.Name;
             IP = pc.IP.Replace("IP: ", "");
@@ -85,6 +90,34 @@ namespace IRIS.UI.ViewModels
             OS = pc.OS.Replace("OS: ", "");
             CPU = pc.CPU.Replace("CPU: ", "");
             RAM = pc.RAM.Replace("RAM: ", "");
+            
+            await LoadHardwareConfigAsync();
+        }
+
+        private async Task LoadHardwareConfigAsync()
+        {
+            try
+            {
+                var config = await _monitoringService.GetPCHardwareConfigAsync(_pcId);
+                if (config != null)
+                {
+                    CPUModel = $"CPU: {config.Processor ?? "Unknown"}";
+                    GPUModel = $"GPU: {config.GraphicsCard ?? "Unknown"}";
+                    Motherboard = $"Motherboard: {config.Motherboard ?? "Unknown"}";
+                    RAMModel = $"RAM: {FormatBytes(config.RamCapacity ?? 0)}";
+                    StoragePrimary = $"Storage: {FormatBytes(config.StorageCapacity ?? 0)} ({config.StorageType ?? "Unknown"})";
+                    StorageSecondary = "";
+                }
+            }
+            catch { }
+        }
+
+        private string FormatBytes(long bytes)
+        {
+            if (bytes >= 1099511627776) return $"{bytes / 1099511627776.0:F1} TB";
+            if (bytes >= 1073741824) return $"{bytes / 1073741824.0:F1} GB";
+            if (bytes >= 1048576) return $"{bytes / 1048576.0:F1} MB";
+            return $"{bytes} bytes";
         }
 
         private async Task ToggleDetailsAsync()

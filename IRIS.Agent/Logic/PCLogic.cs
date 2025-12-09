@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -11,6 +12,7 @@ using IRIS.Agent.Interfaces;
 
 namespace IRIS.Agent.Logic
 {
+    [SupportedOSPlatform("windows")]
     public class PCLogic : IPCLogic
     {
         private readonly IRISDbContext _context;
@@ -168,6 +170,7 @@ namespace IRIS.Agent.Logic
             );
         }
 
+        [SupportedOSPlatform("windows")]
         private string GetProcessorInfo()
         {
             try
@@ -182,6 +185,7 @@ namespace IRIS.Agent.Logic
             return "Unknown";
         }
 
+        [SupportedOSPlatform("windows")]
         private string GetGraphicsCardInfo()
         {
             try
@@ -196,6 +200,7 @@ namespace IRIS.Agent.Logic
             return "Unknown";
         }
 
+        [SupportedOSPlatform("windows")]
         private string GetMotherboardInfo()
         {
             try
@@ -212,6 +217,7 @@ namespace IRIS.Agent.Logic
             return "Unknown";
         }
 
+        [SupportedOSPlatform("windows")]
         private long GetRamCapacity()
         {
             try
@@ -239,6 +245,7 @@ namespace IRIS.Agent.Logic
             return 0;
         }
 
+        [SupportedOSPlatform("windows")]
         private string GetStorageType()
         {
             try

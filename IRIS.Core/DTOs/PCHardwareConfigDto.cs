@@ -22,4 +22,5 @@ namespace IRIS.Core.DTOs
         long? StorageCapacity,
         string? StorageType
     );
+
 }

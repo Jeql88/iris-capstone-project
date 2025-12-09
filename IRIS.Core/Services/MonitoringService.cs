@@ -1,5 +1,7 @@
 using IRIS.Core.Data;
+using IRIS.Core.DTOs;
 using Microsoft.EntityFrameworkCore;
+using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.Core.Services
 {
@@ -158,8 +160,31 @@ namespace IRIS.Core.Services
             {
                 OnlineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Online),
                 OfflineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Offline),
-                //WarningCount = await query.CountAsync(p => p.Status == Models.PCStatus.Warning)
+                WarningCount = await query.CountAsync(p => p.Status == Models.PCStatus.Warning)
             };
+        }
+
+        public async Task<PCHardwareConfigDto?> GetPCHardwareConfigAsync(int pcId)
+        {
+            var config = await _context.PCHardwareConfigs
+                .Where(c => c.PCId == pcId && c.IsActive)
+                .OrderByDescending(c => c.AppliedAt)
+                .FirstOrDefaultAsync();
+
+            if (config == null) return null;
+
+            return new PCHardwareConfigDto(
+                Id: config.Id,
+                PCId: config.PCId,
+                Processor: config.Processor,
+                GraphicsCard: config.GraphicsCard,
+                Motherboard: config.Motherboard,
+                RamCapacity: config.RamCapacity,
+                StorageCapacity: config.StorageCapacity,
+                StorageType: config.StorageType,
+                AppliedAt: config.AppliedAt,
+                IsActive: config.IsActive
+            );
         }
     }
 }

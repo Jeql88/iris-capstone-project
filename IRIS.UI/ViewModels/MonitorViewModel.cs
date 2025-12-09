@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.Core.Services;
+using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.UI.ViewModels
 {
@@ -100,6 +101,7 @@ namespace IRIS.UI.ViewModels
 
                     PCs.Add(new PCDisplayModel
                     {
+                        Id = pc.Id,
                         Name = pc.Name,
                         IP = $"IP: {pc.IpAddress}",
                         OS = $"OS: {pc.OperatingSystem}",
@@ -174,6 +176,7 @@ namespace IRIS.UI.ViewModels
 
     public class PCDisplayModel : INotifyPropertyChanged
     {
+        private int _id;
         private string _name = string.Empty;
         private string _ip = string.Empty;
         private string _os = string.Empty;
@@ -182,6 +185,12 @@ namespace IRIS.UI.ViewModels
         private string _ram = string.Empty;
         private string _user = string.Empty;
         private SolidColorBrush _statusColor = new(Colors.Gray);
+
+        public int Id
+        {
+            get => _id;
+            set { _id = value; OnPropertyChanged(); }
+        }
 
         public string Name
         {
