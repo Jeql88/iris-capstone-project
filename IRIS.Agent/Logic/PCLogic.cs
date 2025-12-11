@@ -38,6 +38,9 @@ namespace IRIS.Agent.Logic
                     .Include(p => p.HardwareConfigs)
                     .FirstOrDefaultAsync(p => p.MacAddress == networkInfo.MacAddress);
 
+                // Ensure a default room exists and get its Id
+                var defaultRoomId = await EnsureDefaultRoomAsync();
+
                 if (existingPC != null)
                 {
                     // Update existing record
@@ -67,7 +70,7 @@ namespace IRIS.Agent.Logic
                         OperatingSystem = os,
                         Status = PCStatus.Online,
                         LastSeen = DateTime.UtcNow,
-                        RoomId = 1 // Default room, can be configured later
+                        RoomId = defaultRoomId // Default room, can be configured later
                     };
 
                     _context.PCs.Add(newPC);
@@ -86,6 +89,41 @@ namespace IRIS.Agent.Logic
             {
                 Log.Error(ex, "Failed to register or update PC record");
                 throw; // Re-throw to let caller handle
+            }
+        }
+
+        private async Task<int> EnsureDefaultRoomAsync()
+        {
+            try
+            {
+                // Try to find an existing default room
+                var existingRoom = await _context.Rooms
+                    .FirstOrDefaultAsync(r => r.RoomNumber == "DEFAULT");
+
+                if (existingRoom != null)
+                {
+                    return existingRoom.Id;
+                }
+
+                // Create a default room if it doesn't exist
+                var room = new Room
+                {
+                    RoomNumber = "DEFAULT",
+                    Description = "Default room for unassigned PCs",
+                    Capacity = 0,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Rooms.Add(room);
+                await _context.SaveChangesAsync();
+
+                return room.Id;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to ensure default room exists");
+                throw;
             }
         }
 

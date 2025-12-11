@@ -123,6 +123,19 @@ namespace IRIS.Core.Data
             modelBuilder.Entity<Room>()
                 .HasIndex(r => r.RoomNumber)
                 .IsUnique();
+
+            // Seed a default room so agents can register PCs
+            modelBuilder.Entity<Room>().HasData(
+                new Room
+                {
+                    Id = 1,
+                    RoomNumber = "DEFAULT",
+                    Description = "Default room for unassigned PCs",
+                    Capacity = 0,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                }
+            );
         }
 
         private void ConfigureHardwareMetric(ModelBuilder modelBuilder)
