@@ -100,5 +100,25 @@ namespace IRIS.UI.Views
             
             _navigationService?.NavigateTo("SoftwareManagement");
         }
+
+        private void UserManagementBtn_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
+            MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            UserManagementBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            
+            var grid = this.FindName("MainGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count > 2)
+            {
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+            
+            _navigationService?.NavigateTo("UserManagement");
+        }
     }
 }
