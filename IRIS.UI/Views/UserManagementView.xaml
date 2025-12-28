@@ -22,7 +22,7 @@
                         <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.1" Color="#000000"/>
                     </Border.Effect>
                     <StackPanel>
-                        <TextBlock Text="Search Users" FontSize="18" FontWeight="Bold" 
+                        <TextBlock Text="Search Users" FontSize="20" FontWeight="Bold" 
                                    Foreground="#DC143C" Margin="0,0,0,20"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -91,7 +91,7 @@
 
                         <!-- Table Header -->
                         <Grid Grid.Row="0" Margin="0,0,0,20">
-                            <TextBlock Text="System Users" FontSize="18" FontWeight="Bold" Foreground="#DC143C"/>
+                            <TextBlock Text="System Users" FontSize="20" FontWeight="Bold" Foreground="#DC143C"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <TextBlock Text="Showing " FontSize="13" Foreground="#DC143C"/>
                                 <TextBlock Text="{Binding FilteredUsers.Count}" FontSize="13" Foreground="#DC143C" FontWeight="SemiBold"/>
@@ -152,7 +152,7 @@
                             <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.1" Color="#000000"/>
                         </Border.Effect>
                         <StackPanel>
-                            <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" Foreground="#DC143C" Margin="0,0,0,20"/>
+                            <TextBlock Text="Add New User" FontSize="20" FontWeight="Bold" Foreground="#DC143C" Margin="0,0,0,20"/>
                             
                             <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Foreground="#333" Margin="0,0,0,8"/>
                             <Border BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Background="White" Margin="0,0,0,15">
@@ -178,9 +178,9 @@
                                 </ComboBox>
                             </Border>
                             
-                            <Button Content="+ Add New User" Background="#DC143C" Foreground="White" 
+                            <Button x:Name="AddUserButton" Content="+ Add New User" Background="#DC143C" Foreground="White" 
                                     Height="40" FontSize="14" FontWeight="SemiBold" 
-                                    BorderThickness="0" Cursor="Hand">
+                                    BorderThickness="0" Cursor="Hand" Click="AddUser_Click">
                                 <Button.Resources>
                                     <Style TargetType="Border">
                                         <Setter Property="CornerRadius" Value="4"/>
@@ -197,7 +197,7 @@
                         </Border.Effect>
                         <StackPanel>
                             <Grid Margin="0,0,0,20">
-                                <TextBlock Text="Manage User" FontSize="18" FontWeight="Bold" Foreground="#DC143C" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Manage User" FontSize="20" FontWeight="Bold" Foreground="#DC143C" HorizontalAlignment="Left"/>
                                 <TextBlock x:Name="HelpIcon" Text="?" FontSize="14" FontWeight="Bold" 
                                            Foreground="White" Background="#999" 
                                            Width="20" Height="20" TextAlignment="Center" 
@@ -257,7 +257,7 @@
                             <Button x:Name="EditUserButton" Content="✏ Edit User" Background="White" Foreground="#DC143C" 
                                     Height="40" FontSize="14" FontWeight="SemiBold" 
                                     BorderThickness="1" BorderBrush="#DC143C" Cursor="Hand" Margin="0,0,0,10"
-                                    IsEnabled="False">
+                                    IsEnabled="False" Click="EditUser_Click">
                                 <Button.Resources>
                                     <Style TargetType="Border">
                                         <Setter Property="CornerRadius" Value="4"/>
@@ -267,7 +267,7 @@
                             
                             <Button x:Name="DeactivateUserButton" Content="🗑 Deactivate User" Background="#DC143C" Foreground="White" 
                                     Height="40" FontSize="14" FontWeight="SemiBold" 
-                                    BorderThickness="0" Cursor="Hand" IsEnabled="False">
+                                    BorderThickness="0" Cursor="Hand" IsEnabled="False" Click="DeactivateUser_Click">
                                 <Button.Resources>
                                     <Style TargetType="Border">
                                         <Setter Property="CornerRadius" Value="4"/>
