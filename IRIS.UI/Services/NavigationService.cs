@@ -31,6 +31,7 @@ namespace IRIS.UI.Services
             _viewRegistry["PolicyEnforcement"] = typeof(Views.PolicyEnforcementView);
             _viewRegistry["SoftwareManagement"] = typeof(Views.SoftwareManagementView);
             _viewRegistry["UserManagement"] = typeof(Views.UserManagementView);
+            _viewRegistry["Settings"] = typeof(Views.SettingsView);
         }
 
         public void NavigateTo(string viewKey, object? parameter = null)

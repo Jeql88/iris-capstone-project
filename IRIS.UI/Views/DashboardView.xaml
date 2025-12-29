@@ -23,7 +23,7 @@
                 <Button Content="Access Logs" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
                 <Button x:Name="UserManagementBtn" Content="User Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="UserManagementBtn_Click"/>
                 <Button Content="Usage Metrics" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="Settings" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
+                <Button x:Name="SettingsBtn" Content="Settings" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="SettingsBtn_Click"/>
             </StackPanel>
         </Border>
 
