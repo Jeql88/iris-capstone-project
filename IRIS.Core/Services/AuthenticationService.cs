@@ -80,6 +80,7 @@ namespace IRIS.Core.Services
                     return false;
 
                 user.PasswordHash = HashPassword(newPassword);
+                user.MustChangePassword = false;
                 try
                 {
                     await _context.SaveChangesAsync();

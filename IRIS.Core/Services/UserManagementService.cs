@@ -26,7 +26,8 @@ namespace IRIS.Core.Services
                 PasswordHash = HashPassword(password),
                 Role = role,
                 FullName = fullName,
-                IsActive = true
+                IsActive = true,
+                MustChangePassword = true
             };
 
             _context.Users.Add(user);
