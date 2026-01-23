@@ -1,0 +1,373 @@
+<UserControl x:Class="IRIS.UI.Views.SoftwareManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters"
+             Background="#F5F5F5">
+    
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:BoolToLabColorConverter x:Key="BoolToLabColorConverter"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="30,20">
+            <!-- Header -->
+            <TextBlock Text="Software &amp; File Management" 
+                       FontSize="32" 
+                       FontWeight="Bold" 
+                       Foreground="#8B0000" 
+                       Margin="0,0,0,20"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Section -->
+                <StackPanel Grid.Column="0">
+                    <!-- Deploy/Uninstall Section -->
+                    <Border Background="White" CornerRadius="12" Padding="25" Margin="0,0,0,20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <!-- Toggle Buttons -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                <Button Content="📦 Deploy Software" 
+                                        Width="160" Height="40" 
+                                        FontSize="14" FontWeight="SemiBold" 
+                                        BorderThickness="0" Cursor="Hand"
+                                        Click="DeployModeButton_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Foreground" Value="#666666"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDeployMode}" Value="True">
+                                                    <Setter Property="Background" Value="#8B0000"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="🗑️ Uninstall Software" 
+                                        Width="180" Height="40" 
+                                        Margin="10,0,0,0" 
+                                        FontSize="14" FontWeight="SemiBold" 
+                                        BorderThickness="0" Cursor="Hand"
+                                        Click="UninstallModeButton_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Foreground" Value="#666666"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUninstallMode}" Value="True">
+                                                    <Setter Property="Background" Value="#8B0000"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Deploy Mode Content -->
+                            <StackPanel Visibility="{Binding IsDeployMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Select Destination Path" 
+                                          FontSize="16" FontWeight="Bold" 
+                                          Foreground="#333" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,15">
+                                    <TextBox Text="{Binding DestinationPath}" 
+                                            Height="40" Padding="10" FontSize="14" 
+                                            VerticalContentAlignment="Center" 
+                                            Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1"/>
+                                    <Button Content="📁" Width="40" Height="30" 
+                                           HorizontalAlignment="Right" Margin="5" 
+                                           Background="#8B0000" Foreground="White" 
+                                           BorderThickness="0" Cursor="Hand"/>
+                                </Grid>
+
+                                <!-- File Upload Area -->
+                                <Border Height="200" Background="#F9F9F9" 
+                                       BorderBrush="#DDD" BorderThickness="2" CornerRadius="8">
+                                    <Grid>
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <TextBlock Text="⬆" FontSize="48" Foreground="#8B0000" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Drag &amp; Drop files here" FontSize="16" FontWeight="SemiBold" 
+                                                      Foreground="#333" HorizontalAlignment="Center" Margin="0,10,0,5"/>
+                                            <TextBlock Text="or" FontSize="14" Foreground="#666" 
+                                                      HorizontalAlignment="Center" Margin="0,5"/>
+                                            <Button Content="Browse Files" Command="{Binding BrowseFilesCommand}"
+                                                   Width="120" Height="35" Background="#8B0000" Foreground="White" 
+                                                   FontSize="14" BorderThickness="0" Cursor="Hand" Margin="0,5,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Uninstall Mode Content -->
+                            <StackPanel Visibility="{Binding IsUninstallMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Select Application to Uninstall" 
+                                          FontSize="16" FontWeight="Bold" 
+                                          Foreground="#333" Margin="0,0,0,10"/>
+                                <ListBox ItemsSource="{Binding ApplicationsToUninstall}" 
+                                        SelectedItem="{Binding SelectedApplicationToUninstall}"
+                                        Height="200" Background="#F9F9F9" BorderBrush="#DDD" BorderThickness="1">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="45" Height="45" 
+                                                       Background="#8B0000" CornerRadius="8">
+                                                    <TextBlock Text="{Binding Icon}" Foreground="White" 
+                                                              FontWeight="Bold" FontSize="16" 
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
+                                                              FontSize="15" Foreground="#333"/>
+                                                    <TextBlock Text="{Binding Version}" FontSize="13" Foreground="#888"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <!-- Deploy/Uninstall Button -->
+                            <Button Width="200" Height="45" Background="#8B0000" Foreground="White" 
+                                   FontSize="16" FontWeight="Bold" BorderThickness="0" Cursor="Hand" 
+                                   HorizontalAlignment="Right" Margin="0,20,0,0">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Command" Value="{Binding DeploySoftwareCommand}"/>
+                                        <Setter Property="Content" Value="Deploy"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsUninstallMode}" Value="True">
+                                                <Setter Property="Command" Value="{Binding UninstallSoftwareCommand}"/>
+                                                <Setter Property="Content" Value="Uninstall in selected PCs"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Software Inventory -->
+                    <Border Background="White" CornerRadius="12" Padding="25">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,15">
+                                <TextBlock Text="Software Inventory" FontSize="20" FontWeight="Bold" 
+                                          Foreground="#D32F2F" VerticalAlignment="Center"/>
+                                <ComboBox SelectedItem="{Binding SelectedInventoryLab}"
+                                         Width="150" Height="35" HorizontalAlignment="Right" 
+                                         Background="#8B0000" Foreground="White" 
+                                         FontSize="14" BorderThickness="0">
+                                    <ComboBoxItem Content="Archi Lab 1" IsSelected="True"/>
+                                    <ComboBoxItem Content="Archi Lab 2"/>
+                                    <ComboBoxItem Content="Archi Lab 3"/>
+                                    <ComboBoxItem Content="Archi Lab 4"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding SoftwareInventory}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="50" Height="50" 
+                                                   Background="#8B0000" CornerRadius="8">
+                                                <TextBlock Text="{Binding Icon}" Foreground="White" 
+                                                          FontWeight="Bold" FontSize="18" 
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
+                                                          FontSize="15" Foreground="#333"/>
+                                                <TextBlock Text="{Binding Version}" FontSize="13" Foreground="#888"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Width="70" Height="35" 
+                                                   Background="#8B0000" CornerRadius="17" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding InstallCount}" Foreground="White" 
+                                                          FontWeight="Bold" FontSize="14" 
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right Section -->
+                <StackPanel Grid.Column="2">
+                    <!-- Target Laboratories -->
+                    <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock Text="Select Target Laboratories" FontSize="16" FontWeight="Bold" 
+                                      Foreground="#333" Margin="0,0,0,15"/>
+                            <UniformGrid Columns="2">
+                                <ItemsControl ItemsSource="{Binding Labs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Height="60" Margin="5" FontSize="14" FontWeight="SemiBold" 
+                                                   Cursor="Hand" BorderThickness="0">
+                                                <Button.Background>
+                                                    <SolidColorBrush Color="{Binding IsOnline, Converter={StaticResource BoolToLabColorConverter}}"/>
+                                                </Button.Background>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" 
+                                                              Foreground="White" HorizontalAlignment="Center"/>
+                                                    <TextBlock FontSize="11" Foreground="White" HorizontalAlignment="Center" Margin="0,2,0,0">
+                                                        <Run Text="{Binding OnlineCount}"/><Run Text="/20 Online"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Target PCs -->
+                    <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock Text="Select Target PCs" FontSize="16" FontWeight="Bold" 
+                                      Foreground="#333" Margin="0,0,0,10"/>
+
+                            <ItemsControl ItemsSource="{Binding PCs}" Margin="0,0,0,10">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Name}" Width="85" Height="35" Margin="3" 
+                                               FontSize="13" FontWeight="SemiBold" Cursor="Hand" BorderThickness="2">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="BorderBrush" Value="#8B0000"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Foreground" Value="#8B0000"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="#8B0000"/>
+                                                            <Setter Property="Foreground" Value="White"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                            <Setter Property="Background" Value="#F5E6E6"/>
+                                                            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+                                                            <Setter Property="Foreground" Value="#999999"/>
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                                <Button Content="Select All Online" Command="{Binding SelectAllOnlineCommand}"
+                                       Width="120" Height="30" Background="Transparent" Foreground="#8B0000" 
+                                       FontSize="12" BorderBrush="#8B0000" BorderThickness="1" 
+                                       Cursor="Hand" Margin="0,0,5,0"/>
+                                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}"
+                                       Width="120" Height="30" Background="Transparent" Foreground="#8B0000" 
+                                       FontSize="12" BorderBrush="#8B0000" BorderThickness="1" 
+                                       Cursor="Hand" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Active Deployments -->
+                    <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock Text="Active Deployments" FontSize="16" FontWeight="Bold" 
+                                      Foreground="#D32F2F" Margin="0,0,0,15"/>
+
+                            <ItemsControl ItemsSource="{Binding ActiveDeployments}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,15">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
+                                                      FontSize="14" Foreground="#333" Margin="0,0,0,5"/>
+                                            <TextBlock Text="{Binding Status}" FontSize="12" 
+                                                      Foreground="#888" Margin="0,0,0,5"/>
+                                            <ProgressBar Value="{Binding Progress}" Height="8" 
+                                                        Background="#E0E0E0" Foreground="#8B0000" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Software Request Queue -->
+                    <Border Background="White" CornerRadius="12" Padding="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock Text="Software Request Queue" FontSize="16" FontWeight="Bold" 
+                                      Foreground="#D32F2F" Margin="0,0,0,15"/>
+
+                            <ItemsControl ItemsSource="{Binding SoftwareRequests}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding SoftwareName}" FontWeight="SemiBold" 
+                                                          FontSize="13" Foreground="#333"/>
+                                                <TextBlock Text="{Binding Requester}" FontSize="11" Foreground="#888"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="↩" Command="{Binding DataContext.ApproveRequestCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                       Width="25" Height="25" Background="Transparent" Foreground="#8B0000" 
+                                                       FontSize="16" BorderThickness="0" Cursor="Hand" Margin="0,0,5,0"/>
+                                                <Button Content="🗑" Command="{Binding DataContext.RejectRequestCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                       Width="25" Height="25" Background="Transparent" Foreground="#8B0000" 
+                                                       FontSize="16" BorderThickness="0" Cursor="Hand"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

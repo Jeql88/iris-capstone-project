@@ -1,80 +1,104 @@
 using System.Windows;
 using System.Windows.Controls;
+using IRIS.UI.ViewModels;
+using IRIS.UI.Services;
 
 namespace IRIS.UI.Views
 {
     public partial class DashboardView : UserControl
     {
-        private ScrollViewer dashboardContent;
-        private MonitorView monitorView;
-        private ViewScreenPage viewScreenPage;
+        private INavigationService? _navigationService;
+        private ScrollViewer? dashboardContent;
 
         public DashboardView()
         {
             InitializeComponent();
-            
-            // Store the original dashboard content (the ScrollViewer)
+            Loaded += OnLoaded;
+        }
+
+        public void SetNavigationService(INavigationService navigationService)
+        {
+            _navigationService = navigationService;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
             dashboardContent = MainContent.Content as ScrollViewer;
-            
-            // Initialize views
-            monitorView = new MonitorView();
-            viewScreenPage = new ViewScreenPage();
         }
 
         private void DashboardBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            // Reset button styles
             DashboardBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
             
-            // Restore right sidebar by setting its width back to 320
+            var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
                 grid.ColumnDefinitions[2].Width = new GridLength(320);
             }
             
-            // Show dashboard content
             MainContent.Content = dashboardContent;
         }
 
         private void MonitorBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            ShowMonitorView();
-        }
-
-        public void ShowMonitorView()
-        {
-            // Reset button styles
             DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
             MonitorBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             
-            // Hide right sidebar by setting its width to 0
+            var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
                 grid.ColumnDefinitions[2].Width = new GridLength(0);
             }
             
-            // Show monitor view
-            MainContent.Content = monitorView;
+            _navigationService?.NavigateTo("Monitor");
         }
 
-        public void ShowViewScreenPage()
+        private void PolicyBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            // Keep monitor button highlighted
             DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
-            MonitorBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
             
-            // Hide right sidebar
+            var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
                 grid.ColumnDefinitions[2].Width = new GridLength(0);
             }
             
-            // Show view screen page
-            MainContent.Content = viewScreenPage;
+            _navigationService?.NavigateTo("PolicyEnforcement");
+        }
+
+        private void SoftwareManagementBtn_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
+            MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var softwareMgmtBtn = sender as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null)
+            {
+                softwareMgmtBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            }
+            
+            var grid = this.FindName("MainGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count > 2)
+            {
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+            
+            _navigationService?.NavigateTo("SoftwareManagement");
         }
     }
 }

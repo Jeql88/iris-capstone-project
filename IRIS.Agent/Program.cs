@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using IRIS.Core.Data;
+using IRIS.Core.DTOs;
 using IRIS.Agent.Controllers;
 using IRIS.Agent.Logic;
 
@@ -36,10 +37,10 @@ namespace IRIS.Agent
             var pcController = new PCController(pcLogic);
 
             // Get MAC address for monitoring
-            var (_, macAddress) = PCLogic.GetNetworkInfo();
+            var networkInfo = PCLogic.GetNetworkInfo();
 
             // Initialize monitoring components
-            var monitoringLogic = new MonitoringLogic(context, macAddress);
+            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
 
             // Execute startup logic: Register PC
@@ -51,7 +52,7 @@ namespace IRIS.Agent
             Log.Information("Agent initialized successfully. Monitoring loop started.");
 
             // Set up shutdown handling
-            var shutdownLogic = new ShutdownLogic(context, macAddress);
+            var shutdownLogic = new ShutdownLogic(context, networkInfo.MacAddress);
             AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
             {
                 Log.Information("Shutdown detected. Handling final update...");

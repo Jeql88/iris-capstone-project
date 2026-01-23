@@ -55,6 +55,7 @@ namespace IRIS.Core.Models
         Online,
         Offline,
         Maintenance,
-        Locked
+        Locked, 
+        Warning
     }
 }

@@ -1,5 +1,7 @@
 using IRIS.Core.Data;
+using IRIS.Core.DTOs;
 using Microsoft.EntityFrameworkCore;
+using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.Core.Services
 {
@@ -109,6 +111,80 @@ namespace IRIS.Core.Services
                 .GroupBy(p => p.Room.RoomNumber)
                 .Select(g => new { RoomName = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.RoomName, x => x.Count);
+        }
+
+        public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)
+        {
+            var query = _context.PCs
+                .Include(p => p.HardwareMetrics)
+                .Include(p => p.UserLogs)
+                .AsQueryable();
+
+            if (roomId.HasValue)
+                query = query.Where(p => p.RoomId == roomId.Value);
+
+            var pcs = await query.ToListAsync();
+
+            return pcs.Select(pc =>
+            {
+                var latestMetric = pc.HardwareMetrics
+                    .OrderByDescending(m => m.Timestamp)
+                    .FirstOrDefault();
+
+                var latestUser = pc.UserLogs
+                    .OrderByDescending(u => u.Timestamp)
+                    .FirstOrDefault();
+
+                return new PCMonitorInfo
+                {
+                    Id = pc.Id,
+                    Name = pc.Hostname ?? "Unknown",
+                    IpAddress = pc.IpAddress ?? "N/A",
+                    OperatingSystem = pc.OperatingSystem ?? "Unknown",
+                    Status = pc.Status.ToString(),
+                    CpuUsage = latestMetric?.CpuUsage ?? 0,
+                    RamUsage = latestMetric?.MemoryUsage ?? 0,
+                    NetworkUsage = 0, // Will be calculated from NetworkMetrics
+                    User = latestUser?.User?.Username ?? ""
+                };
+            }).ToList();
+        }
+
+        public async Task<PCStatusCounts> GetPCStatusCountsAsync(int? roomId = null)
+        {
+            var query = _context.PCs.AsQueryable();
+            if (roomId.HasValue)
+                query = query.Where(p => p.RoomId == roomId.Value);
+
+            return new PCStatusCounts
+            {
+                OnlineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Online),
+                OfflineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Offline),
+                WarningCount = await query.CountAsync(p => p.Status == Models.PCStatus.Warning)
+            };
+        }
+
+        public async Task<PCHardwareConfigDto?> GetPCHardwareConfigAsync(int pcId)
+        {
+            var config = await _context.PCHardwareConfigs
+                .Where(c => c.PCId == pcId && c.IsActive)
+                .OrderByDescending(c => c.AppliedAt)
+                .FirstOrDefaultAsync();
+
+            if (config == null) return null;
+
+            return new PCHardwareConfigDto(
+                Id: config.Id,
+                PCId: config.PCId,
+                Processor: config.Processor,
+                GraphicsCard: config.GraphicsCard,
+                Motherboard: config.Motherboard,
+                RamCapacity: config.RamCapacity,
+                StorageCapacity: config.StorageCapacity,
+                StorageType: config.StorageType,
+                AppliedAt: config.AppliedAt,
+                IsActive: config.IsActive
+            );
         }
     }
 }

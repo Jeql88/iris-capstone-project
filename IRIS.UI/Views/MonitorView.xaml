@@ -86,35 +86,35 @@
             <!-- Status Cards -->
             <UniformGrid Grid.Column="1" Columns="3" Margin="20,0,0,0">
                 <!-- Online -->
-                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource OnlineColor}">
+                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource OnlineColor}" Height="90">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Ellipse Width="12" Height="12" Fill="{StaticResource OnlineColor}"/>
-                            <TextBlock Text="Online" FontSize="14" Foreground="#6B7280" Margin="8,0,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource OnlineColor}"/>
+                            <TextBlock Text="Online" FontSize="13" Foreground="#6B7280" Margin="8,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="10" FontSize="32" FontWeight="Bold" Foreground="{StaticResource OnlineColor}"/>
+                        <TextBlock Text="{Binding OnlineCount}" FontSize="28" FontWeight="Bold" Foreground="{StaticResource OnlineColor}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Offline -->
-                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource OfflineColor}">
+                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource OfflineColor}" Height="90">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Ellipse Width="12" Height="12" Fill="{StaticResource OfflineColor}"/>
-                            <TextBlock Text="Offline" FontSize="14" Foreground="#6B7280" Margin="8,0,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource OfflineColor}"/>
+                            <TextBlock Text="Offline" FontSize="13" Foreground="#6B7280" Margin="8,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="3" FontSize="32" FontWeight="Bold" Foreground="{StaticResource OfflineColor}"/>
+                        <TextBlock Text="{Binding OfflineCount}" FontSize="28" FontWeight="Bold" Foreground="{StaticResource OfflineColor}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Warning -->
-                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource WarningColor}">
+                <Border Style="{StaticResource PCCardStyle}" BorderBrush="{StaticResource WarningColor}" Height="90">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Ellipse Width="12" Height="12" Fill="{StaticResource WarningColor}"/>
-                            <TextBlock Text="Warning" FontSize="14" Foreground="#6B7280" Margin="8,0,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource WarningColor}"/>
+                            <TextBlock Text="Warning" FontSize="13" Foreground="#6B7280" Margin="8,0,0,0"/>
                         </StackPanel>
-                        <TextBlock Text="3" FontSize="32" FontWeight="Bold" Foreground="{StaticResource WarningColor}"/>
+                        <TextBlock Text="{Binding WarningCount}" FontSize="28" FontWeight="Bold" Foreground="{StaticResource WarningColor}"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
@@ -203,7 +203,7 @@
 
         <!-- PC Grid -->
         <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="PCItemsControl">
+            <ItemsControl x:Name="PCItemsControl" ItemsSource="{Binding PCs}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Columns="4"/>

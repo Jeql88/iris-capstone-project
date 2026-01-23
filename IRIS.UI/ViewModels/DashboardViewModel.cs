@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.Core.Services;
+using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.UI.ViewModels
 {
