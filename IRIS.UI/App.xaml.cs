@@ -52,6 +52,7 @@ namespace IRIS.UI
             // Services
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
+            services.AddScoped<IAccessLogsService, AccessLogsService>();
             services.AddScoped<IMonitoringService, MonitoringService>();
             services.AddSingleton<INavigationService, NavigationService>();
 
@@ -62,6 +63,7 @@ namespace IRIS.UI
             services.AddTransient<ViewScreenViewModel>();
             services.AddTransient<SoftwareManagementViewModel>();
             services.AddTransient<UserManagementViewModel>();
+            services.AddTransient<AccessLogsViewModel>();
             services.AddTransient<SettingsViewModel>();
 
             // Views
@@ -71,6 +73,7 @@ namespace IRIS.UI
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
             services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
             services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
+            services.AddTransient(sp => new AccessLogsView(sp.GetRequiredService<AccessLogsViewModel>()));
             services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
             services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>(), sp.GetRequiredService<INavigationService>()));
 

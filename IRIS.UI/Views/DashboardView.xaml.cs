@@ -37,6 +37,9 @@ namespace IRIS.UI.Views
             UserManagementBtn.Background = System.Windows.Media.Brushes.Transparent;
             SettingsBtn.Background = System.Windows.Media.Brushes.Transparent;
             
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
@@ -57,6 +60,9 @@ namespace IRIS.UI.Views
             UserManagementBtn.Background = System.Windows.Media.Brushes.Transparent;
             SettingsBtn.Background = System.Windows.Media.Brushes.Transparent;
             
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
@@ -76,6 +82,9 @@ namespace IRIS.UI.Views
             PolicyBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             UserManagementBtn.Background = System.Windows.Media.Brushes.Transparent;
             SettingsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
             
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
@@ -100,6 +109,9 @@ namespace IRIS.UI.Views
                 softwareMgmtBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             }
             
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             var grid = this.FindName("MainGrid") as Grid;
             if (grid != null && grid.ColumnDefinitions.Count > 2)
             {
@@ -119,6 +131,9 @@ namespace IRIS.UI.Views
             var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
             if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
             
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
             UserManagementBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             
             var grid = this.FindName("MainGrid") as Grid;
@@ -130,6 +145,29 @@ namespace IRIS.UI.Views
             _navigationService?.NavigateTo("UserManagement");
         }
 
+        private void AccessLogsBtn_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
+            MonitorBtn.Background = System.Windows.Media.Brushes.Transparent;
+            PolicyBtn.Background = System.Windows.Media.Brushes.Transparent;
+            UserManagementBtn.Background = System.Windows.Media.Brushes.Transparent;
+            SettingsBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
+            if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
+            
+            var grid = this.FindName("MainGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count > 2)
+            {
+                grid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+            
+            _navigationService?.NavigateTo("AccessLogs");
+        }
+
         private void SettingsBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             DashboardBtn.Background = System.Windows.Media.Brushes.Transparent;
@@ -139,6 +177,9 @@ namespace IRIS.UI.Views
             
             var softwareMgmtBtn = this.FindName("SoftwareManagementBtn") as System.Windows.Controls.Button;
             if (softwareMgmtBtn != null) softwareMgmtBtn.Background = System.Windows.Media.Brushes.Transparent;
+            
+            var accessLogsBtn = this.FindName("AccessLogsBtn") as System.Windows.Controls.Button;
+            if (accessLogsBtn != null) accessLogsBtn.Background = System.Windows.Media.Brushes.Transparent;
             
             SettingsBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 0, 0));
             

@@ -9,59 +9,52 @@ using IRIS.UI.Helpers;
 
 namespace IRIS.UI.ViewModels
 {
-    public class UserManagementViewModel : INotifyPropertyChanged
+    public class AccessLogsViewModel : INotifyPropertyChanged
     {
-        private readonly IUserManagementService _userManagementService;
+        private readonly IAccessLogsService _accessLogsService;
         private string _searchText = string.Empty;
+        private string _selectedAction = "All Actions";
         private string _selectedRole = "All Roles";
-        private string _selectedStatus = "All Status";
         private int _currentPage = 1;
         private int _pageSize = 10;
         private int _totalPages = 1;
         private int _totalCount = 0;
-        private UserDisplayModel? _selectedUser;
 
-        public UserManagementViewModel(IUserManagementService userManagementService)
+        public AccessLogsViewModel(IAccessLogsService accessLogsService)
         {
-            _userManagementService = userManagementService;
-            RefreshCommand = new RelayCommand(async () => await LoadUsersAsync(), () => true);
+            _accessLogsService = accessLogsService;
+            RefreshCommand = new RelayCommand(async () => await LoadLogsAsync(), () => true);
             PreviousPageCommand = new RelayCommand(async () => await PreviousPageAsync(), () => true);
             NextPageCommand = new RelayCommand(async () => await NextPageAsync(), () => true);
             
-            _ = LoadUsersAsync();
+            _ = LoadLogsAsync();
         }
 
-        public ObservableCollection<UserDisplayModel> Users { get; } = new();
+        public ObservableCollection<AccessLogDisplayModel> AccessLogs { get; } = new();
         public List<int> PageSizeOptions { get; } = new() { 10, 25, 50 };
 
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadUsersAsync(); }
+            set { _searchText = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+        }
+
+        public string SelectedAction
+        {
+            get => _selectedAction;
+            set { _selectedAction = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
         }
 
         public string SelectedRole
         {
             get => _selectedRole;
-            set { _selectedRole = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadUsersAsync(); }
-        }
-
-        public string SelectedStatus
-        {
-            get => _selectedStatus;
-            set { _selectedStatus = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadUsersAsync(); }
+            set { _selectedRole = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
         }
 
         public int PageSize
         {
             get => _pageSize;
-            set { _pageSize = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadUsersAsync(); }
-        }
-
-        public UserDisplayModel? SelectedUser
-        {
-            get => _selectedUser;
-            set { _selectedUser = value; OnPropertyChanged(); }
+            set { _pageSize = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
         }
 
         public int CurrentPage
@@ -82,7 +75,7 @@ namespace IRIS.UI.ViewModels
             set { _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
         }
 
-        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalCount} total users)";
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalCount} total entries)";
         public bool HasPreviousPage => CurrentPage > 1;
         public bool HasNextPage => CurrentPage < TotalPages;
 
@@ -90,7 +83,7 @@ namespace IRIS.UI.ViewModels
         public ICommand PreviousPageCommand { get; }
         public ICommand NextPageCommand { get; }
 
-        private async Task LoadUsersAsync()
+        private async Task LoadLogsAsync()
         {
             try
             {
@@ -106,26 +99,23 @@ namespace IRIS.UI.ViewModels
                     };
                 }
 
-                bool? statusFilter = null;
-                if (SelectedStatus != "All Status")
-                {
-                    statusFilter = SelectedStatus == "Active";
-                }
+                var result = await _accessLogsService.GetAccessLogsAsync(
+                    CurrentPage, PageSize, SearchText, 
+                    SelectedAction == "All Actions" ? null : SelectedAction, 
+                    roleFilter);
 
-                var result = await _userManagementService.GetUsersAsync(
-                    CurrentPage, PageSize, SearchText, roleFilter, statusFilter);
-
-                Users.Clear();
-                foreach (var user in result.Items)
+                AccessLogs.Clear();
+                foreach (var log in result.Items)
                 {
-                    Users.Add(new UserDisplayModel
+                    AccessLogs.Add(new AccessLogDisplayModel
                     {
-                        Id = user.Id,
-                        Username = user.Username,
-                        FullName = user.FullName ?? "N/A",
-                        Role = user.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel"),
-                        Status = user.IsActive ? "Active" : "Inactive",
-                        IsActive = user.IsActive
+                        Id = log.Id,
+                        Timestamp = log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Username = log.User?.Username ?? "Unknown",
+                        UserRole = log.User?.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel") ?? "Unknown",
+                        Action = log.Action,
+                        Details = log.Details ?? "N/A",
+                        IpAddress = log.IpAddress ?? "N/A"
                     });
                 }
 
@@ -136,7 +126,7 @@ namespace IRIS.UI.ViewModels
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to load users: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to load access logs: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -145,7 +135,7 @@ namespace IRIS.UI.ViewModels
             if (HasPreviousPage)
             {
                 CurrentPage--;
-                await LoadUsersAsync();
+                await LoadLogsAsync();
             }
         }
 
@@ -154,7 +144,7 @@ namespace IRIS.UI.ViewModels
             if (HasNextPage)
             {
                 CurrentPage++;
-                await LoadUsersAsync();
+                await LoadLogsAsync();
             }
         }
 
@@ -163,19 +153,26 @@ namespace IRIS.UI.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class UserDisplayModel : INotifyPropertyChanged
+    public class AccessLogDisplayModel : INotifyPropertyChanged
     {
         private int _id;
+        private string _timestamp = string.Empty;
         private string _username = string.Empty;
-        private string _fullName = string.Empty;
-        private string _role = string.Empty;
-        private string _status = string.Empty;
-        private bool _isActive;
+        private string _userRole = string.Empty;
+        private string _action = string.Empty;
+        private string _details = string.Empty;
+        private string _ipAddress = string.Empty;
 
         public int Id
         {
             get => _id;
             set { _id = value; OnPropertyChanged(); }
+        }
+
+        public string Timestamp
+        {
+            get => _timestamp;
+            set { _timestamp = value; OnPropertyChanged(); }
         }
 
         public string Username
@@ -184,28 +181,28 @@ namespace IRIS.UI.ViewModels
             set { _username = value; OnPropertyChanged(); }
         }
 
-        public string FullName
+        public string UserRole
         {
-            get => _fullName;
-            set { _fullName = value; OnPropertyChanged(); }
+            get => _userRole;
+            set { _userRole = value; OnPropertyChanged(); }
         }
 
-        public string Role
+        public string Action
         {
-            get => _role;
-            set { _role = value; OnPropertyChanged(); }
+            get => _action;
+            set { _action = value; OnPropertyChanged(); }
         }
 
-        public string Status
+        public string Details
         {
-            get => _status;
-            set { _status = value; OnPropertyChanged(); }
+            get => _details;
+            set { _details = value; OnPropertyChanged(); }
         }
 
-        public bool IsActive
+        public string IpAddress
         {
-            get => _isActive;
-            set { _isActive = value; OnPropertyChanged(); }
+            get => _ipAddress;
+            set { _ipAddress = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

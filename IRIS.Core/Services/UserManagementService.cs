@@ -91,6 +91,46 @@ namespace IRIS.Core.Services
                 .ToListAsync();
         }
 
+        public async Task<PaginatedResult<User>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? search = null, UserRole? role = null, bool? isActive = null)
+        {
+            var query = _context.Users.AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(u => u.Username.Contains(search) || 
+                                        (u.FullName != null && u.FullName.Contains(search)));
+            }
+
+            // Apply role filter
+            if (role.HasValue)
+            {
+                query = query.Where(u => u.Role == role.Value);
+            }
+
+            // Apply status filter
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            
+            var users = await query
+                .OrderBy(u => u.Username)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<User>
+            {
+                Items = users,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role)
         {
             return await _context.Users
