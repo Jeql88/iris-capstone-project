@@ -7,11 +7,32 @@
     
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        
+        <!-- Toggle Button Style -->
+        <Style x:Key="PolicyToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border" Background="#E5E7EB" CornerRadius="15" Width="50" Height="30">
+                            <Ellipse x:Name="thumb" Width="22" Height="22" Fill="White" 
+                                     HorizontalAlignment="Left" Margin="4,0,0,0">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect BlurRadius="3" ShadowDepth="1" Opacity="0.3"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#10B981"/>
+                                <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="thumb" Property="Margin" Value="0,0,4,0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
-    
-    <UserControl.DataContext>
-        <vm:PolicyEnforcementViewModel/>
-    </UserControl.DataContext>
 
     <Grid Margin="30,20">
         <Grid.RowDefinitions>
@@ -26,57 +47,94 @@
         <!-- Main Content -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340"/>
+                <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left Panel: Policies List -->
-            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="20">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
-                </Border.Effect>
-                <StackPanel>
-                    <TextBlock Text="Policies" FontSize="20" FontWeight="Bold" 
-                               Foreground="#D32F2F" Margin="0,0,0,15"/>
-                    
-                    <ListBox ItemsSource="{Binding Policies}" SelectedItem="{Binding SelectedPolicy}" 
-                             BorderThickness="0" Background="Transparent">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                    Padding="10" Margin="0,0,0,10" Cursor="Hand">
-                                                <ContentPresenter/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#FFF5F5"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
-                                               FontSize="14" Foreground="#333" TextWrapping="Wrap"/>
-                                    <TextBlock Text="{Binding UpdatedAtText}" FontSize="12" 
-                                               Foreground="#999" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-            </Border>
+            <!-- Left Panel: Policy Controls -->
+            <StackPanel Grid.Column="0">
+                <!-- Wallpaper Reset Policy -->
+                <Border Background="White" CornerRadius="12" Padding="30" Margin="0,0,0,20">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Wallpaper Reset on Start-up" FontWeight="Bold" 
+                                       FontSize="20" Foreground="#8B0000" Margin="0,0,0,8"/>
+                            <TextBlock Text="Automatically resets desktop wallpaper to default when PCs start up." 
+                                       FontSize="14" Foreground="#666" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                            
+                            <!-- Wallpaper Upload Section -->
+                            <StackPanel Visibility="{Binding WallpaperResetEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="Select Wallpaper Image:" FontSize="12" Foreground="#666" Margin="0,0,0,5"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" BorderBrush="#D1D5DB" BorderThickness="1" Background="#F9FAFB" Padding="8">
+                                        <TextBlock Text="{Binding SelectedWallpaperPath}" FontSize="12" Foreground="#666" 
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
+                                    <Button Grid.Column="1" Command="{Binding BrowseWallpaperCommand}" 
+                                            Background="#8B0000" Foreground="White" BorderThickness="0" 
+                                            Padding="15,8" Margin="5,0,0,0" Cursor="Hand">
+                                        <TextBlock Text="Browse" FontSize="12" FontWeight="SemiBold"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <ToggleButton Grid.Column="1" Style="{StaticResource PolicyToggleStyle}"
+                                      IsChecked="{Binding WallpaperResetEnabled}" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
 
-            <!-- Right Panel: Policy Details -->
+                <!-- Auto Shutdown Policy -->
+                <Border Background="White" CornerRadius="12" Padding="30">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Grid.Column="0">
+                            <TextBlock Text="Auto Shutdown After Idle" FontWeight="Bold" 
+                                       FontSize="20" Foreground="#8B0000" Margin="0,0,0,8"/>
+                            <TextBlock Text="Automatically shuts down PCs after specified idle time" 
+                                       FontSize="14" Foreground="#666" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        
+                        <ToggleButton Grid.Row="0" Grid.Column="1" Style="{StaticResource PolicyToggleStyle}"
+                                      IsChecked="{Binding AutoShutdownEnabled}" VerticalAlignment="Center"/>
+                        
+                        <!-- Idle Time Setting -->
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,20,0,0"
+                                    Visibility="{Binding AutoShutdownEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="Idle Time (minutes):" FontSize="14" Foreground="#666" Margin="0,0,0,8"/>
+                            <Border BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="6" Width="80" HorizontalAlignment="Left">
+                                <TextBox Text="{Binding AutoShutdownMinutes}" Padding="12,8" BorderThickness="0" Background="Transparent"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Right Panel: Room Selection -->
             <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="25">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.08"/>
@@ -88,74 +146,27 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Header with Edit/Delete buttons -->
-                    <Grid Grid.Row="0" Margin="0,0,0,20">
-                        <TextBlock Text="Policy Details" FontSize="20" FontWeight="Bold" 
-                                   Foreground="#D32F2F" VerticalAlignment="Center"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Command="{Binding EditCommand}" Background="Transparent" 
-                                    BorderThickness="0" Cursor="Hand" Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="✏️" FontSize="16" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Edit" FontSize="14" Foreground="#D32F2F" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Command="{Binding DeleteCommand}" Background="Transparent" 
-                                    BorderThickness="0" Cursor="Hand">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🗑️" FontSize="16" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Delete" FontSize="14" Foreground="#D32F2F" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
+                    <!-- Header -->
+                    <TextBlock Grid.Row="0" Text="Select Target Laboratories" FontSize="18" FontWeight="Bold" 
+                               Foreground="#8B0000" Margin="0,0,0,20"/>
 
-                    <!-- Policy Content -->
+                    <!-- Room Grid -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <!-- Policy Name (Edit Mode) -->
-                            <Border Background="#FFF3F3" BorderBrush="#E5E7EB" BorderThickness="1" 
-                                    CornerRadius="6" Padding="12" Margin="0,0,0,15"
-                                    Visibility="{Binding IsEditMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <TextBox Text="{Binding SelectedPolicy.Name, UpdateSourceTrigger=PropertyChanged}" 
-                                         Background="Transparent" BorderThickness="0" FontSize="14"
-                                         Foreground="#333"/>
-                            </Border>
-
-                            <!-- Script Content -->
-                            <Border Background="#FFF3F3" BorderBrush="#E5E7EB" BorderThickness="1" 
-                                    CornerRadius="6" Padding="15">
-                                <TextBox Text="{Binding SelectedPolicy.ScriptContent, UpdateSourceTrigger=PropertyChanged}" 
-                                         Background="Transparent" BorderThickness="0" 
-                                         FontFamily="Consolas" FontSize="13" Foreground="#333"
-                                         TextWrapping="Wrap" AcceptsReturn="True" 
-                                         VerticalScrollBarVisibility="Auto" MinHeight="300"
-                                         IsReadOnly="{Binding IsReadOnly}"/>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <!-- Lab Selection and Deploy (Edit Mode) -->
-                    <StackPanel Grid.Row="2" Margin="0,20,0,0"
-                                Visibility="{Binding IsEditMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="Select Target Laboratories" FontSize="16" FontWeight="Bold" 
-                                   Foreground="#8B0000" Margin="0,0,0,15"/>
-                        
-                        <ItemsControl ItemsSource="{Binding Labs}">
+                        <ItemsControl ItemsSource="{Binding Rooms}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="4" HorizontalAlignment="Stretch"/>
+                                    <UniformGrid Columns="2" HorizontalAlignment="Stretch"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,10,0" CornerRadius="8" Padding="20,15" Cursor="Hand"
-                                            MouseLeftButtonDown="LabBorder_Click" Tag="{Binding}">
+                                    <Border Margin="5" CornerRadius="8" Padding="15" Cursor="Hand"
+                                            MouseLeftButtonDown="RoomBorder_Click" Tag="{Binding}">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="White"/>
-                                                <Setter Property="BorderBrush" Value="#830920"/>
-                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                                                <Setter Property="BorderThickness" Value="2"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                         <Setter Property="Background" Value="#8B0000"/>
@@ -165,7 +176,7 @@
                                             </Style>
                                         </Border.Style>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16" 
+                                            <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" FontSize="16" 
                                                        TextAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -212,26 +223,30 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </ScrollViewer>
 
-                        <!-- Action Buttons -->
-                        <Grid Margin="0,20,0,0">
-                            <Button Command="{Binding ClearSelectionCommand}" 
-                                    Background="Transparent" BorderThickness="0" 
-                                    HorizontalAlignment="Left" Cursor="Hand">
-                                <TextBlock Text="Clear Selection" FontSize="14" 
-                                           Foreground="#D32F2F" FontWeight="SemiBold"/>
-                            </Button>
-                            <Border Background="#D32F2F" CornerRadius="6" 
-                                    HorizontalAlignment="Right" Padding="0">
-                                <Button Command="{Binding DeployCommand}" 
-                                        Background="Transparent" Foreground="White" 
-                                        BorderThickness="0" Padding="30,12" 
-                                        FontSize="14" FontWeight="SemiBold" Cursor="Hand">
-                                    <TextBlock Text="Deploy"/>
-                                </Button>
-                            </Border>
-                        </Grid>
-                    </StackPanel>
+                    <!-- Action Buttons -->
+                    <Grid Grid.Row="2" Margin="0,20,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0" Command="{Binding ClearSelectionCommand}" 
+                                Background="Transparent" BorderBrush="#EF4444" BorderThickness="2" 
+                                Padding="0,10" Cursor="Hand">
+                            <TextBlock Text="Clear Selection" FontSize="14" 
+                                       Foreground="#EF4444" FontWeight="SemiBold"/>
+                        </Button>
+                        
+                        <Button Grid.Column="2" Command="{Binding ApplyPoliciesCommand}" 
+                                Background="#8B0000" BorderThickness="0" 
+                                Padding="0,10" Cursor="Hand">
+                            <TextBlock Text="Deploy" FontSize="14" 
+                                       Foreground="White" FontWeight="SemiBold"/>
+                        </Button>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

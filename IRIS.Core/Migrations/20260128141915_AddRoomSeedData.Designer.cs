@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260128141915_AddRoomSeedData")]
+    partial class AddRoomSeedData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -290,8 +293,14 @@ namespace IRIS.Core.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AutoShutdownEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<int?>("AutoShutdownIdleMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("BlockUnauthorizedApplications")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -300,7 +309,16 @@ namespace IRIS.Core.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<bool>("EnableAccessControl")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MonitorApplicationUsage")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MonitorWebsiteUsage")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -313,6 +331,9 @@ namespace IRIS.Core.Migrations
 
                     b.Property<int>("RoomId")
                         .HasColumnType("integer");
+
+                    b.Property<TimeSpan?>("ScheduledShutdownTime")
+                        .HasColumnType("interval");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

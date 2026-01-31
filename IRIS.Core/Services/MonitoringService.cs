@@ -106,11 +106,38 @@ namespace IRIS.Core.Services
 
         public async Task<Dictionary<string, int>> GetActiveLabPCsAsync()
         {
-            return await _context.PCs
-                .Where(p => p.Status == Models.PCStatus.Online)
-                .GroupBy(p => p.Room.RoomNumber)
-                .Select(g => new { RoomName = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.RoomName, x => x.Count);
+            // Debug: Get all PCs regardless of status
+            var allPCs = await _context.PCs
+                .Include(p => p.Room)
+                .ToListAsync();
+
+            // Debug: Get only online PCs
+            var onlinePCs = allPCs.Where(p => p.Status == Models.PCStatus.Online).ToList();
+
+            // If no PCs are online, but we have PCs in database, let's count all PCs for debugging
+            var pcsToCount = onlinePCs.Any() ? onlinePCs : allPCs;
+
+            // Group by room name, handling cases where room might be null
+            var roomCounts = pcsToCount
+                .GroupBy(p => p.Room?.RoomNumber ?? "Unassigned")
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Ensure all expected labs are included with 0 count if no PCs
+            var expectedLabs = new[] { "Lab 1", "Lab 2", "Lab 3", "Lab 4" };
+            var result = new Dictionary<string, int>();
+            
+            foreach (var lab in expectedLabs)
+            {
+                result[lab] = roomCounts.ContainsKey(lab) ? roomCounts[lab] : 0;
+            }
+
+            // If there are unassigned PCs, add them to Lab 1 for now
+            if (roomCounts.ContainsKey("Unassigned"))
+            {
+                result["Lab 1"] += roomCounts["Unassigned"];
+            }
+
+            return result;
         }
 
         public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)

@@ -88,6 +88,46 @@ namespace IRIS.Core.Data
                     LastLoginAt = null
                 }
             );
+
+            // Seed default rooms
+            modelBuilder.Entity<Room>().HasData(
+                new Room
+                {
+                    Id = 1,
+                    RoomNumber = "Lab 1",
+                    Description = "Architecture Computer Lab 1",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 2,
+                    RoomNumber = "Lab 2",
+                    Description = "Architecture Computer Lab 2",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 3,
+                    RoomNumber = "Lab 3",
+                    Description = "Architecture Computer Lab 3",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 4,
+                    RoomNumber = "Lab 4",
+                    Description = "Architecture Computer Lab 4",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                }
+            );
         }
 
         private void ConfigureUser(ModelBuilder modelBuilder)

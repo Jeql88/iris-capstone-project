@@ -21,19 +21,10 @@ namespace IRIS.Core.Models
         // Policy Settings
         public bool ResetWallpaperOnStartup { get; set; } = false;
 
-        public bool EnableAccessControl { get; set; } = false;
-
-        public bool AutoShutdownEnabled { get; set; } = false;
+        [MaxLength(500)]
+        public string? WallpaperPath { get; set; }
 
         public int? AutoShutdownIdleMinutes { get; set; } = 30;
-
-        public TimeSpan? ScheduledShutdownTime { get; set; }
-
-        public bool BlockUnauthorizedApplications { get; set; } = false;
-
-        public bool MonitorApplicationUsage { get; set; } = true;
-
-        public bool MonitorWebsiteUsage { get; set; } = true;
 
         public bool IsActive { get; set; } = true;
 
