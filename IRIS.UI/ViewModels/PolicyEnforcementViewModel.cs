@@ -34,6 +34,7 @@ namespace IRIS.UI.ViewModels
             {
                 _wallpaperResetEnabled = value;
                 OnPropertyChanged();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -44,6 +45,7 @@ namespace IRIS.UI.ViewModels
             {
                 _autoShutdownEnabled = value;
                 OnPropertyChanged();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -112,7 +114,7 @@ namespace IRIS.UI.ViewModels
                 LoadMockRoomData();
             }
 
-            ApplyPoliciesCommand = new RelayCommand(async () => await ApplyPoliciesAsync(), () => Rooms.Any(r => r.IsSelected));
+            ApplyPoliciesCommand = new RelayCommand(async () => await ApplyPoliciesAsync(), CanApplyPolicies);
             ClearSelectionCommand = new RelayCommand(async () => { ClearRoomSelection(); await Task.CompletedTask; }, () => true);
             BrowseWallpaperCommand = new RelayCommand(async () => { BrowseWallpaper(); await Task.CompletedTask; }, () => true);
         }
@@ -127,12 +129,15 @@ namespace IRIS.UI.ViewModels
                     .Where(r => r.IsActive)
                     .ToListAsync();
 
+                // Get the same data as Monitor page uses
                 var roomsWithCounts = await _monitoringService.GetActiveLabPCsAsync();
 
                 Rooms.Clear();
                 foreach (var room in rooms)
                 {
                     var onlineCount = roomsWithCounts.ContainsKey(room.RoomNumber) ? roomsWithCounts[room.RoomNumber] : 0;
+                    var totalCount = room.PCs.Count();
+                    
                     var activePolicies = new List<string>();
                     
                     foreach (var policy in room.Policies.Where(p => p.IsActive))
@@ -149,7 +154,7 @@ namespace IRIS.UI.ViewModels
                         RoomNumber = room.RoomNumber,
                         Description = room.Description ?? "Computer Laboratory",
                         OnlineCount = onlineCount,
-                        TotalCount = room.Capacity,
+                        TotalCount = totalCount,
                         IsSelected = false,
                         ActivePolicies = activePolicies
                     });
@@ -157,19 +162,21 @@ namespace IRIS.UI.ViewModels
 
                 UpdateSelectionStatus();
             }
-            catch
+            catch (Exception ex)
             {
+                // Surface the error so we can diagnose why DB/monitoring queries failed
                 LoadMockRoomData();
+                SelectionStatusText = "Error loading rooms: " + ex.Message;
             }
         }
 
         private void LoadMockRoomData()
         {
             Rooms.Clear();
-            Rooms.Add(new RoomItem { Id = 1, RoomNumber = "Lab 1", Description = "Computer Laboratory 1", OnlineCount = 18, TotalCount = 20, IsSelected = false, ActivePolicies = new List<string> { "Wallpaper Reset" } });
-            Rooms.Add(new RoomItem { Id = 2, RoomNumber = "Lab 2", Description = "Computer Laboratory 2", OnlineCount = 15, TotalCount = 20, IsSelected = false, ActivePolicies = new List<string>() });
-            Rooms.Add(new RoomItem { Id = 3, RoomNumber = "Lab 3", Description = "Computer Laboratory 3", OnlineCount = 20, TotalCount = 20, IsSelected = false, ActivePolicies = new List<string> { "Auto-Shutdown (30min)" } });
-            Rooms.Add(new RoomItem { Id = 4, RoomNumber = "Lab 4", Description = "Computer Laboratory 4", OnlineCount = 0, TotalCount = 20, IsSelected = false, ActivePolicies = new List<string>() });
+            Rooms.Add(new RoomItem { Id = 1, RoomNumber = "Lab 1", Description = "Computer Laboratory 1", OnlineCount = 0, TotalCount = 0, IsSelected = false, ActivePolicies = new List<string> { "Wallpaper Reset" } });
+            Rooms.Add(new RoomItem { Id = 2, RoomNumber = "Lab 2", Description = "Computer Laboratory 2", OnlineCount = 0, TotalCount = 0, IsSelected = false, ActivePolicies = new List<string>() });
+            Rooms.Add(new RoomItem { Id = 3, RoomNumber = "Lab 3", Description = "Computer Laboratory 3", OnlineCount = 0, TotalCount = 0, IsSelected = false, ActivePolicies = new List<string> { "Auto-Shutdown (30min)" } });
+            Rooms.Add(new RoomItem { Id = 4, RoomNumber = "Lab 4", Description = "Computer Laboratory 4", OnlineCount = 0, TotalCount = 0, IsSelected = false, ActivePolicies = new List<string>() });
             UpdateSelectionStatus();
         }
 
@@ -181,25 +188,12 @@ namespace IRIS.UI.ViewModels
                 
                 foreach (var room in selectedRooms)
                 {
-                    // Remove existing policies for this room
-                    await _policyService.DeletePoliciesByRoomIdAsync(room.Id);
-
-                    // Create new policy if any settings are enabled
-                    if (WallpaperResetEnabled || AutoShutdownEnabled)
-                    {
-                        var policy = new Policy
-                        {
-                            Name = $"Policy for {room.RoomNumber}",
-                            Description = "Auto-generated policy from Policy Enforcement UI",
-                            RoomId = room.Id,
-                            ResetWallpaperOnStartup = WallpaperResetEnabled,
-                            WallpaperPath = WallpaperResetEnabled ? SelectedWallpaperPath : null,
-                            AutoShutdownIdleMinutes = AutoShutdownEnabled ? AutoShutdownMinutes : null,
-                            IsActive = true
-                        };
-
-                        await _policyService.CreatePolicyAsync(policy);
-                    }
+                    await _policyService.CreateOrUpdatePolicyAsync(
+                        room.Id, 
+                        WallpaperResetEnabled, 
+                        AutoShutdownEnabled ? AutoShutdownMinutes : null,
+                        WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null
+                    );
                 }
 
                 LastAppliedText = $"Applied {DateTime.Now:HH:mm:ss}";
@@ -221,6 +215,7 @@ namespace IRIS.UI.ViewModels
                 room.IsSelected = false;
             }
             UpdateSelectionStatus();
+            ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
         }
 
         public void ToggleRoom(RoomItem? room)
@@ -229,7 +224,14 @@ namespace IRIS.UI.ViewModels
             {
                 room.IsSelected = !room.IsSelected;
                 UpdateSelectionStatus();
+                // Notify that CanExecute for ApplyPoliciesCommand may have changed
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
+        }
+
+        private bool CanApplyPolicies()
+        {
+            return Rooms.Any(r => r.IsSelected);
         }
 
         private void UpdateSelectionStatus()

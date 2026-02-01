@@ -34,6 +34,7 @@ namespace IRIS.Core.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
+        public DbSet<WallpaperAsset> WallpaperAssets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

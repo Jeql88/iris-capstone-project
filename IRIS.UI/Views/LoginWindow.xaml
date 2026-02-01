@@ -102,13 +102,15 @@
 
                 <!-- Username Input -->
                 <TextBox Grid.Row="1" Style="{StaticResource InputStyle}" Margin="0,0,0,30"
-                         Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="OnKeyDown"/>
 
                 <!-- Password Label -->
                 <TextBlock Grid.Row="2" Text="Password" FontSize="16" FontWeight="Medium" Foreground="White" Margin="0,0,0,10" FontFamily="SF Pro"/>
 
                 <!-- Password Input -->
-                <PasswordBox Grid.Row="3" x:Name="PasswordBox" Style="{StaticResource PasswordStyle}" Margin="0,0,0,40"/>
+                <PasswordBox Grid.Row="3" x:Name="PasswordBox" Style="{StaticResource PasswordStyle}" Margin="0,0,0,40"
+                             KeyDown="OnKeyDown"/>
 
                 <!-- Error Message -->
                 <TextBlock Grid.Row="4" Text="{Binding ErrorMessage}"
