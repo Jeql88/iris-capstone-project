@@ -9,7 +9,13 @@ namespace IRIS.UI.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return (bool)value ? Visibility.Visible : Visibility.Collapsed;
+            bool boolValue = (bool)value;
+            bool invert = parameter?.ToString() == "Invert";
+            
+            if (invert)
+                boolValue = !boolValue;
+                
+            return boolValue ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
