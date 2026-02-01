@@ -34,6 +34,7 @@ namespace IRIS.UI.ViewModels
             {
                 _wallpaperResetEnabled = value;
                 OnPropertyChanged();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -44,6 +45,7 @@ namespace IRIS.UI.ViewModels
             {
                 _autoShutdownEnabled = value;
                 OnPropertyChanged();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -112,7 +114,7 @@ namespace IRIS.UI.ViewModels
                 LoadMockRoomData();
             }
 
-            ApplyPoliciesCommand = new RelayCommand(async () => await ApplyPoliciesAsync(), () => Rooms.Any(r => r.IsSelected));
+            ApplyPoliciesCommand = new RelayCommand(async () => await ApplyPoliciesAsync(), CanApplyPolicies);
             ClearSelectionCommand = new RelayCommand(async () => { ClearRoomSelection(); await Task.CompletedTask; }, () => true);
             BrowseWallpaperCommand = new RelayCommand(async () => { BrowseWallpaper(); await Task.CompletedTask; }, () => true);
         }
@@ -186,25 +188,11 @@ namespace IRIS.UI.ViewModels
                 
                 foreach (var room in selectedRooms)
                 {
-                    // Remove existing policies for this room
-                    await _policyService.DeletePoliciesByRoomIdAsync(room.Id);
-
-                    // Create new policy if any settings are enabled
-                    if (WallpaperResetEnabled || AutoShutdownEnabled)
-                    {
-                        var policy = new Policy
-                        {
-                            Name = $"Policy for {room.RoomNumber}",
-                            Description = "Auto-generated policy from Policy Enforcement UI",
-                            RoomId = room.Id,
-                            ResetWallpaperOnStartup = WallpaperResetEnabled,
-                            WallpaperPath = WallpaperResetEnabled ? SelectedWallpaperPath : null,
-                            AutoShutdownIdleMinutes = AutoShutdownEnabled ? AutoShutdownMinutes : null,
-                            IsActive = true
-                        };
-
-                        await _policyService.CreatePolicyAsync(policy);
-                    }
+                    await _policyService.CreateOrUpdatePolicyAsync(
+                        room.Id, 
+                        WallpaperResetEnabled, 
+                        AutoShutdownEnabled ? AutoShutdownMinutes : null
+                    );
                 }
 
                 LastAppliedText = $"Applied {DateTime.Now:HH:mm:ss}";
@@ -226,6 +214,7 @@ namespace IRIS.UI.ViewModels
                 room.IsSelected = false;
             }
             UpdateSelectionStatus();
+            ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
         }
 
         public void ToggleRoom(RoomItem? room)
@@ -234,7 +223,14 @@ namespace IRIS.UI.ViewModels
             {
                 room.IsSelected = !room.IsSelected;
                 UpdateSelectionStatus();
+                // Notify that CanExecute for ApplyPoliciesCommand may have changed
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
+        }
+
+        private bool CanApplyPolicies()
+        {
+            return Rooms.Any(r => r.IsSelected);
         }
 
         private void UpdateSelectionStatus()
