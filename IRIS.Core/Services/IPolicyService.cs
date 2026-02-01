@@ -10,6 +10,7 @@ namespace IRIS.Core.Services
         Task<Policy> UpdatePolicyAsync(Policy policy);
         Task DeletePolicyAsync(int policyId);
         Task DeletePoliciesByRoomIdAsync(int roomId);
-        Task<Policy> CreateOrUpdatePolicyAsync(int roomId, bool resetWallpaperOnStartup, int? autoShutdownIdleMinutes);
+        Task<Policy> CreateOrUpdatePolicyAsync(int roomId, bool resetWallpaperOnStartup, int? autoShutdownIdleMinutes, string? wallpaperPath = null);
+        Task<bool> UpdateWallpaperPolicyAsync(int roomId, string wallpaperPath);
     }
 }

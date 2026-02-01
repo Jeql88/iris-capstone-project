@@ -63,7 +63,7 @@ namespace IRIS.Core.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Policy> CreateOrUpdatePolicyAsync(int roomId, bool resetWallpaperOnStartup, int? autoShutdownIdleMinutes)
+        public async Task<Policy> CreateOrUpdatePolicyAsync(int roomId, bool resetWallpaperOnStartup, int? autoShutdownIdleMinutes, string? wallpaperPath = null)
         {
             var existingPolicy = await _context.Policies
                 .FirstOrDefaultAsync(p => p.RoomId == roomId);
@@ -73,6 +73,13 @@ namespace IRIS.Core.Services
                 // Update existing policy
                 existingPolicy.ResetWallpaperOnStartup = resetWallpaperOnStartup;
                 existingPolicy.AutoShutdownIdleMinutes = autoShutdownIdleMinutes;
+                
+                // Update wallpaper path if provided
+                if (!string.IsNullOrEmpty(wallpaperPath))
+                {
+                    existingPolicy.WallpaperPath = wallpaperPath;
+                }
+                
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
                 
@@ -90,6 +97,7 @@ namespace IRIS.Core.Services
                     RoomId = roomId,
                     ResetWallpaperOnStartup = resetWallpaperOnStartup,
                     AutoShutdownIdleMinutes = autoShutdownIdleMinutes,
+                    WallpaperPath = wallpaperPath,
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };
@@ -98,6 +106,22 @@ namespace IRIS.Core.Services
                 await _context.SaveChangesAsync();
                 return newPolicy;
             }
+        }
+
+        public async Task<bool> UpdateWallpaperPolicyAsync(int roomId, string wallpaperPath)
+        {
+            var policy = await _context.Policies
+                .FirstOrDefaultAsync(p => p.RoomId == roomId);
+
+            if (policy != null)
+            {
+                policy.WallpaperPath = wallpaperPath;
+                policy.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -191,7 +191,8 @@ namespace IRIS.UI.ViewModels
                     await _policyService.CreateOrUpdatePolicyAsync(
                         room.Id, 
                         WallpaperResetEnabled, 
-                        AutoShutdownEnabled ? AutoShutdownMinutes : null
+                        AutoShutdownEnabled ? AutoShutdownMinutes : null,
+                        WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null
                     );
                 }
 

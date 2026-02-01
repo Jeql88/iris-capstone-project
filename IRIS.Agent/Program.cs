@@ -48,6 +48,12 @@ namespace IRIS.Agent
             // Execute startup logic: Register PC
             await pcController.RegisterPCAsync();
 
+            // Initialize wallpaper policy enforcer
+            var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress);
+            
+            // Enforce wallpaper policy on startup
+            await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
+
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
 
@@ -105,8 +111,18 @@ namespace IRIS.Agent
 
                 if (pc?.Room?.Policies != null)
                 {
+                    // Initialize wallpaper enforcer for periodic checks - COMMENTED OUT: Only enforce on startup
+                    // var wallpaperEnforcer = new WallpaperPolicyEnforcer(policyContext, macAddress);
+                    
                     foreach (var policy in pc.Room.Policies.Where(p => p.IsActive))
                     {
+                        // Check wallpaper compliance - COMMENTED OUT: Only enforce on startup
+                        // if (policy.ResetWallpaperOnStartup)
+                        // {
+                        //     await wallpaperEnforcer.CheckAndEnforceWallpaperComplianceAsync();
+                        // }
+                        
+                        // Check auto-shutdown policy
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                         {
                             await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value);
