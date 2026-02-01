@@ -106,35 +106,35 @@ namespace IRIS.Core.Services
 
         public async Task<Dictionary<string, int>> GetActiveLabPCsAsync()
         {
-            // Debug: Get all PCs regardless of status
+            // Get all PCs with their room information
             var allPCs = await _context.PCs
                 .Include(p => p.Room)
                 .ToListAsync();
 
-            // Debug: Get only online PCs
-            var onlinePCs = allPCs.Where(p => p.Status == Models.PCStatus.Online).ToList();
-
-            // If no PCs are online, but we have PCs in database, let's count all PCs for debugging
-            var pcsToCount = onlinePCs.Any() ? onlinePCs : allPCs;
-
-            // Group by room name, handling cases where room might be null
-            var roomCounts = pcsToCount
+            // Get online PCs grouped by room number
+            var onlinePCsByRoom = allPCs
+                .Where(p => p.Status == Models.PCStatus.Online)
                 .GroupBy(p => p.Room?.RoomNumber ?? "Unassigned")
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            // Ensure all expected labs are included with 0 count if no PCs
-            var expectedLabs = new[] { "Lab 1", "Lab 2", "Lab 3", "Lab 4" };
+            // Get all unique rooms from PCs in database
+            var uniqueRoomNumbers = allPCs
+                .Where(p => p.Room != null)
+                .Select(p => p.Room!.RoomNumber)
+                .Distinct()
+                .ToList();
+
+            // Build result dictionary with all rooms that have PCs
             var result = new Dictionary<string, int>();
-            
-            foreach (var lab in expectedLabs)
+            foreach (var roomNumber in uniqueRoomNumbers)
             {
-                result[lab] = roomCounts.ContainsKey(lab) ? roomCounts[lab] : 0;
+                result[roomNumber] = onlinePCsByRoom.ContainsKey(roomNumber) ? onlinePCsByRoom[roomNumber] : 0;
             }
 
-            // If there are unassigned PCs, add them to Lab 1 for now
-            if (roomCounts.ContainsKey("Unassigned"))
+            // Add unassigned PCs if any exist
+            if (onlinePCsByRoom.ContainsKey("Unassigned") && !result.ContainsKey("Unassigned"))
             {
-                result["Lab 1"] += roomCounts["Unassigned"];
+                result["Unassigned"] = onlinePCsByRoom["Unassigned"];
             }
 
             return result;

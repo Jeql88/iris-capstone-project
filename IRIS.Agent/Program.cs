@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -49,6 +51,9 @@ namespace IRIS.Agent
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
 
+            // Start policy enforcement
+            var policyTimer = new Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+
             Log.Information("Agent initialized successfully. Monitoring loop started.");
 
             // Set up shutdown handling
@@ -72,6 +77,73 @@ namespace IRIS.Agent
 
             // Keep the application running
             await Task.Delay(Timeout.Infinite);
+        }
+
+        [DllImport("user32.dll")]
+        static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        struct LASTINPUTINFO
+        {
+            public uint cbSize;
+            public uint dwTime;
+        }
+
+        private static async Task CheckPoliciesAsync(IRISDbContext context, string macAddress)
+        {
+            try
+            {
+                var optionsBuilder = new DbContextOptionsBuilder<IRISDbContext>()
+                    .UseNpgsql(context.Database.GetConnectionString())
+                    .Options;
+                    
+                using var policyContext = new IRISDbContext(optionsBuilder);
+                var pc = await policyContext.PCs
+                    .Include(p => p.Room)
+                    .ThenInclude(r => r.Policies)
+                    .FirstOrDefaultAsync(p => p.MacAddress == macAddress);
+
+                if (pc?.Room?.Policies != null)
+                {
+                    foreach (var policy in pc.Room.Policies.Where(p => p.IsActive))
+                    {
+                        if (policy.AutoShutdownIdleMinutes.HasValue)
+                        {
+                            await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to check policies: {ex.Message}");
+            }
+        }
+
+        private static async Task CheckIdleShutdownAsync(int idleMinutes)
+        {
+            var idleTime = GetIdleTime();
+            Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
+            
+            if (idleTime.TotalMinutes >= idleMinutes)
+            {
+                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
+                Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
+            }
+        }
+
+        private static TimeSpan GetIdleTime()
+        {
+            var lastInputInfo = new LASTINPUTINFO();
+            lastInputInfo.cbSize = (uint)Marshal.SizeOf(lastInputInfo);
+            
+            if (GetLastInputInfo(ref lastInputInfo))
+            {
+                var idleTime = Environment.TickCount - lastInputInfo.dwTime;
+                return TimeSpan.FromMilliseconds(idleTime);
+            }
+            
+            return TimeSpan.Zero;
         }
     }
 }
