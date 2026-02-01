@@ -64,6 +64,7 @@ namespace IRIS.UI
             services.AddTransient<ViewScreenViewModel>();
             services.AddTransient<SoftwareManagementViewModel>();
             services.AddTransient<PolicyEnforcementViewModel>();
+            services.AddTransient<UsageMetricsViewModel>();
             services.AddTransient<UserManagementViewModel>();
             services.AddTransient<AccessLogsViewModel>();
             services.AddTransient<SettingsViewModel>();
@@ -77,6 +78,7 @@ namespace IRIS.UI
             services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
             services.AddTransient(sp => new PolicyEnforcementView(sp.GetRequiredService<PolicyEnforcementViewModel>()));
             services.AddTransient(sp => new AccessLogsView(sp.GetRequiredService<AccessLogsViewModel>()));
+            services.AddTransient(sp => new UsageMetricsView(sp.GetRequiredService<UsageMetricsViewModel>()));
             services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
             services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>(), sp.GetRequiredService<INavigationService>()));
 
