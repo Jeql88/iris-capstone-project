@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using IRIS.Core.Services;
 using IRIS.UI.ViewModels;
 
@@ -24,6 +25,17 @@ namespace IRIS.UI.Views
                         vm.Password = passwordBox.Password;
                     }
                 };
+            }
+        }
+
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && DataContext is LoginViewModel vm)
+            {
+                if (vm.LoginCommand.CanExecute(null))
+                {
+                    vm.LoginCommand.Execute(null);
+                }
             }
         }
     }
