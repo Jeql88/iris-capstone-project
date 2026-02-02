@@ -2,20 +2,21 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using IRIS.Core.Services;
 using IRIS.UI.Helpers;
 
 namespace IRIS.UI.ViewModels
 {
     public class UsageMetricsViewModel : INotifyPropertyChanged
     {
+        private readonly IUsageMetricsService _usageMetricsService;
         private string _selectedTimeRange = "Last 7 Days";
 
-        public UsageMetricsViewModel()
+        public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
         {
+            _usageMetricsService = usageMetricsService;
             RefreshCommand = new RelayCommand(async () => await LoadDataAsync(), () => true);
-            
-            // Mock data for design
-            LoadMockData();
+            _ = LoadDataAsync();
         }
 
         public ObservableCollection<ApplicationUsageModel> Applications { get; } = new();
@@ -31,31 +32,39 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadDataAsync()
         {
-            await Task.CompletedTask;
-            // Backend implementation will go here
-        }
+            var days = SelectedTimeRange switch
+            {
+                "Last 24 Hours" => 1,
+                "Last 7 Days" => 7,
+                "Last 30 Days" => 30,
+                "Last 90 Days" => 90,
+                _ => 7
+            };
 
-        private void LoadMockData()
-        {
+            var apps = await _usageMetricsService.GetMostUsedApplicationsAsync(days);
+            var websites = await _usageMetricsService.GetMostVisitedWebsitesAsync(days);
+
             Applications.Clear();
-            Applications.Add(new ApplicationUsageModel { Name = "Adobe Photoshop", UsageCount = 245, Percentage = 28.5 });
-            Applications.Add(new ApplicationUsageModel { Name = "Google Chrome", UsageCount = 198, Percentage = 23.0 });
-            Applications.Add(new ApplicationUsageModel { Name = "Microsoft Word", UsageCount = 156, Percentage = 18.1 });
-            Applications.Add(new ApplicationUsageModel { Name = "AutoCAD", UsageCount = 134, Percentage = 15.6 });
-            Applications.Add(new ApplicationUsageModel { Name = "Visual Studio", UsageCount = 89, Percentage = 10.3 });
-            Applications.Add(new ApplicationUsageModel { Name = "Figma", UsageCount = 67, Percentage = 7.8 });
-            Applications.Add(new ApplicationUsageModel { Name = "Blender", UsageCount = 45, Percentage = 5.2 });
-            Applications.Add(new ApplicationUsageModel { Name = "Notepad++", UsageCount = 32, Percentage = 3.7 });
+            foreach (var app in apps)
+            {
+                Applications.Add(new ApplicationUsageModel
+                {
+                    Name = app.ApplicationName,
+                    UsageCount = app.UsageCount,
+                    Percentage = app.Percentage
+                });
+            }
 
             Websites.Clear();
-            Websites.Add(new WebsiteUsageModel { Domain = "youtube.com", VisitCount = 1234, Percentage = 32.1 });
-            Websites.Add(new WebsiteUsageModel { Domain = "facebook.com", VisitCount = 987, Percentage = 25.7 });
-            Websites.Add(new WebsiteUsageModel { Domain = "google.com", VisitCount = 756, Percentage = 19.7 });
-            Websites.Add(new WebsiteUsageModel { Domain = "github.com", VisitCount = 543, Percentage = 14.1 });
-            Websites.Add(new WebsiteUsageModel { Domain = "stackoverflow.com", VisitCount = 321, Percentage = 8.4 });
-            Websites.Add(new WebsiteUsageModel { Domain = "behance.net", VisitCount = 234, Percentage = 6.1 });
-            Websites.Add(new WebsiteUsageModel { Domain = "dribbble.com", VisitCount = 187, Percentage = 4.9 });
-            Websites.Add(new WebsiteUsageModel { Domain = "pinterest.com", VisitCount = 145, Percentage = 3.8 });
+            foreach (var website in websites)
+            {
+                Websites.Add(new WebsiteUsageModel
+                {
+                    Domain = website.Domain,
+                    VisitCount = website.VisitCount,
+                    Percentage = website.Percentage
+                });
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

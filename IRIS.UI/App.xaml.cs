@@ -55,6 +55,7 @@ namespace IRIS.UI
             services.AddScoped<IAccessLogsService, AccessLogsService>();
             services.AddScoped<IMonitoringService, MonitoringService>();
             services.AddScoped<IPolicyService, PolicyService>();
+            services.AddScoped<IUsageMetricsService, UsageMetricsService>();
             services.AddSingleton<INavigationService, NavigationService>();
 
             // ViewModels
