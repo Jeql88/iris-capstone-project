@@ -106,11 +106,38 @@ namespace IRIS.Core.Services
 
         public async Task<Dictionary<string, int>> GetActiveLabPCsAsync()
         {
-            return await _context.PCs
+            // Get all PCs with their room information
+            var allPCs = await _context.PCs
+                .Include(p => p.Room)
+                .ToListAsync();
+
+            // Get online PCs grouped by room number
+            var onlinePCsByRoom = allPCs
                 .Where(p => p.Status == Models.PCStatus.Online)
-                .GroupBy(p => p.Room.RoomNumber)
-                .Select(g => new { RoomName = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.RoomName, x => x.Count);
+                .GroupBy(p => p.Room?.RoomNumber ?? "Unassigned")
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Get all unique rooms from PCs in database
+            var uniqueRoomNumbers = allPCs
+                .Where(p => p.Room != null)
+                .Select(p => p.Room!.RoomNumber)
+                .Distinct()
+                .ToList();
+
+            // Build result dictionary with all rooms that have PCs
+            var result = new Dictionary<string, int>();
+            foreach (var roomNumber in uniqueRoomNumbers)
+            {
+                result[roomNumber] = onlinePCsByRoom.ContainsKey(roomNumber) ? onlinePCsByRoom[roomNumber] : 0;
+            }
+
+            // Add unassigned PCs if any exist
+            if (onlinePCsByRoom.ContainsKey("Unassigned") && !result.ContainsKey("Unassigned"))
+            {
+                result["Unassigned"] = onlinePCsByRoom["Unassigned"];
+            }
+
+            return result;
         }
 
         public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)

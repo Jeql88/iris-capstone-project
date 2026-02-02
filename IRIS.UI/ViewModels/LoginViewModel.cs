@@ -85,6 +85,24 @@ namespace IRIS.UI.ViewModels
                 {
                     _currentUser = user;
 
+                    // Check if user must change password
+                    if (user.MustChangePassword)
+                    {
+                        var app = (App)Application.Current;
+                        var serviceProvider = app.GetServiceProvider();
+                        var authService = serviceProvider.GetService<IAuthenticationService>();
+                        
+                        var changePasswordWindow = new Views.ChangePasswordWindow(authService!, user);
+                        var result = changePasswordWindow.ShowDialog();
+
+                        if (result != true)
+                        {
+                            ErrorMessage = "Password change is required to continue.";
+                            IsLoading = false;
+                            return;
+                        }
+                    }
+
                     // Close login window and show main window
                     var loginWindow = Application.Current.Windows
                         .OfType<Window>()

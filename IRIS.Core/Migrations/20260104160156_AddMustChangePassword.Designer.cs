@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260104160156_AddMustChangePassword")]
+    partial class AddMustChangePassword
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -290,8 +293,14 @@ namespace IRIS.Core.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AutoShutdownEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<int?>("AutoShutdownIdleMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("BlockUnauthorizedApplications")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -300,7 +309,16 @@ namespace IRIS.Core.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<bool>("EnableAccessControl")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MonitorApplicationUsage")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MonitorWebsiteUsage")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -314,12 +332,11 @@ namespace IRIS.Core.Migrations
                     b.Property<int>("RoomId")
                         .HasColumnType("integer");
 
+                    b.Property<TimeSpan?>("ScheduledShutdownTime")
+                        .HasColumnType("interval");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("WallpaperPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 
@@ -361,44 +378,6 @@ namespace IRIS.Core.Migrations
                         .IsUnique();
 
                     b.ToTable("Rooms");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Capacity = 20,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Architecture Computer Lab 1",
-                            IsActive = true,
-                            RoomNumber = "Lab 1"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Capacity = 20,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Architecture Computer Lab 2",
-                            IsActive = true,
-                            RoomNumber = "Lab 2"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Capacity = 20,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Architecture Computer Lab 3",
-                            IsActive = true,
-                            RoomNumber = "Lab 3"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Capacity = 20,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Architecture Computer Lab 4",
-                            IsActive = true,
-                            RoomNumber = "Lab 4"
-                        });
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.Software", b =>

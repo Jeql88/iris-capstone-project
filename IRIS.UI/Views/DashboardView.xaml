@@ -20,10 +20,10 @@
                 <Button x:Name="MonitorBtn" Content="Monitor" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="MonitorBtn_Click"/>
                 <Button x:Name="SoftwareManagementBtn" Content="Software Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="SoftwareManagementBtn_Click"/>
                 <Button x:Name="PolicyBtn" Content="Policy Enforcement" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="PolicyBtn_Click"/>
-                <Button Content="Access Logs" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="User Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="Usage Metrics" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="Settings" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand"/>
+                <Button x:Name="AccessLogsBtn" Content="Access Logs" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="AccessLogsBtn_Click"/>
+                <Button x:Name="UserManagementBtn" Content="User Management" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="UserManagementBtn_Click"/>
+                <Button x:Name="UsageMetricsBtn" Content="Usage Metrics" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="UsageMetricsBtn_Click"/>
+                <Button x:Name="SettingsBtn" Content="Settings" Background="Transparent" Foreground="White" FontSize="14" Height="45" HorizontalContentAlignment="Left" Padding="20,0" BorderThickness="0" Cursor="Hand" Click="SettingsBtn_Click"/>
             </StackPanel>
         </Border>
 

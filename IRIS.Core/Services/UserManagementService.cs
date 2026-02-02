@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +26,8 @@ namespace IRIS.Core.Services
                 PasswordHash = HashPassword(password),
                 Role = role,
                 FullName = fullName,
-                IsActive = true
+                IsActive = true,
+                MustChangePassword = true
             };
 
             _context.Users.Add(user);
@@ -39,17 +38,24 @@ namespace IRIS.Core.Services
             return user;
         }
 
-        public async Task<bool> UpdateUserAsync(int userId, string? fullName = null, bool? isActive = null)
+        public async Task<bool> UpdateUserAsync(int userId, string? username = null, string? fullName = null, UserRole? role = null)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
                 return false;
 
+            if (username != null && username != user.Username)
+            {
+                if (await UsernameExistsAsync(username, userId))
+                    throw new InvalidOperationException("Username already exists");
+                user.Username = username;
+            }
+
             if (fullName != null)
                 user.FullName = fullName;
 
-            if (isActive.HasValue)
-                user.IsActive = isActive.Value;
+            if (role.HasValue)
+                user.Role = role.Value;
 
             await _context.SaveChangesAsync();
 
@@ -85,6 +91,46 @@ namespace IRIS.Core.Services
                 .ToListAsync();
         }
 
+        public async Task<PaginatedResult<User>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? search = null, UserRole? role = null, bool? isActive = null)
+        {
+            var query = _context.Users.AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(u => u.Username.Contains(search) || 
+                                        (u.FullName != null && u.FullName.Contains(search)));
+            }
+
+            // Apply role filter
+            if (role.HasValue)
+            {
+                query = query.Where(u => u.Role == role.Value);
+            }
+
+            // Apply status filter
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            
+            var users = await query
+                .OrderBy(u => u.Username)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<User>
+            {
+                Items = users,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role)
         {
             return await _context.Users
@@ -103,11 +149,10 @@ namespace IRIS.Core.Services
             return await query.AnyAsync();
         }
 
+        //Use Bcrypt for password hashing instead of SHA256
         private static string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(hashedBytes);
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
     }
 }

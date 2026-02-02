@@ -6,16 +6,17 @@ namespace IRIS.UI.Views
 {
     public partial class PolicyEnforcementView : UserControl
     {
-        public PolicyEnforcementView()
+        public PolicyEnforcementView(PolicyEnforcementViewModel viewModel)
         {
             InitializeComponent();
+            DataContext = viewModel;
         }
 
-        private void LabBorder_Click(object sender, MouseButtonEventArgs e)
+        private void RoomBorder_Click(object sender, MouseButtonEventArgs e)
         {
-            if (sender is Border border && border.Tag is LabItem lab && DataContext is PolicyEnforcementViewModel viewModel)
+            if (sender is Border border && border.Tag is RoomItem room && DataContext is PolicyEnforcementViewModel viewModel)
             {
-                viewModel.ToggleLab(lab);
+                viewModel.ToggleRoom(room);
             }
         }
     }

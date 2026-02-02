@@ -34,6 +34,7 @@ namespace IRIS.Core.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
+        public DbSet<WallpaperAsset> WallpaperAssets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -86,6 +87,46 @@ namespace IRIS.Core.Data
                     IsActive = true,
                     CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     LastLoginAt = null
+                }
+            );
+
+            // Seed default rooms
+            modelBuilder.Entity<Room>().HasData(
+                new Room
+                {
+                    Id = 1,
+                    RoomNumber = "Lab 1",
+                    Description = "Architecture Computer Lab 1",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 2,
+                    RoomNumber = "Lab 2",
+                    Description = "Architecture Computer Lab 2",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 3,
+                    RoomNumber = "Lab 3",
+                    Description = "Architecture Computer Lab 3",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Room
+                {
+                    Id = 4,
+                    RoomNumber = "Lab 4",
+                    Description = "Architecture Computer Lab 4",
+                    Capacity = 20,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                 }
             );
         }
