@@ -54,6 +54,14 @@ namespace IRIS.Agent
             // Enforce wallpaper policy on startup
             await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
 
+            // Initialize application usage tracking with separate context
+            var appUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
+                .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
+                .Options;
+            var appUsageContext = new IRISDbContext(appUsageOptions);
+            var appUsageLogic = new ApplicationUsageLogic(appUsageContext, networkInfo.MacAddress);
+            await appUsageLogic.StartMonitoringAsync();
+
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
 
@@ -76,7 +84,10 @@ namespace IRIS.Agent
                 e.Cancel = true; // Prevent immediate exit
                 Log.Information("Ctrl+C detected. Handling shutdown...");
                 await monitoringController.StopMonitoringAsync();
+                await appUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
+                appUsageLogic.Dispose();
+                appUsageContext.Dispose();
                 Log.CloseAndFlush();
                 Environment.Exit(0);
             };
