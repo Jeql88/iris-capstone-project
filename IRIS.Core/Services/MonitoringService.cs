@@ -1,7 +1,8 @@
 using IRIS.Core.Data;
 using IRIS.Core.DTOs;
-using Microsoft.EntityFrameworkCore;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
+using Microsoft.EntityFrameworkCore;
 
 namespace IRIS.Core.Services
 {

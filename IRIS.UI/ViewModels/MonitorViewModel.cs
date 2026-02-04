@@ -6,7 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.UI.ViewModels

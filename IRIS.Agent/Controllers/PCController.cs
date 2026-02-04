@@ -1,14 +1,14 @@
 using System.Threading.Tasks;
 using Serilog;
-using IRIS.Agent.Interfaces;
+using IRIS.Agent.Services.Contracts;
 
 namespace IRIS.Agent.Controllers
 {
     public class PCController
     {
-        private readonly IPCLogic _pcLogic;
+        private readonly IPCService _pcLogic;
 
-        public PCController(IPCLogic pcLogic)
+        public PCController(IPCService pcLogic)
         {
             _pcLogic = pcLogic;
         }

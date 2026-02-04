@@ -147,7 +147,7 @@ namespace IRIS.Agent
             }
         }
 
-        private static async Task CheckIdleShutdownAsync(int idleMinutes)
+        private static Task CheckIdleShutdownAsync(int idleMinutes)
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
@@ -157,6 +157,7 @@ namespace IRIS.Agent
                 Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
                 Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
             }
+            return Task.CompletedTask;
         }
 
         private static TimeSpan GetIdleTime()

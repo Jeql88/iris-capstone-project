@@ -3,9 +3,10 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.UI.Helpers;
+using IRIS.UI.Views.Shared;
 
 namespace IRIS.UI.ViewModels
 {
@@ -92,7 +93,7 @@ namespace IRIS.UI.ViewModels
                         var serviceProvider = app.GetServiceProvider();
                         var authService = serviceProvider.GetService<IAuthenticationService>();
                         
-                        var changePasswordWindow = new Views.ChangePasswordWindow(authService!, user);
+                        var changePasswordWindow = new ChangePasswordWindow(authService!, user);
                         var result = changePasswordWindow.ShowDialog();
 
                         if (result != true)
@@ -110,10 +111,15 @@ namespace IRIS.UI.ViewModels
 
                     if (loginWindow != null)
                     {
-                        // Create and show main window
+                        // Create and show main window using a scope
                         var app = (App)Application.Current;
                         var serviceProvider = app.GetServiceProvider();
-                        var mainWindow = serviceProvider.GetService<MainWindow>();
+                        
+                        // Use IServiceScopeFactory to create a scope for the main window and its dependencies
+                        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+                        var scope = scopeFactory.CreateScope();
+                        
+                        var mainWindow = scope.ServiceProvider.GetRequiredService<MainWindow>();
                         if (mainWindow != null)
                         {
                             mainWindow.Show();

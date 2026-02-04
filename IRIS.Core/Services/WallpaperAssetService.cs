@@ -1,19 +1,11 @@
 using System.Security.Cryptography;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
+using IRIS.Core.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace IRIS.Core.Services
 {
-    public interface IWallpaperAssetService
-    {
-        Task<WallpaperAsset?> GetActiveWallpaperAsync();
-        Task<WallpaperAsset> UploadWallpaperAsync(string fileName, byte[] fileData, string uploadedBy);
-        Task<bool> SetActiveWallpaperAsync(int wallpaperAssetId);
-        Task<IEnumerable<WallpaperAsset>> GetAllWallpapersAsync();
-        Task<bool> DeleteWallpaperAsync(int wallpaperAssetId);
-    }
-
     public class WallpaperAssetService : IWallpaperAssetService
     {
         private readonly IRISDbContext _context;

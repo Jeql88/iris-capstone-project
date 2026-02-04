@@ -1,12 +1,18 @@
 using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using IRIS.Core.Data;
 using IRIS.Core.Services;
-using IRIS.UI.Views;
+using IRIS.Core.Services.Contracts;
+using IRIS.UI.Views.Shared;
+using IRIS.UI.Views.Admin;
+using IRIS.UI.Views.Personnel;
+using IRIS.UI.Views.Faculty;
+using IRIS.UI.Views.Common;
 using IRIS.UI.ViewModels;
 using IRIS.UI.Services;
 
@@ -23,6 +29,10 @@ namespace IRIS.UI
         {
             base.OnStartup(e);
 
+            // Add global exception handlers
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
             var serviceCollection = new ServiceCollection();
             ConfigureServices(serviceCollection);
 
@@ -33,6 +43,21 @@ namespace IRIS.UI
             loginWindow.Show();
         }
 
+        private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            MessageBox.Show($"An unexpected error occurred:\n\n{e.Exception.Message}\n\n{e.Exception.StackTrace}", 
+                "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
+        }
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            if (e.ExceptionObject is Exception ex)
+            {
+                MessageBox.Show($"A critical error occurred:\n\n{ex.Message}\n\n{ex.StackTrace}", 
+                    "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         public IServiceProvider GetServiceProvider() => _serviceProvider!;
 
         private void ConfigureServices(IServiceCollection services)
@@ -49,7 +74,7 @@ namespace IRIS.UI
             services.AddDbContext<IRISDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("IRISDatabase")));
 
-            // Services
+            // Services (using Contracts namespace)
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IAccessLogsService, AccessLogsService>();
@@ -71,19 +96,26 @@ namespace IRIS.UI
             services.AddTransient<AccessLogsViewModel>();
             services.AddTransient<SettingsViewModel>();
 
-            // Views
+            // Views - Shared
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
+            
+            // Views - Common
             services.AddTransient<DashboardView>();
-            services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
-            services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
-            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
-            services.AddTransient(sp => new PolicyEnforcementView(sp.GetRequiredService<PolicyEnforcementViewModel>()));
             services.AddTransient(sp => new AccessLogsView(sp.GetRequiredService<AccessLogsViewModel>()));
             services.AddTransient(sp => new UsageMetricsView(sp.GetRequiredService<UsageMetricsViewModel>()));
-            services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
             services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>(), sp.GetRequiredService<INavigationService>()));
-
+            
+            // Views - Admin
+            services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
+            services.AddTransient(sp => new PolicyEnforcementView(sp.GetRequiredService<PolicyEnforcementViewModel>()));
+            
+            // Views - Personnel
+            services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
+            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
+            
+            // Views - Faculty
+            services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
         }
     }
 }

@@ -7,6 +7,7 @@ namespace IRIS.UI.Services
     {
         private ContentControl? _navigationFrame;
         private IServiceProvider? _serviceProvider;
+        private IServiceScope? _currentScope;
         private readonly Stack<(string viewKey, object? parameter)> _navigationStack = new();
         private readonly Dictionary<string, Type> _viewRegistry = new();
 
@@ -25,15 +26,22 @@ namespace IRIS.UI.Services
 
         private void RegisterViews()
         {
-            _viewRegistry["Dashboard"] = typeof(Views.DashboardView);
-            _viewRegistry["Monitor"] = typeof(Views.MonitorView);
-            _viewRegistry["ViewScreen"] = typeof(Views.ViewScreenPage);
-            _viewRegistry["PolicyEnforcement"] = typeof(Views.PolicyEnforcementView);
-            _viewRegistry["SoftwareManagement"] = typeof(Views.SoftwareManagementView);
-            _viewRegistry["AccessLogs"] = typeof(Views.AccessLogsView);
-            _viewRegistry["UsageMetrics"] = typeof(Views.UsageMetricsView);
-            _viewRegistry["UserManagement"] = typeof(Views.UserManagementView);
-            _viewRegistry["Settings"] = typeof(Views.SettingsView);
+            // Common Views (all roles)
+            _viewRegistry["Dashboard"] = typeof(Views.Common.DashboardView);
+            _viewRegistry["Settings"] = typeof(Views.Common.SettingsView);
+            _viewRegistry["AccessLogs"] = typeof(Views.Common.AccessLogsView);
+            _viewRegistry["UsageMetrics"] = typeof(Views.Common.UsageMetricsView);
+            
+            // Admin Views
+            _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
+            _viewRegistry["PolicyEnforcement"] = typeof(Views.Admin.PolicyEnforcementView);
+            
+            // Personnel Views
+            _viewRegistry["Monitor"] = typeof(Views.Personnel.MonitorView);
+            _viewRegistry["SoftwareManagement"] = typeof(Views.Personnel.SoftwareManagementView);
+            
+            // Faculty Views
+            _viewRegistry["ViewScreen"] = typeof(Views.Faculty.ViewScreenPage);
         }
 
         public void NavigateTo(string viewKey, object? parameter = null)
@@ -41,17 +49,30 @@ namespace IRIS.UI.Services
             if (_navigationFrame == null || _serviceProvider == null || !_viewRegistry.TryGetValue(viewKey, out var viewType))
                 return;
 
-            var view = _serviceProvider.GetService(viewType) ?? Activator.CreateInstance(viewType);
-            
-            if (view is UserControl userControl)
+            try
             {
-                if (parameter != null && userControl is Views.ViewScreenPage viewScreenPage)
+                // Dispose previous scope and create a new one for scoped services
+                _currentScope?.Dispose();
+                _currentScope = _serviceProvider.CreateScope();
+                
+                var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
+                
+                if (view is UserControl userControl)
                 {
-                    viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
-                }
+                    if (parameter != null && userControl is Views.Faculty.ViewScreenPage viewScreenPage)
+                    {
+                        viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
+                    }
 
-                _navigationStack.Push((viewKey, parameter));
-                _navigationFrame.Content = userControl;
+                    _navigationStack.Push((viewKey, parameter));
+                    _navigationFrame.Content = userControl;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Navigation error to '{viewKey}': {ex.Message}");
+                System.Windows.MessageBox.Show($"Failed to navigate to {viewKey}: {ex.Message}", "Navigation Error", 
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
 
@@ -65,11 +86,22 @@ namespace IRIS.UI.Services
             if (!_viewRegistry.TryGetValue(viewKey, out var viewType))
                 return;
 
-            var view = _serviceProvider.GetService(viewType) ?? Activator.CreateInstance(viewType);
-            
-            if (view is UserControl userControl)
+            try
             {
-                _navigationFrame.Content = userControl;
+                // Dispose previous scope and create a new one for scoped services
+                _currentScope?.Dispose();
+                _currentScope = _serviceProvider.CreateScope();
+                
+                var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
+                
+                if (view is UserControl userControl)
+                {
+                    _navigationFrame.Content = userControl;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Navigation error (back) to '{viewKey}': {ex.Message}");
             }
         }
     }

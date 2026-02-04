@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 
 namespace IRIS.UI.ViewModels
@@ -12,7 +12,7 @@ namespace IRIS.UI.ViewModels
     {
         private readonly IMonitoringService _monitoringService;
         private readonly DispatcherTimer _refreshTimer;
-        private int? _selectedRoomId;
+        private readonly int? _selectedRoomId = null; // null means all rooms
 
         public DashboardViewModel(IMonitoringService monitoringService)
         {

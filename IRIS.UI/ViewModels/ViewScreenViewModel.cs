@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 
 namespace IRIS.UI.ViewModels
 {

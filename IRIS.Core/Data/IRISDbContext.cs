@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using IRIS.Core.Models;
 
 namespace IRIS.Core.Data
@@ -17,6 +18,9 @@ namespace IRIS.Core.Data
             {
                 // This will be overridden by DI configuration at runtime
             }
+            
+            // Suppress the pending model changes warning during migrations
+            optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         }
 
         // DbSets for all entities
