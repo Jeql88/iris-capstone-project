@@ -34,38 +34,47 @@
             <SolidColorBrush x:Key="OfflineStatusBrush" Color="#EF4444" />
             <SolidColorBrush x:Key="WarningStatusBrush" Color="#F59E0B" />
             
-            <!-- Global TextBlock Style for Dark Theme -->
+            <!-- Global TextBlock Style for visibility on light backgrounds -->
             <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
             </Style>
             
             <!-- ComboBox ItemTemplate TextBlock fix -->
             <Style x:Key="ComboBoxItemText" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
             </Style>
             
             <!-- Fix TextBox/PasswordBox placeholder and text visibility -->
             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
                 <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
-                <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="CaretBrush" Value="#1a1a1a"/>
             </Style>
             
             <Style TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
                 <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
-                <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="CaretBrush" Value="#1a1a1a"/>
             </Style>
             
             <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
                 <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
             </Style>
             
             <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="#1a1a1a"/>
+            </Style>
+            
+            <!-- ContentPresenter inside ComboBox -->
+            <Style TargetType="ContentPresenter">
+                <Style.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="#1a1a1a"/>
+                    </Style>
+                </Style.Resources>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

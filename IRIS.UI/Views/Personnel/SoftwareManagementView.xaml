@@ -96,9 +96,9 @@
                                         <ui:SymbolIcon Symbol="ArrowUpload24" FontSize="36" Foreground="White"/>
                                     </Border>
                                     <TextBlock Text="Drag &amp; Drop files here" FontSize="16" FontWeight="SemiBold" 
-                                               HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                               HorizontalAlignment="Center" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                                     <TextBlock Text="or" FontSize="14" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               Foreground="#666666" 
                                                HorizontalAlignment="Center" Margin="0,0,0,12"/>
                                     <ui:Button Content="Browse Files" 
                                                Icon="{ui:SymbolIcon Document24}"
@@ -112,7 +112,7 @@
                         <StackPanel Visibility="{Binding HasSelectedFiles, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <ui:SymbolIcon Symbol="DocumentMultiple24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Selected Files" FontWeight="Bold" FontSize="14"/>
+                                <TextBlock Text="Selected Files" FontWeight="Bold" FontSize="14" Foreground="#1a1a1a"/>
                                 <ui:Badge Appearance="Primary" Margin="10,0,0,0">
                                     <TextBlock Text="{Binding SelectedFilesCount}" FontSize="11"/>
                                 </ui:Badge>
@@ -132,7 +132,7 @@
                                                     <ui:SymbolIcon Grid.Column="0" Symbol="Document24" Margin="0,0,10,0" 
                                                                    Foreground="{StaticResource IRISPrimaryBrush}"/>
                                                     <TextBlock Grid.Column="1" Text="{Binding FileName}" 
-                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="#1a1a1a"/>
                                                     <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss24}"
                                                                Command="{Binding DataContext.RemoveFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
@@ -192,9 +192,9 @@
                                                     <ui:SymbolIcon Symbol="Apps24" FontSize="20" Foreground="White"/>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="#1a1a1a"/>
                                                     <TextBlock Text="{Binding Version}" FontSize="12" 
-                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                               Foreground="#666666"/>
                                                 </StackPanel>
                                                 <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
                                             </Grid>
@@ -242,7 +242,7 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding RoomNumber}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding RoomNumber}" Foreground="#1a1a1a"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
@@ -288,9 +288,9 @@
                                                 <ui:SymbolIcon Symbol="Desktop24" FontSize="18" Foreground="White"/>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13"/>
+                                                <TextBlock Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13" Foreground="#1a1a1a"/>
                                                 <TextBlock Text="{Binding IPAddress}" FontSize="11" 
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                           Foreground="#666666"/>
                                             </StackPanel>
                                             <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
                                         </Grid>

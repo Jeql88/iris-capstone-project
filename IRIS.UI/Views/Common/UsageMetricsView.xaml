@@ -31,9 +31,9 @@
 
             <!-- Date Range Filter -->
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <TextBlock Text="From:" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="From:" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#1a1a1a"/>
                 <DatePicker SelectedDate="{Binding StartDate}" Width="140"/>
-                <TextBlock Text="To:" FontSize="14" VerticalAlignment="Center" Margin="15,0,8,0"/>
+                <TextBlock Text="To:" FontSize="14" VerticalAlignment="Center" Margin="15,0,8,0" Foreground="#1a1a1a"/>
                 <DatePicker SelectedDate="{Binding EndDate}" Width="140"/>
                 <ui:Button Icon="{ui:SymbolIcon Filter24}" 
                            Content="Apply Filter"
@@ -66,7 +66,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Applications Used" FontSize="13" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                   Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalApplications}" FontSize="32" FontWeight="Bold" 
                                    Foreground="{StaticResource IRISPrimaryBrush}"/>
                     </StackPanel>
@@ -87,7 +87,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Websites Visited" FontSize="13" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                   Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold" 
                                    Foreground="{StaticResource IRISSecondaryBrush}"/>
                     </StackPanel>
@@ -108,7 +108,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Total Usage Hours" FontSize="13" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                   Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalHours, StringFormat={}{0:F1}h}" FontSize="32" FontWeight="Bold" 
                                    Foreground="{StaticResource IRISAccentBrush}"/>
                     </StackPanel>
@@ -192,7 +192,7 @@
                                                     Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,10,0">
                                                 <ui:SymbolIcon Symbol="Apps24" FontSize="16" Foreground="White"/>
                                             </Border>
-                                            <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#1a1a1a"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -261,9 +261,9 @@
                                             </Border>
                                             <StackPanel VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" 
-                                                           TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="300" Foreground="#1a1a1a"/>
                                                 <TextBlock Text="{Binding Url}" FontSize="11" 
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           Foreground="#666666"
                                                            TextTrimming="CharacterEllipsis" MaxWidth="300"/>
                                             </StackPanel>
                                         </StackPanel>
@@ -283,7 +283,7 @@
                     <Border Background="{DynamicResource ControlFillColorDefaultBrush}" Opacity="0.8"/>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ui:ProgressRing IsIndeterminate="True" Width="50" Height="50"/>
-                        <TextBlock Text="Loading metrics data..." FontSize="14" Margin="0,15,0,0"/>
+                        <TextBlock Text="Loading metrics data..." FontSize="14" Margin="0,15,0,0" Foreground="#1a1a1a"/>
                     </StackPanel>
                 </Grid>
             </Grid>

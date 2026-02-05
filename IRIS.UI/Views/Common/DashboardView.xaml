@@ -38,7 +38,7 @@
                     <ui:Button x:Name="DashboardBtn" 
                               Content="Dashboard" 
                               Icon="{ui:SymbolIcon Home24}"
-                              Appearance="Primary"
+                              Appearance="Secondary"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -120,10 +120,10 @@
                                    Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                         <ComboBox HorizontalAlignment="Right" Width="180" 
                                      SelectedItem="{Binding SelectedLab}">
-                            <ComboBoxItem Content="Archi Lab 1" IsSelected="True"/>
-                            <ComboBoxItem Content="Archi Lab 2"/>
-                            <ComboBoxItem Content="Archi Lab 3"/>
-                            <ComboBoxItem Content="Archi Lab 4"/>
+                            <ComboBoxItem Content="Archi Lab 1" IsSelected="True" Foreground="#1a1a1a"/>
+                            <ComboBoxItem Content="Archi Lab 2" Foreground="#1a1a1a"/>
+                            <ComboBoxItem Content="Archi Lab 3" Foreground="#1a1a1a"/>
+                            <ComboBoxItem Content="Archi Lab 4" Foreground="#1a1a1a"/>
                         </ComboBox>
                     </Grid>
 
@@ -145,21 +145,21 @@
                                                    Foreground="{StaticResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               Foreground="#666666" 
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,20">
                                     <TextBlock Text="Average Latency (Today)" FontSize="14" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               Foreground="#666666" 
                                                VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding AverageLatency, StringFormat={}{0:F0}ms}" 
-                                               FontSize="28" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                               FontSize="28" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
                                 </Grid>
-                                <Border Height="180" Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                                <Border Height="180" Background="#f0f0f0" 
                                         CornerRadius="8">
                                     <TextBlock Text="[Latency Chart]" HorizontalAlignment="Center" 
                                                VerticalAlignment="Center" 
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                               Foreground="#999999" 
                                                FontSize="14"/>
                                 </Border>
                             </StackPanel>
@@ -175,26 +175,26 @@
                                                    Foreground="{StaticResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               Foreground="#666666" 
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,10">
                                     <TextBlock Text="Current Bandwidth Usage" FontSize="14" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                               Foreground="#666666"/>
                                     <TextBlock Text="{Binding CurrentBandwidth, StringFormat={}{0:F1} Mbps}" 
-                                               FontSize="18" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                               FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,20">
                                     <TextBlock Text="Peak Usage (Today)" FontSize="14" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                               Foreground="#666666"/>
                                     <TextBlock Text="{Binding PeakBandwidth, StringFormat={}{0:F1} Mbps}" 
-                                               FontSize="18" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                               FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
                                 </Grid>
-                                <Border Height="180" Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                                <Border Height="180" Background="#f0f0f0" 
                                         CornerRadius="8">
                                     <TextBlock Text="[Bandwidth Chart]" HorizontalAlignment="Center" 
                                                VerticalAlignment="Center" 
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                               Foreground="#999999" 
                                                FontSize="14"/>
                                 </Border>
                             </StackPanel>
@@ -219,14 +219,14 @@
                                                    Foreground="{StaticResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               Foreground="#666666" 
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
-                                <Border Height="220" Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                                <Border Height="220" Background="#f0f0f0" 
                                         CornerRadius="8">
                                     <TextBlock Text="[Packet Loss Chart]" HorizontalAlignment="Center" 
                                                VerticalAlignment="Center" 
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                               Foreground="#999999" 
                                                FontSize="14"/>
                                 </Border>
                             </StackPanel>
@@ -244,7 +244,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Margin="0,0,0,10" Padding="12" 
-                                                    Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                                                    Background="#f0f0f0" 
                                                     CornerRadius="8">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -260,9 +260,9 @@
                                                                    VerticalAlignment="Center"/>
                                                     </Border>
                                                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"/>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="#1a1a1a"/>
                                                         <TextBlock FontSize="12" 
-                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                                   Foreground="#666666">
                                                             <Run Text="{Binding Instances}"/>
                                                             <Run Text="instances •"/>
                                                             <Run Text="{Binding RamUsage, StringFormat={}{0:F1}}"/>
@@ -288,9 +288,9 @@
                 <Grid Margin="0,0,0,20">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="DesktopPulse24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold" Foreground="#1a1a1a"/>
                     </StackPanel>
-                    <TextBlock FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                    <TextBlock FontSize="13" Foreground="#666666" 
                                HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Run Text="{Binding OnlinePCs}"/>
                         <Run Text="/"/>

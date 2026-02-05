@@ -32,15 +32,15 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15" Foreground="#1a1a1a"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username}" FontSize="14" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,15"/>
+                                   Foreground="#666666" Margin="0,0,0,15"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15" Foreground="#1a1a1a"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName}" FontSize="14" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,15"/>
+                                   Foreground="#666666" Margin="0,0,0,15"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold" Foreground="#1a1a1a"/>
                         <ui:Badge Grid.Row="2" Grid.Column="1" Content="{Binding Role}" Appearance="Danger" HorizontalAlignment="Left"/>
                     </Grid>
                 </StackPanel>
@@ -55,19 +55,19 @@
                                    Foreground="{StaticResource IRISSecondaryBrush}"/>
                     </StackPanel>
                     
-                    <TextBlock Text="Current Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Current Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                     <ui:PasswordBox x:Name="CurrentPasswordBox" 
                                     PlaceholderText="Enter current password"
                                     Icon="{ui:SymbolIcon LockClosed24}"
                                     Margin="0,0,0,15"/>
                     
-                    <TextBlock Text="New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                     <ui:PasswordBox x:Name="NewPasswordBox" 
                                     PlaceholderText="Enter new password"
                                     Icon="{ui:SymbolIcon Key24}"
                                     Margin="0,0,0,15"/>
                     
-                    <TextBlock Text="Confirm New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TextBlock Text="Confirm New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                     <ui:PasswordBox x:Name="ConfirmPasswordBox" 
                                     PlaceholderText="Confirm new password"
                                     Icon="{ui:SymbolIcon Checkmark24}"

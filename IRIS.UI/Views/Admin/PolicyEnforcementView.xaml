@@ -95,7 +95,7 @@
                                                     <TextBlock Text="{Binding StatusText}" FontSize="11">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                                <Setter Property="Foreground" Value="#666666"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                                         <Setter Property="Foreground" Value="White"/>
@@ -132,7 +132,7 @@
                                        Foreground="{StaticResource IRISPrimaryBrush}"/>
                         </StackPanel>
                         <TextBlock Text="{Binding SelectedRoomText}" FontSize="14" 
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                   Foreground="#666666"/>
                     </StackPanel>
 
                     <!-- Policy Controls -->
@@ -157,7 +157,7 @@
                                                    Foreground="{StaticResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Automatically resets desktop wallpaper to default when PCs start up." 
-                                               FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               FontSize="13" Foreground="#666666" 
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
                                 
@@ -204,7 +204,7 @@
                                                    Foreground="{StaticResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Automatically shuts down PCs after specified idle time" 
-                                               FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               FontSize="13" Foreground="#666666" 
                                                TextWrapping="Wrap"/>
                                 </StackPanel>
                                 
@@ -229,12 +229,12 @@
                             Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <ui:SymbolIcon Symbol="Building24" FontSize="48" 
-                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                          Foreground="#999999" 
                                           HorizontalAlignment="Center" Margin="0,0,0,12"/>
                             <TextBlock Text="Select a Laboratory" FontSize="16" FontWeight="SemiBold" 
-                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                       HorizontalAlignment="Center" Margin="0,0,0,6" Foreground="#1a1a1a"/>
                             <TextBlock Text="Choose a laboratory from the list to view and configure its policy settings" 
-                                       FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                       FontSize="13" Foreground="#666666" 
                                        HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>

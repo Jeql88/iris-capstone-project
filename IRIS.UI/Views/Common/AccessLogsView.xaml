@@ -29,7 +29,7 @@
 
                         <!-- Search Box -->
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                             <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                         PlaceholderText="Search by username, action, or IP..."
                                         Icon="{ui:SymbolIcon Search24}"
@@ -38,29 +38,29 @@
 
                         <!-- Action Filter -->
                         <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                             <ComboBox SelectedValue="{Binding SelectedAction, Mode=TwoWay}" 
                                          SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Actions" IsSelected="True"/>
-                                <ComboBoxItem Content="Login"/>
-                                <ComboBoxItem Content="Logout"/>
-                                <ComboBoxItem Content="Password Change"/>
-                                <ComboBoxItem Content="User Created"/>
-                                <ComboBoxItem Content="User Updated"/>
-                                <ComboBoxItem Content="User Deactivated"/>
-                                <ComboBoxItem Content="System Access"/>
+                                <ComboBoxItem Content="All Actions" IsSelected="True" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Login" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Logout" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Password Change" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="User Created" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="User Updated" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="User Deactivated" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="System Access" Foreground="#1a1a1a"/>
                             </ComboBox>
                         </StackPanel>
 
                         <!-- Role Filter -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                             <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                          SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Roles" IsSelected="True"/>
-                                <ComboBoxItem Content="System Administrator"/>
-                                <ComboBoxItem Content="IT Personnel"/>
-                                <ComboBoxItem Content="Faculty"/>
+                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
                             </ComboBox>
                         </StackPanel>
                     </Grid>
@@ -84,11 +84,11 @@
                                        Foreground="{StaticResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
                             <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
                                          ItemsSource="{Binding PageSizeOptions}"
                                          Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="#1a1a1a"/>
                             <ui:Badge Appearance="Danger" Content="{Binding PageInfo}"/>
                         </StackPanel>
                     </Grid>
@@ -116,7 +116,7 @@
                                    Margin="0,0,10,0"/>
                         
                         <TextBlock Text="{Binding PageInfo}" FontSize="13" 
-                                   VerticalAlignment="Center" Margin="15,0"/>
+                                   VerticalAlignment="Center" Margin="15,0" Foreground="#1a1a1a"/>
                         
                         <ui:Button Command="{Binding NextPageCommand}" 
                                    Content="Next" 

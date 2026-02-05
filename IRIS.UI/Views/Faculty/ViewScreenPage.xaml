@@ -55,7 +55,7 @@
                     </Ellipse.Style>
                 </Ellipse>
                 <TextBlock Text="{Binding ConnectionStatus}" FontSize="14" 
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                           Foreground="#666666"/>
             </StackPanel>
         </Grid>
 
@@ -74,7 +74,7 @@
                             Background="{DynamicResource ControlFillColorDefaultBrush}">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <ui:ProgressRing IsIndeterminate="True" Width="60" Height="60"/>
-                            <TextBlock Text="Connecting to PC..." FontSize="16" Margin="0,20,0,0"/>
+                            <TextBlock Text="Connecting to PC..." FontSize="16" Margin="0,20,0,0" Foreground="#1a1a1a"/>
                         </StackPanel>
                     </Border>
 
@@ -86,9 +86,9 @@
                                     Background="{StaticResource OfflineStatusBrush}" Margin="0,0,0,20">
                                 <ui:SymbolIcon Symbol="DesktopOff24" FontSize="36" Foreground="White"/>
                             </Border>
-                            <TextBlock Text="PC is Offline" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Text="PC is Offline" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="#1a1a1a"/>
                             <TextBlock Text="The selected PC is not currently connected" 
-                                       FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                       FontSize="14" Foreground="#666666"/>
                             <ui:Button Content="Retry Connection" 
                                        Icon="{ui:SymbolIcon ArrowClockwise24}"
                                        Command="{Binding RetryConnectionCommand}"
@@ -122,13 +122,13 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding PCName}" FontSize="20" FontWeight="Bold" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding PCName}" FontSize="20" FontWeight="Bold" Margin="0,0,10,0" Foreground="#1a1a1a"/>
                                 <ui:Badge Appearance="Primary">
                                     <TextBlock Text="{Binding PCNumber}" FontSize="11"/>
                                 </ui:Badge>
                             </StackPanel>
                             <TextBlock Text="{Binding RoomName}" FontSize="13" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                       Foreground="#666666"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -198,20 +198,20 @@
                                         </Grid.RowDefinitions>
 
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="IP Address:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding IP}" FontSize="13" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding IP}" FontSize="13" Margin="0,0,0,8" Foreground="#1a1a1a"/>
 
                                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Subnet Mask:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Subnet}" FontSize="13" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Subnet}" FontSize="13" Margin="0,0,0,8" Foreground="#1a1a1a"/>
 
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Network:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Network}" FontSize="13" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Network}" FontSize="13" Margin="0,0,0,8" Foreground="#1a1a1a"/>
 
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="MAC Address:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MacAddress}" FontSize="13"/>
+                                                   Foreground="#666666"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MacAddress}" FontSize="13" Foreground="#1a1a1a"/>
                                     </Grid>
                                 </StackPanel>
                             </ui:Card>
@@ -237,31 +237,31 @@
                                         </Grid.RowDefinitions>
 
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="OS:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OS}" FontSize="13" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OS}" FontSize="13" Margin="0,0,0,8" Foreground="#1a1a1a"/>
 
                                         <TextBlock Grid.Row="1" Grid.Column="0" Text="CPU Usage:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
                                         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                                             <ProgressBar Value="{Binding CpuUsage}" Width="80" Height="8" 
                                                         Foreground="{StaticResource IRISPrimaryBrush}"/>
-                                            <TextBlock Text="{Binding CpuUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0"/>
+                                            <TextBlock Text="{Binding CpuUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
 
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="RAM Usage:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
+                                                   Foreground="#666666" Margin="0,0,0,8"/>
                                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                                             <ProgressBar Value="{Binding RamUsage}" Width="80" Height="8" 
                                                         Foreground="{StaticResource IRISSecondaryBrush}"/>
-                                            <TextBlock Text="{Binding RamUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0"/>
+                                            <TextBlock Text="{Binding RamUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
 
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Disk Usage:" FontSize="13" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                   Foreground="#666666"/>
                                         <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
                                             <ProgressBar Value="{Binding DiskUsage}" Width="80" Height="8" 
                                                         Foreground="{StaticResource IRISAccentBrush}"/>
-                                            <TextBlock Text="{Binding DiskUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0"/>
+                                            <TextBlock Text="{Binding DiskUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
