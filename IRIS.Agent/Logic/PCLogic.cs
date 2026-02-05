@@ -8,12 +8,12 @@ using Serilog;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using IRIS.Core.DTOs;
-using IRIS.Agent.Interfaces;
+using IRIS.Agent.Services.Contracts;
 
 namespace IRIS.Agent.Logic
 {
     [SupportedOSPlatform("windows")]
-    public class PCLogic : IPCLogic
+    public class PCLogic : IPCService
     {
         private readonly IRISDbContext _context;
 
@@ -153,6 +153,7 @@ namespace IRIS.Agent.Logic
             {
                 Log.Error(ex, "Failed to create hardware config for PC {PCId}", pcId);
             }
+            return Task.CompletedTask;
         }
 
         private async Task UpdateHardwareConfigAsync(int pcId)

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
@@ -140,8 +140,6 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseWallpaperCommand { get; }
         public ICommand LoadCurrentSettingsCommand { get; }
 
-        public PolicyEnforcementViewModel() : this(null!, null!, null!) { }
-
         public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext)
         {
             _monitoringService = monitoringService;
@@ -150,17 +148,10 @@ namespace IRIS.UI.ViewModels
             Rooms = new ObservableCollection<RoomItem>();
             SelectedRoomPolicies = new ObservableCollection<RoomPolicyDisplay>();
 
-            if (_monitoringService != null && _dbContext != null)
-            {
-                _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-                _refreshTimer.Tick += async (s, e) => await LoadRoomDataAsync();
-                _refreshTimer.Start();
-                _ = LoadRoomDataAsync();
-            }
-            else
-            {
-                LoadMockRoomData();
-            }
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            _refreshTimer.Tick += async (s, e) => await LoadRoomDataAsync();
+            _refreshTimer.Start();
+            _ = LoadRoomDataAsync();
 
             _messageTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _messageTimer.Tick += (s, e) => ClearStatusMessage();
@@ -500,8 +491,9 @@ namespace IRIS.UI.ViewModels
                     SelectedWallpaperPath = "No wallpaper selected";
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Silently handle errors when loading current settings
             }
         }
 

@@ -1,5 +1,6 @@
 using IRIS.Core.Data;
 using IRIS.Core.DTOs;
+using IRIS.Core.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace IRIS.Core.Services;

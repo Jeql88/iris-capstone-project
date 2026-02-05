@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
-using IRIS.Agent.Interfaces;
+using IRIS.Agent.Services.Contracts;
 
 namespace IRIS.Agent.Logic
 {
-    public class MonitoringLogic : IMonitoringLogic
+    public class MonitoringLogic : IMonitoringService
     {
         private readonly IRISDbContext _context;
         private readonly string _macAddress;

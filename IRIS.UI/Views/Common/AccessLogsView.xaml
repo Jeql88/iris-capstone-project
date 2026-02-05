@@ -1,0 +1,131 @@
+<UserControl x:Class="IRIS.UI.Views.Common.AccessLogsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="25,20">
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
+                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <TextBlock Text="Access Logs" FontSize="32" FontWeight="Bold" 
+                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Search and Filters Card -->
+            <ui:Card Margin="0,0,0,20">
+                <StackPanel Margin="10">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="Filter24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Filter Access Logs" FontSize="18" FontWeight="Bold" 
+                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Search Box -->
+                        <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                        PlaceholderText="Search by username, action, or IP..."
+                                        Icon="{ui:SymbolIcon Search24}"
+                                        ToolTip="Search by username, action, details, or IP address"/>
+                        </StackPanel>
+
+                        <!-- Action Filter -->
+                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox SelectedValue="{Binding SelectedAction, Mode=TwoWay}" 
+                                         SelectedValuePath="Content">
+                                <ComboBoxItem Content="All Actions" IsSelected="True"/>
+                                <ComboBoxItem Content="Login"/>
+                                <ComboBoxItem Content="Logout"/>
+                                <ComboBoxItem Content="Password Change"/>
+                                <ComboBoxItem Content="User Created"/>
+                                <ComboBoxItem Content="User Updated"/>
+                                <ComboBoxItem Content="User Deactivated"/>
+                                <ComboBoxItem Content="System Access"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Role Filter -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
+                                         SelectedValuePath="Content">
+                                <ComboBoxItem Content="All Roles" IsSelected="True"/>
+                                <ComboBoxItem Content="System Administrator"/>
+                                <ComboBoxItem Content="IT Personnel"/>
+                                <ComboBoxItem Content="Faculty"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Access Logs Table Card -->
+            <ui:Card>
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Table Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,20">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="History24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="System Access Logs" FontSize="18" FontWeight="Bold" 
+                                       Foreground="{StaticResource IRISSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
+                                         ItemsSource="{Binding PageSizeOptions}"
+                                         Width="70" Margin="0,0,5,0"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <ui:Badge Appearance="Danger" Content="{Binding PageInfo}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- DataGrid -->
+                    <ui:DataGrid Grid.Row="1" ItemsSource="{Binding AccessLogs}" 
+                                 AutoGenerateColumns="False" IsReadOnly="True"
+                                 MinHeight="450">
+                        <ui:DataGrid.Columns>
+                            <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="1.5*"/>
+                            <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.2*"/>
+                            <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="1.2*"/>
+                            <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="1*"/>
+                            <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="2*"/>
+                            <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="1*"/>
+                        </ui:DataGrid.Columns>
+                    </ui:DataGrid>
+
+                    <!-- Pagination Controls -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                        <ui:Button Command="{Binding PreviousPageCommand}" 
+                                   Content="Previous" 
+                                   Icon="{ui:SymbolIcon ChevronLeft24}"
+                                   Appearance="Primary"
+                                   Margin="0,0,10,0"/>
+                        
+                        <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                   VerticalAlignment="Center" Margin="15,0"/>
+                        
+                        <ui:Button Command="{Binding NextPageCommand}" 
+                                   Content="Next" 
+                                   Icon="{ui:SymbolIcon ChevronRight24}"
+                                   Appearance="Primary"
+                                   Margin="10,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

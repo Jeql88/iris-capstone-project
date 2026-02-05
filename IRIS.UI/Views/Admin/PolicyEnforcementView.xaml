@@ -1,0 +1,266 @@
+<UserControl x:Class="IRIS.UI.Views.Admin.PolicyEnforcementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:IRIS.UI.ViewModels"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters">
+    
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="25,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
+            <ui:SymbolIcon Symbol="Shield24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+            <TextBlock Text="Policy Enforcement" FontSize="32" FontWeight="Bold" 
+                       Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="15"/>
+                <ColumnDefinition Width="1.5*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Room Selection -->
+            <ui:Card Grid.Column="0">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="Building24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Select Laboratory" FontSize="16" FontWeight="Bold" 
+                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Room List -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Rooms}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" CornerRadius="8" Padding="12" Cursor="Hand"
+                                            MouseLeftButtonDown="RoomBorder_Click" Tag="{Binding}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" FontSize="14">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <Ellipse Width="6" Height="6" Margin="0,0,6,0">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="{StaticResource OnlineStatusBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding OnlineCount}" Value="0">
+                                                                        <Setter Property="Fill" Value="{StaticResource OfflineStatusBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="11">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Foreground" Value="White"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </ui:Card>
+
+            <!-- Right Panel: Policy Controls -->
+            <ui:Card Grid.Column="2">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,25">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <ui:SymbolIcon Symbol="Options24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Policy Configuration" FontSize="18" FontWeight="Bold" 
+                                       Foreground="{StaticResource IRISPrimaryBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SelectedRoomText}" FontSize="14" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Policy Controls -->
+                    <StackPanel Grid.Row="1" Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        
+                        <!-- Wallpaper Reset Policy -->
+                        <ui:Card Margin="0,0,0,15">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Grid.Row="0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <ui:SymbolIcon Symbol="Image24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Wallpaper Reset on Start-up" FontWeight="Bold" FontSize="16" 
+                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Automatically resets desktop wallpaper to default when PCs start up." 
+                                               FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                                
+                                <ui:ToggleSwitch Grid.Column="1" Grid.Row="0" 
+                                                 IsChecked="{Binding WallpaperResetEnabled}" 
+                                                 VerticalAlignment="Center"/>
+                                
+                                <!-- Wallpaper Upload Section -->
+                                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0"
+                                            Visibility="{Binding WallpaperResetEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Select Wallpaper Image:" FontSize="12" Margin="0,0,0,8"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ui:TextBox Grid.Column="0" Text="{Binding SelectedWallpaperPath}" 
+                                                    IsReadOnly="True" PlaceholderText="No wallpaper selected"/>
+                                        <ui:Button Grid.Column="1" Content="Browse" 
+                                                   Icon="{ui:SymbolIcon FolderOpen24}"
+                                                   Command="{Binding BrowseWallpaperCommand}" 
+                                                   Appearance="Primary" Margin="8,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </ui:Card>
+
+                        <!-- Auto Shutdown Policy -->
+                        <ui:Card>
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Grid.Row="0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <ui:SymbolIcon Symbol="Power24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Auto Shutdown After Idle" FontWeight="Bold" FontSize="16" 
+                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Automatically shuts down PCs after specified idle time" 
+                                               FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                                
+                                <ui:ToggleSwitch Grid.Column="1" Grid.Row="0" 
+                                                 IsChecked="{Binding AutoShutdownEnabled}" 
+                                                 VerticalAlignment="Center"/>
+                                
+                                <!-- Idle Time Setting -->
+                                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0"
+                                            Visibility="{Binding AutoShutdownEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Idle Time (minutes):" FontSize="14" Margin="0,0,0,8"/>
+                                    <ui:NumberBox Value="{Binding AutoShutdownMinutes}" 
+                                                  Minimum="5" Maximum="120" 
+                                                  Width="120" HorizontalAlignment="Left"/>
+                                </StackPanel>
+                            </Grid>
+                        </ui:Card>
+                    </StackPanel>
+
+                    <!-- No Room Selected Message -->
+                    <Border Grid.Row="1" Padding="40" 
+                            Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Building24" FontSize="48" 
+                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                          HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                            <TextBlock Text="Select a Laboratory" FontSize="16" FontWeight="SemiBold" 
+                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                            <TextBlock Text="Choose a laboratory from the list to view and configure its policy settings" 
+                                       FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                       HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Action Button -->
+                    <StackPanel Grid.Row="2" Margin="0,20,0,0"
+                                Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        
+                        <!-- Status Message -->
+                        <ui:InfoBar Title="Status"
+                                   Message="{Binding StatusMessage}"
+                                   IsOpen="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=Bool}"
+                                   IsClosable="False"
+                                   Margin="0,0,0,15"/>
+                        
+                        <ui:Button Command="{Binding ApplyPoliciesCommand}" 
+                                   Content="Deploy to Selected Laboratory"
+                                   Icon="{ui:SymbolIcon Rocket24}"
+                                   Appearance="Primary"
+                                   HorizontalAlignment="Stretch"
+                                   Height="45"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
+    </Grid>
+</UserControl>

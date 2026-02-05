@@ -1,5 +1,5 @@
 ﻿using System.Windows;
-using IRIS.UI.Views;
+using IRIS.UI.Views.Common;
 using IRIS.UI.Services;
 
 namespace IRIS.UI;

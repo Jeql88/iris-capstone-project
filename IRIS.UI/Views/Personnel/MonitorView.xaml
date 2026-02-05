@@ -1,0 +1,304 @@
+<UserControl x:Class="IRIS.UI.Views.Personnel.MonitorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:IRIS.UI.ViewModels"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters">
+    
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="25,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header Section -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="Desktop24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <TextBlock Text="PC Monitoring" FontSize="32" FontWeight="Bold" 
+                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Room Selector -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <TextBlock Text="Laboratory:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <ComboBox ItemsSource="{Binding Rooms}"
+                            SelectedItem="{Binding SelectedRoom}"
+                            Width="200">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding RoomNumber}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+        </Grid>
+
+        <!-- Status Summary Cards -->
+        <Grid Grid.Row="1" Margin="0,0,0,25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="15"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="15"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="15"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Total PCs Card -->
+            <ui:Card Grid.Column="0">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
+                            Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,15,0">
+                        <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="White" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Total PCs" FontSize="12" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding TotalPCCount}" FontSize="28" FontWeight="Bold" 
+                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
+            <!-- Online Card -->
+            <ui:Card Grid.Column="2">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
+                            Background="{StaticResource OnlineStatusBrush}" Margin="0,0,15,0">
+                        <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="24" Foreground="White" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Online" FontSize="12" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding OnlinePCCount}" FontSize="28" FontWeight="Bold" 
+                                   Foreground="{StaticResource OnlineStatusBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
+            <!-- Offline Card -->
+            <ui:Card Grid.Column="4">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
+                            Background="{StaticResource OfflineStatusBrush}" Margin="0,0,15,0">
+                        <ui:SymbolIcon Symbol="DismissCircle24" FontSize="24" Foreground="White" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Offline" FontSize="12" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding OfflinePCCount}" FontSize="28" FontWeight="Bold" 
+                                   Foreground="{StaticResource OfflineStatusBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
+            <!-- Idle Card -->
+            <ui:Card Grid.Column="6">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
+                            Background="{StaticResource IdleStatusBrush}" Margin="0,0,15,0">
+                        <ui:SymbolIcon Symbol="Clock24" FontSize="24" Foreground="White" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Idle" FontSize="12" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding IdlePCCount}" FontSize="28" FontWeight="Bold" 
+                                   Foreground="{StaticResource IdleStatusBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
+
+        <!-- PC Grid -->
+        <ui:Card Grid.Row="2">
+            <Grid Margin="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Grid24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Laboratory PCs" FontSize="18" FontWeight="Bold" 
+                                   Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" 
+                                   Content="Refresh"
+                                   Command="{Binding RefreshCommand}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:TextBox PlaceholderText="Search PC..."
+                                   Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                   Width="200">
+                            <ui:TextBox.Icon>
+                                <ui:SymbolIcon Symbol="Search24"/>
+                            </ui:TextBox.Icon>
+                        </ui:TextBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- PC Items Grid -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding FilteredPCs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="200" Margin="0,0,15,15" CornerRadius="10" Cursor="Hand"
+                                        MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="2"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid Margin="15">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- PC Icon with Status -->
+                                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                                            <Border Width="60" Height="60" CornerRadius="10" 
+                                                    Background="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                                    HorizontalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="Desktop24" FontSize="28" Foreground="White"/>
+                                            </Border>
+                                            <!-- Status Indicator -->
+                                            <Ellipse Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                     Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                                     Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                                                     StrokeThickness="2"/>
+                                        </Grid>
+
+                                        <!-- PC Name -->
+                                        <TextBlock Grid.Row="1" Text="{Binding PCName}" 
+                                                   FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- IP Address -->
+                                        <TextBlock Grid.Row="2" Text="{Binding IPAddress}" 
+                                                   FontSize="11" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+
+                                        <!-- Status Badge -->
+                                        <ui:Badge Grid.Row="3" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                            <ui:Badge.Style>
+                                                <Style TargetType="ui:Badge">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Online">
+                                                            <Setter Property="Appearance" Value="Success"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                            <Setter Property="Appearance" Value="Danger"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Idle">
+                                                            <Setter Property="Appearance" Value="Caution"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:Badge.Style>
+                                            <TextBlock Text="{Binding Status}" FontSize="11"/>
+                                        </ui:Badge>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Empty State -->
+                <Border Grid.Row="1" 
+                        Visibility="{Binding HasNoPCs, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Desktop24" FontSize="64" 
+                                      Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
+                                      HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                        <TextBlock Text="No PCs Found" FontSize="18" FontWeight="SemiBold" 
+                                   HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="Select a laboratory or wait for PCs to connect" 
+                                   FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ui:Card>
+
+        <!-- Selected PC Actions Panel -->
+        <Border Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
+                Margin="0,0,15,15" Padding="15" CornerRadius="12"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                Visibility="{Binding HasSelectedPC, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+                <ui:Button Icon="{ui:SymbolIcon Eye24}" Content="View Screen"
+                           Command="{Binding ViewScreenCommand}"
+                           Appearance="Primary" Margin="0,0,8,0"/>
+                <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" Content="Restart"
+                           Command="{Binding RestartPCCommand}"
+                           Appearance="Secondary" Margin="0,0,8,0"/>
+                <ui:Button Icon="{ui:SymbolIcon Power24}" Content="Shutdown"
+                           Command="{Binding ShutdownPCCommand}"
+                           Appearance="Danger"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -3,20 +3,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using IRIS.Agent.Interfaces;
+using IRIS.Agent.Services.Contracts;
 
 namespace IRIS.Agent.Controllers
 {
     public class MonitoringController
     {
-        private readonly IMonitoringLogic _monitoringLogic;
+        private readonly IMonitoringService _monitoringLogic;
         private readonly IConfiguration _configuration;
         private Timer? _timer;
         private bool _isMonitoring;
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _metricsIntervalSeconds;
 
-        public MonitoringController(IMonitoringLogic monitoringLogic, IConfiguration configuration)
+        public MonitoringController(IMonitoringService monitoringLogic, IConfiguration configuration)
         {
             _monitoringLogic = monitoringLogic;
             _configuration = configuration;
@@ -24,12 +24,12 @@ namespace IRIS.Agent.Controllers
             _metricsIntervalSeconds = int.Parse(_configuration["AgentSettings:MetricsIntervalSeconds"] ?? "30");
         }
 
-        public async Task StartMonitoringAsync()
+        public Task StartMonitoringAsync()
         {
             if (_isMonitoring)
             {
                 Log.Warning("Monitoring is already running.");
-                return;
+                return Task.CompletedTask;
             }
 
             _isMonitoring = true;
@@ -39,6 +39,8 @@ namespace IRIS.Agent.Controllers
             // Start periodic tasks
             _timer = new Timer(async _ => await PerformMonitoringAsync(), null, TimeSpan.Zero,
                 TimeSpan.FromSeconds(Math.Min(_heartbeatIntervalSeconds, _metricsIntervalSeconds)));
+            
+            return Task.CompletedTask;
         }
 
         public Task StopMonitoringAsync()

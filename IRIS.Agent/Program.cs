@@ -54,6 +54,14 @@ namespace IRIS.Agent
             // Enforce wallpaper policy on startup
             await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
 
+            // Initialize application usage tracking with separate context
+            var appUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
+                .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
+                .Options;
+            var appUsageContext = new IRISDbContext(appUsageOptions);
+            var appUsageLogic = new ApplicationUsageLogic(appUsageContext, networkInfo.MacAddress);
+            await appUsageLogic.StartMonitoringAsync();
+
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
 
@@ -76,7 +84,10 @@ namespace IRIS.Agent
                 e.Cancel = true; // Prevent immediate exit
                 Log.Information("Ctrl+C detected. Handling shutdown...");
                 await monitoringController.StopMonitoringAsync();
+                await appUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
+                appUsageLogic.Dispose();
+                appUsageContext.Dispose();
                 Log.CloseAndFlush();
                 Environment.Exit(0);
             };
@@ -136,7 +147,7 @@ namespace IRIS.Agent
             }
         }
 
-        private static async Task CheckIdleShutdownAsync(int idleMinutes)
+        private static Task CheckIdleShutdownAsync(int idleMinutes)
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
@@ -146,6 +157,7 @@ namespace IRIS.Agent
                 Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
                 Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
             }
+            return Task.CompletedTask;
         }
 
         private static TimeSpan GetIdleTime()
