@@ -24,9 +24,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <ui:SymbolIcon Symbol="DataUsage24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <ui:SymbolIcon Symbol="DataUsage24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                 <TextBlock Text="Usage Metrics" FontSize="32" FontWeight="Bold" 
-                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Date Range Filter -->
@@ -60,7 +60,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
-                            Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,18,0">
+                            Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,18,0">
                         <ui:SymbolIcon Symbol="Apps24" FontSize="26" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -68,7 +68,7 @@
                         <TextBlock Text="Applications Used" FontSize="13" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalApplications}" FontSize="32" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -81,7 +81,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
-                            Background="{StaticResource IRISSecondaryBrush}" Margin="0,0,18,0">
+                            Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,18,0">
                         <ui:SymbolIcon Symbol="Globe24" FontSize="26" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -89,7 +89,7 @@
                         <TextBlock Text="Websites Visited" FontSize="13" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -102,7 +102,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
-                            Background="{StaticResource IRISAccentBrush}" Margin="0,0,18,0">
+                            Background="{DynamicResource IRISAccentBrush}" Margin="0,0,18,0">
                         <ui:SymbolIcon Symbol="Timer24" FontSize="26" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -110,7 +110,7 @@
                         <TextBlock Text="Total Usage Hours" FontSize="13" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalHours, StringFormat={}{0:F1}h}" FontSize="32" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISAccentBrush}"/>
+                                   Foreground="{DynamicResource IRISAccentBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -118,7 +118,7 @@
 
         <!-- Tab Content Area -->
         <ui:Card Grid.Row="2">
-            <Grid Margin="10">
+            <Grid Margin="15">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -154,9 +154,9 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Apps24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="Apps24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Application Usage Data" FontSize="16" FontWeight="Bold" 
-                                       Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                                       Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -188,8 +188,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="6" 
-                                                    Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,10,0">
+                                            <Border Width="32" Height="32" CornerRadius="8" 
+                                                    Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0">
                                                 <ui:SymbolIcon Symbol="Apps24" FontSize="16" Foreground="White"/>
                                             </Border>
                                             <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#1a1a1a"/>
@@ -221,9 +221,9 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Globe24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="Globe24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Website Usage Data" FontSize="16" FontWeight="Bold" 
-                                       Foreground="{StaticResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
+                                       Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -255,8 +255,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="6" 
-                                                    Background="{StaticResource IRISSecondaryBrush}" Margin="0,0,10,0">
+                                            <Border Width="32" Height="32" CornerRadius="8" 
+                                                    Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,10,0">
                                                 <ui:SymbolIcon Symbol="Globe24" FontSize="16" Foreground="White"/>
                                             </Border>
                                             <StackPanel VerticalAlignment="Center">

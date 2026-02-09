@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Title="IRIS - Login" Height="600" Width="900"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
 
@@ -22,6 +22,8 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="420"/>
         </Grid.ColumnDefinitions>
+
+        <ui:TitleBar Grid.ColumnSpan="2" Title="IRIS - Login" Foreground="White" Panel.ZIndex="1"/>
 
         <!-- Left Panel - Background Image -->
         <Border Grid.Column="0" CornerRadius="8,0,0,8">
@@ -83,20 +85,21 @@
                            Title="Login Error"
                            Message="{Binding ErrorMessage}"
                            Severity="Error"
-                           IsOpen="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=Bool}"
+                           IsOpen="{Binding HasError}"
                            IsClosable="False"
                            Margin="0,0,0,20"/>
 
                 <!-- Login Button -->
                 <ui:Button Grid.Row="6" 
-                          Content="Sign In" 
                           Appearance="Primary"
                           Command="{Binding LoginCommand}" 
                           HorizontalAlignment="Stretch"
                           Height="45"
                           FontSize="16"
                           FontWeight="SemiBold"
-                          Icon="{ui:SymbolIcon ArrowRight24}"/>
+                          Icon="{ui:SymbolIcon ArrowRight24}">
+                    <TextBlock Text="Sign In" Foreground="White"/>
+                </ui:Button>
             </Grid>
         </Border>
 

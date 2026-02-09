@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -15,16 +16,37 @@ namespace IRIS.UI.ViewModels
         private SoftwareItemViewModel? _selectedSoftwareForDeployment;
         private SoftwareItemViewModel? _selectedApplicationToUninstall;
         private string _selectedInventoryLab = "Archi Lab 1";
+        private string _applicationSearchText = string.Empty;
+        private string? _selectedRoom;
 
         public SoftwareManagementViewModel()
         {
             DeploySoftwareCommand = new RelayCommand(async () => await DeploySoftwareAsync(), CanDeploySoftware);
             UninstallSoftwareCommand = new RelayCommand(async () => await UninstallSoftwareAsync(), CanUninstallSoftware);
             BrowseFilesCommand = new RelayCommand(async () => await BrowseFilesAsync(), () => true);
+            BrowseDestinationCommand = new RelayCommand(BrowseDestination, () => true);
+            RemoveFileCommand = new RelayCommand<FileItem>(RemoveFile);
             ApproveRequestCommand = new RelayCommand(async () => await ApproveRequestAsync(), () => true);
             RejectRequestCommand = new RelayCommand(async () => await RejectRequestAsync(), () => true);
             SelectAllOnlineCommand = new RelayCommand(async () => await SelectAllOnlineAsync(), () => true);
+            SelectAllPCsCommand = new RelayCommand(async () => await SelectAllOnlineAsync(), () => true);
             ClearSelectionCommand = new RelayCommand(async () => await ClearSelectionAsync(), () => true);
+
+            // Track changes to UploadedFiles to notify dependent properties
+            UploadedFiles.CollectionChanged += (s, e) =>
+            {
+                OnPropertyChanged(nameof(HasSelectedFiles));
+                OnPropertyChanged(nameof(SelectedFilesCount));
+                OnPropertyChanged(nameof(SelectedFiles));
+                (DeploySoftwareCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            };
+
+            // Initialize rooms
+            Rooms.Add("Archi Lab 1");
+            Rooms.Add("Archi Lab 2");
+            Rooms.Add("Archi Lab 3");
+            Rooms.Add("Archi Lab 4");
+            _selectedRoom = Rooms.FirstOrDefault();
 
             InitializeData();
         }
@@ -74,6 +96,44 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public string ApplicationSearchText
+        {
+            get => _applicationSearchText;
+            set
+            {
+                _applicationSearchText = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(FilteredApplications));
+            }
+        }
+
+        public bool HasSelectedFiles => UploadedFiles.Count > 0;
+        public int SelectedFilesCount => UploadedFiles.Count;
+
+        /// <summary>Wraps UploadedFiles as FileItem objects for the XAML ItemTemplate.</summary>
+        public IEnumerable<FileItem> SelectedFiles =>
+            UploadedFiles.Select(f => new FileItem { FileName = f });
+
+        public IEnumerable<SoftwareItemViewModel> FilteredApplications =>
+            string.IsNullOrWhiteSpace(ApplicationSearchText)
+                ? ApplicationsToUninstall
+                : ApplicationsToUninstall.Where(a => a.Name.Contains(ApplicationSearchText, StringComparison.OrdinalIgnoreCase));
+
+        public ObservableCollection<PCViewModel> FilteredPCs => PCs;
+
+        public ObservableCollection<string> Rooms { get; } = new();
+
+        public string? SelectedRoom
+        {
+            get => _selectedRoom;
+            set
+            {
+                _selectedRoom = value;
+                OnPropertyChanged();
+                if (value != null) SelectedLab = value.Replace("Archi ", "");
+            }
+        }
+
         public SoftwareItemViewModel? SelectedSoftwareForDeployment
         {
             get => _selectedSoftwareForDeployment;
@@ -107,9 +167,12 @@ namespace IRIS.UI.ViewModels
         public ICommand DeploySoftwareCommand { get; }
         public ICommand UninstallSoftwareCommand { get; }
         public ICommand BrowseFilesCommand { get; }
+        public ICommand BrowseDestinationCommand { get; }
+        public ICommand RemoveFileCommand { get; }
         public ICommand ApproveRequestCommand { get; }
         public ICommand RejectRequestCommand { get; }
         public ICommand SelectAllOnlineCommand { get; }
+        public ICommand SelectAllPCsCommand { get; }
         public ICommand ClearSelectionCommand { get; }
 
         private void InitializeData()
@@ -124,20 +187,20 @@ namespace IRIS.UI.ViewModels
             UpdatePCSelection();
 
             // Initialize Software Inventory
-            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Ps", Name = "Adobe Photoshop", Version = "Version 2024 • 3.2 GB", InstallCount = "18/20" });
-            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Vs", Name = "Visual Studio Code", Version = "Version 2022 • 2.1 GB", InstallCount = "20/20" });
-            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Ch", Name = "Google Chrome", Version = "Version 121.0 • 1.8 GB", InstallCount = "20/20" });
-            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Bl", Name = "Blender", Version = "Version 4.0 • 4.1 GB", InstallCount = "12/20" });
+            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Ps", Name = "Adobe Photoshop", Version = "Version 2024 ï¿½ 3.2 GB", InstallCount = "18/20" });
+            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Vs", Name = "Visual Studio Code", Version = "Version 2022 ï¿½ 2.1 GB", InstallCount = "20/20" });
+            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Ch", Name = "Google Chrome", Version = "Version 121.0 ï¿½ 1.8 GB", InstallCount = "20/20" });
+            SoftwareInventory.Add(new SoftwareItemViewModel { Icon = "Bl", Name = "Blender", Version = "Version 4.0 ï¿½ 4.1 GB", InstallCount = "12/20" });
 
             // Initialize Applications to Uninstall
-            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Ps", Name = "Adobe Photoshop", Version = "Version 2024 • 3.2 GB" });
-            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Vs", Name = "Visual Studio Code", Version = "Version 2022 • 2.1 GB" });
-            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Ch", Name = "Google Chrome", Version = "Version 121.0 • 1.8 GB" });
-            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Bl", Name = "Blender", Version = "Version 4.0 • 4.1 GB" });
+            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Ps", Name = "Adobe Photoshop", Version = "Version 2024 ï¿½ 3.2 GB" });
+            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Vs", Name = "Visual Studio Code", Version = "Version 2022 ï¿½ 2.1 GB" });
+            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Ch", Name = "Google Chrome", Version = "Version 121.0 ï¿½ 1.8 GB" });
+            ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Bl", Name = "Blender", Version = "Version 4.0 ï¿½ 4.1 GB" });
 
             // Initialize Active Deployments
-            ActiveDeployments.Add(new DeploymentViewModel { Name = "Visual Studio Code", Progress = 67, Status = "Installing to 5 PCs • 67% complete" });
-            ActiveDeployments.Add(new DeploymentViewModel { Name = "Figma Desktop", Progress = 100, Status = "Uploaded 20 PCs • Completed 5 min ago" });
+            ActiveDeployments.Add(new DeploymentViewModel { Name = "Visual Studio Code", Progress = 67, Status = "Installing to 5 PCs ï¿½ 67% complete" });
+            ActiveDeployments.Add(new DeploymentViewModel { Name = "Figma Desktop", Progress = 100, Status = "Uploaded 20 PCs ï¿½ Completed 5 min ago" });
 
             // Initialize Software Requests
             SoftwareRequests.Add(new SoftwareRequestViewModel { SoftwareName = "Request for Adobe Photoshop", Requester = "Request made by Godwin Monserate" });
@@ -160,6 +223,7 @@ namespace IRIS.UI.ViewModels
                 PCs.Add(new PCViewModel 
                 { 
                     Name = $"PC {i:D2}", 
+                    IPAddress = $"192.168.{labNumber}.{i}",
                     IsOnline = isOnline,
                     IsSelected = isSelected
                 });
@@ -175,6 +239,26 @@ namespace IRIS.UI.ViewModels
         private bool CanDeploySoftware()
         {
             return UploadedFiles.Count > 0 && PCs.Any(pc => pc.IsSelected);
+        }
+
+        private void BrowseDestination()
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Select installation directory"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                DestinationPath = dialog.FolderName;
+            }
+        }
+
+        private void RemoveFile(FileItem? item)
+        {
+            if (item != null && UploadedFiles.Contains(item.FileName))
+            {
+                UploadedFiles.Remove(item.FileName);
+            }
         }
 
         private async Task DeploySoftwareAsync()
@@ -327,17 +411,30 @@ namespace IRIS.UI.ViewModels
         private string _name = string.Empty;
         private bool _isOnline;
         private bool _isSelected;
+        private string _ipAddress = string.Empty;
 
         public string Name
         {
             get => _name;
-            set { _name = value; OnPropertyChanged(); }
+            set { _name = value; OnPropertyChanged(); OnPropertyChanged(nameof(PCName)); }
         }
+
+        /// <summary>Alias for Name, used by SoftwareManagementView XAML bindings.</summary>
+        public string PCName => Name;
+
+        public string IPAddress
+        {
+            get => _ipAddress;
+            set { _ipAddress = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>Status string derived from IsOnline for DataTrigger bindings.</summary>
+        public string Status => IsOnline ? "Online" : "Offline";
 
         public bool IsOnline
         {
             get => _isOnline;
-            set { _isOnline = value; OnPropertyChanged(); }
+            set { _isOnline = value; OnPropertyChanged(); OnPropertyChanged(nameof(Status)); }
         }
 
         public bool IsSelected
@@ -360,6 +457,7 @@ namespace IRIS.UI.ViewModels
         private string _name = string.Empty;
         private string _version = string.Empty;
         private string _installCount = string.Empty;
+        private bool _isSelected;
 
         public string Icon
         {
@@ -383,6 +481,12 @@ namespace IRIS.UI.ViewModels
         {
             get => _installCount;
             set { _installCount = value; OnPropertyChanged(); }
+        }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -448,5 +552,11 @@ namespace IRIS.UI.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    /// <summary>Simple wrapper for file names used in the SelectedFiles binding.</summary>
+    public class FileItem
+    {
+        public string FileName { get; set; } = string.Empty;
     }
 }

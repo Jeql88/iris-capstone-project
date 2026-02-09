@@ -18,9 +18,9 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
-            <ui:SymbolIcon Symbol="Shield24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+            <ui:SymbolIcon Symbol="Shield24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
             <TextBlock Text="Policy Enforcement" FontSize="32" FontWeight="Bold" 
-                       Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                       Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- Main Content -->
@@ -33,7 +33,7 @@
 
             <!-- Left Panel: Room Selection -->
             <ui:Card Grid.Column="0">
-                <Grid Margin="10">
+                <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -41,9 +41,9 @@
 
                     <!-- Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Building24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Building24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Select Laboratory" FontSize="16" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                     </StackPanel>
 
                     <!-- Room List -->
@@ -60,8 +60,8 @@
                                                 <Setter Property="BorderThickness" Value="1"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource IRISPrimaryBrush}"/>
-                                                        <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -83,10 +83,10 @@
                                                     <Ellipse Width="6" Height="6" Margin="0,0,6,0">
                                                         <Ellipse.Style>
                                                             <Style TargetType="Ellipse">
-                                                                <Setter Property="Fill" Value="{StaticResource OnlineStatusBrush}"/>
+                                                                <Setter Property="Fill" Value="{DynamicResource OnlineStatusBrush}"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding OnlineCount}" Value="0">
-                                                                        <Setter Property="Fill" Value="{StaticResource OfflineStatusBrush}"/>
+                                                                        <Setter Property="Fill" Value="{DynamicResource OfflineStatusBrush}"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -127,9 +127,9 @@
                     <!-- Header -->
                     <StackPanel Grid.Row="0" Margin="0,0,0,25">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <ui:SymbolIcon Symbol="Options24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="Options24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Policy Configuration" FontSize="18" FontWeight="Bold" 
-                                       Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
                         </StackPanel>
                         <TextBlock Text="{Binding SelectedRoomText}" FontSize="14" 
                                    Foreground="#666666"/>
@@ -140,7 +140,7 @@
                         
                         <!-- Wallpaper Reset Policy -->
                         <ui:Card Margin="0,0,0,15">
-                            <Grid Margin="10">
+                            <Grid Margin="15">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -152,9 +152,9 @@
                                 
                                 <StackPanel Grid.Column="0" Grid.Row="0">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <ui:SymbolIcon Symbol="Image24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Image24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Wallpaper Reset on Start-up" FontWeight="Bold" FontSize="16" 
-                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Automatically resets desktop wallpaper to default when PCs start up." 
                                                FontSize="13" Foreground="#666666" 
@@ -187,7 +187,7 @@
 
                         <!-- Auto Shutdown Policy -->
                         <ui:Card>
-                            <Grid Margin="10">
+                            <Grid Margin="15">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -199,9 +199,9 @@
                                 
                                 <StackPanel Grid.Column="0" Grid.Row="0">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <ui:SymbolIcon Symbol="Power24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Power24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Auto Shutdown After Idle" FontWeight="Bold" FontSize="16" 
-                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Automatically shuts down PCs after specified idle time" 
                                                FontSize="13" Foreground="#666666" 
@@ -246,7 +246,7 @@
                         <!-- Status Message -->
                         <ui:InfoBar Title="Status"
                                    Message="{Binding StatusMessage}"
-                                   IsOpen="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=Bool}"
+                                   IsOpen="{Binding HasStatusMessage}"
                                    IsClosable="False"
                                    Margin="0,0,0,15"/>
                         

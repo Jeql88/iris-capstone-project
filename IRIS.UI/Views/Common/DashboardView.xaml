@@ -30,7 +30,7 @@
                 <!-- Logo -->
                 <StackPanel Grid.Row="0" Margin="20,25,20,30">
                     <TextBlock Text="IRIS" FontSize="28" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Resource Management" FontSize="11" Foreground="#CCCCCC" Margin="0,2,0,0"/>
+                    <TextBlock Text="Resource Management" FontSize="11" Foreground="#CCAAAAAA" Margin="0,2,0,0"/>
                 </StackPanel>
                 
                 <!-- Navigation Items -->
@@ -39,6 +39,7 @@
                               Content="Dashboard" 
                               Icon="{ui:SymbolIcon Home24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -48,6 +49,7 @@
                               Content="Monitor" 
                               Icon="{ui:SymbolIcon Desktop24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -57,6 +59,7 @@
                               Content="Software Management" 
                               Icon="{ui:SymbolIcon Apps24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -66,6 +69,7 @@
                               Content="Policy Enforcement" 
                               Icon="{ui:SymbolIcon Shield24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -75,6 +79,7 @@
                               Content="Access Logs" 
                               Icon="{ui:SymbolIcon ClipboardTextLtr24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -84,6 +89,7 @@
                               Content="User Management" 
                               Icon="{ui:SymbolIcon People24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -93,6 +99,7 @@
                               Content="Usage Metrics" 
                               Icon="{ui:SymbolIcon DataUsage24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
@@ -102,10 +109,25 @@
                               Content="Settings" 
                               Icon="{ui:SymbolIcon Settings24}"
                               Appearance="Secondary"
+                              Foreground="White"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Margin="0,2"
                               Click="SettingsBtn_Click"/>
+                </StackPanel>
+                
+                <!-- Logout Button -->
+                <StackPanel Grid.Row="2" Margin="10,10,10,20">
+                    <Separator Margin="0,0,0,10" Background="#44FFFFFF"/>
+                    <ui:Button x:Name="LogoutBtn" 
+                              Content="Logout" 
+                              Icon="{ui:SymbolIcon SignOut24}"
+                              Appearance="Secondary"
+                              Foreground="#FFCCCCCC"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Left"
+                              Margin="0,2"
+                              Click="LogoutBtn_Click"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -117,7 +139,7 @@
                     <!-- Header with Lab Selector -->
                     <Grid Margin="0,0,0,25">
                         <TextBlock Text="Dashboard" FontSize="32" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                         <ComboBox HorizontalAlignment="Right" Width="180" 
                                      SelectedItem="{Binding SelectedLab}">
                             <ComboBoxItem Content="Archi Lab 1" IsSelected="True" Foreground="#1a1a1a"/>
@@ -137,12 +159,12 @@
 
                         <!-- Latency Card -->
                         <ui:Card Grid.Column="0">
-                            <StackPanel Margin="5">
+                            <StackPanel Margin="15">
                                 <Grid Margin="0,0,0,15">
                                     <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Pulse24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Pulse24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Latency (ms)" FontSize="18" FontWeight="Bold" 
-                                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
                                                Foreground="#666666" 
@@ -167,12 +189,12 @@
 
                         <!-- Network Performance Card -->
                         <ui:Card Grid.Column="2">
-                            <StackPanel Margin="5">
+                            <StackPanel Margin="15">
                                 <Grid Margin="0,0,0,15">
                                     <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Wifi124" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Wifi124" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Network Performance" FontSize="18" FontWeight="Bold" 
-                                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
                                                Foreground="#666666" 
@@ -211,12 +233,12 @@
 
                         <!-- Packet Loss Card -->
                         <ui:Card Grid.Column="0">
-                            <StackPanel Margin="5">
+                            <StackPanel Margin="15">
                                 <Grid Margin="0,0,0,15">
                                     <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Warning24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Warning24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Packet Loss %" FontSize="18" FontWeight="Bold" 
-                                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Last 24 hours" FontSize="12" 
                                                Foreground="#666666" 
@@ -234,11 +256,11 @@
 
                         <!-- Heavy Applications Monitor Card -->
                         <ui:Card Grid.Column="2">
-                            <StackPanel Margin="5">
+                            <StackPanel Margin="15">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                    <ui:SymbolIcon Symbol="AppsList24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <ui:SymbolIcon Symbol="AppsList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Heavy Applications Monitor" FontSize="18" FontWeight="Bold" 
-                                               Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                 </StackPanel>
                                 <ItemsControl ItemsSource="{Binding HeavyApplications}">
                                     <ItemsControl.ItemTemplate>
@@ -252,7 +274,7 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Border Grid.Column="0" Width="40" Height="40" 
-                                                            Background="{StaticResource IRISPrimaryBrush}" 
+                                                            Background="{DynamicResource IRISPrimaryBrush}" 
                                                             CornerRadius="8">
                                                         <TextBlock Text="{Binding Icon}" Foreground="White" 
                                                                    FontWeight="Bold" FontSize="14" 
@@ -287,7 +309,7 @@
             <StackPanel Margin="20">
                 <Grid Margin="0,0,0,20">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="DesktopPulse24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="DesktopPulse24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold" Foreground="#1a1a1a"/>
                     </StackPanel>
                     <TextBlock FontSize="13" Foreground="#666666" 
@@ -301,7 +323,7 @@
                 <ItemsControl ItemsSource="{Binding LabStatuses}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{StaticResource IRISPrimaryBrush}" 
+                            <Border Background="{DynamicResource IRISPrimaryBrush}" 
                                     CornerRadius="10" Padding="18,15" Margin="0,0,0,10">
                                 <Grid>
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 

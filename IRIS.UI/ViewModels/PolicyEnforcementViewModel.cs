@@ -122,8 +122,11 @@ namespace IRIS.UI.ViewModels
             {
                 _statusMessage = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasStatusMessage));
             }
         }
+
+        public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
         
         public string StatusMessageColor
         {

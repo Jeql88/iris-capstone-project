@@ -127,7 +127,7 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        private async Task CreateHardwareConfigAsync(int pcId)
+        private Task CreateHardwareConfigAsync(int pcId)
         {
             try
             {

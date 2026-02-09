@@ -14,18 +14,18 @@
             <StackPanel Margin="25,20">
                 <!-- Header -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                    <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                     <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
-                               Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Search and Filters Card -->
                 <ui:Card Margin="0,0,0,20">
-                    <StackPanel Margin="10">
+                    <StackPanel Margin="15">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <ui:SymbolIcon Symbol="Search24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="Search24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Search Users" FontSize="18" FontWeight="Bold" 
-                                       Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -70,7 +70,7 @@
 
                 <!-- Users Table Card -->
                 <ui:Card>
-                    <Grid Margin="10">
+                    <Grid Margin="15">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -80,9 +80,9 @@
                         <!-- Table Header -->
                         <Grid Grid.Row="0" Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="PeopleList24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <ui:SymbolIcon Symbol="PeopleList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                 <TextBlock Text="System Users" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
@@ -136,11 +136,11 @@
                 <StackPanel Margin="20">
                     <!-- Add New User Section -->
                     <ui:Card Margin="0,0,0,20">
-                        <StackPanel Margin="10">
+                        <StackPanel Margin="15">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                 <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
                             </StackPanel>
                             
                             <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
@@ -173,12 +173,12 @@
 
                     <!-- Manage User Section -->
                     <ui:Card>
-                        <StackPanel Margin="10">
+                        <StackPanel Margin="15">
                             <Grid Margin="0,0,0,20">
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Manage User" FontSize="18" FontWeight="Bold" 
-                                               Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                 </StackPanel>
                                 <ui:Button x:Name="HelpIcon" 
                                            ToolTip="Select a user from the table to edit"

@@ -54,8 +54,11 @@ namespace IRIS.UI.ViewModels
             {
                 _errorMessage = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasError));
             }
         }
+
+        public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
         public bool IsLoading
         {

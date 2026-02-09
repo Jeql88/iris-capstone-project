@@ -25,17 +25,17 @@
 
             <StackPanel Grid.Column="0">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <ui:SymbolIcon Symbol="Eye24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <ui:SymbolIcon Symbol="Eye24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                     <TextBlock Text="View Screen" FontSize="32" FontWeight="Bold" 
-                               Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <ui:Button Command="{Binding BackCommand}" 
                            Appearance="Secondary" BorderThickness="0" Padding="0"
                            Background="Transparent" HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="ArrowLeft24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
+                        <ui:SymbolIcon Symbol="ArrowLeft24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
                         <TextBlock Text="Back to Tiled-View" FontSize="14" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}" FontWeight="SemiBold"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}" FontWeight="SemiBold"/>
                     </StackPanel>
                 </ui:Button>
             </StackPanel>
@@ -45,10 +45,10 @@
                 <Ellipse Width="10" Height="10" Margin="0,0,8,0">
                     <Ellipse.Style>
                         <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="{StaticResource OnlineStatusBrush}"/>
+                            <Setter Property="Fill" Value="{DynamicResource OnlineStatusBrush}"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsConnected}" Value="False">
-                                    <Setter Property="Fill" Value="{StaticResource OfflineStatusBrush}"/>
+                                    <Setter Property="Fill" Value="{DynamicResource OfflineStatusBrush}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -83,7 +83,7 @@
                             Background="{DynamicResource ControlFillColorDefaultBrush}">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Border Width="80" Height="80" CornerRadius="40" 
-                                    Background="{StaticResource OfflineStatusBrush}" Margin="0,0,0,20">
+                                    Background="{DynamicResource OfflineStatusBrush}" Margin="0,0,0,20">
                                 <ui:SymbolIcon Symbol="DesktopOff24" FontSize="36" Foreground="White"/>
                             </Border>
                             <TextBlock Text="PC is Offline" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="#1a1a1a"/>
@@ -117,7 +117,7 @@
                     <!-- PC Info -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <Border Width="50" Height="50" CornerRadius="8" 
-                                Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,15,0">
+                                Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,15,0">
                             <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="White"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
@@ -161,9 +161,9 @@
                                Background="Transparent" HorizontalAlignment="Left" Padding="0">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="{Binding DetailsExpandIcon}" 
-                                          Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
+                                          Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
                             <TextBlock Text="View PC Details" FontSize="14" 
-                                       Foreground="{StaticResource IRISSecondaryBrush}" FontWeight="SemiBold"/>
+                                       Foreground="{DynamicResource IRISSecondaryBrush}" FontWeight="SemiBold"/>
                         </StackPanel>
                     </ui:Button>
 
@@ -181,9 +181,9 @@
                             <ui:Card Grid.Column="0">
                                 <StackPanel Margin="12">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <ui:SymbolIcon Symbol="Globe24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Globe24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="Network Information" FontWeight="Bold" FontSize="14" 
-                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -220,9 +220,9 @@
                             <ui:Card Grid.Column="2">
                                 <StackPanel Margin="12">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                        <ui:SymbolIcon Symbol="Info24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                        <ui:SymbolIcon Symbol="Info24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                         <TextBlock Text="System Information" FontWeight="Bold" FontSize="14" 
-                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                     </StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -244,7 +244,7 @@
                                                    Foreground="#666666" Margin="0,0,0,8"/>
                                         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                                             <ProgressBar Value="{Binding CpuUsage}" Width="80" Height="8" 
-                                                        Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                        Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                             <TextBlock Text="{Binding CpuUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
 
@@ -252,7 +252,7 @@
                                                    Foreground="#666666" Margin="0,0,0,8"/>
                                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                                             <ProgressBar Value="{Binding RamUsage}" Width="80" Height="8" 
-                                                        Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                             <TextBlock Text="{Binding RamUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
 
@@ -260,7 +260,7 @@
                                                    Foreground="#666666"/>
                                         <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
                                             <ProgressBar Value="{Binding DiskUsage}" Width="80" Height="8" 
-                                                        Foreground="{StaticResource IRISAccentBrush}"/>
+                                                        Foreground="{DynamicResource IRISAccentBrush}"/>
                                             <TextBlock Text="{Binding DiskUsage, StringFormat={}{0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                         </StackPanel>
                                     </Grid>

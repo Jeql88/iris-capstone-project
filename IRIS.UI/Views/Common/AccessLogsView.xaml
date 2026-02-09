@@ -7,18 +7,18 @@
         <StackPanel Margin="25,20">
             <!-- Header -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                 <TextBlock Text="Access Logs" FontSize="32" FontWeight="Bold" 
-                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Search and Filters Card -->
             <ui:Card Margin="0,0,0,20">
-                <StackPanel Margin="10">
+                <StackPanel Margin="15">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Filter24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Filter Access Logs" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -69,7 +69,7 @@
 
             <!-- Access Logs Table Card -->
             <ui:Card>
-                <Grid Margin="10">
+                <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -79,9 +79,9 @@
                     <!-- Table Header -->
                     <Grid Grid.Row="0" Margin="0,0,0,20">
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="History24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="History24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="System Access Logs" FontSize="18" FontWeight="Bold" 
-                                       Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>

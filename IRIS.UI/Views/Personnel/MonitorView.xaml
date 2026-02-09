@@ -25,9 +25,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <ui:SymbolIcon Symbol="Desktop24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <ui:SymbolIcon Symbol="Desktop24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                 <TextBlock Text="PC Monitoring" FontSize="32" FontWeight="Bold" 
-                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Room Selector -->
@@ -41,7 +41,7 @@
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
-                                <TextBlock Text="{Binding RoomNumber}" Foreground="#1a1a1a"/>
+                                <TextBlock Text="{Binding}" Foreground="#1a1a1a"/>
                             </StackPanel>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
@@ -69,7 +69,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
-                            Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,15,0">
+                            Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,15,0">
                         <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -77,7 +77,7 @@
                         <TextBlock Text="Total PCs" FontSize="12" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalPCCount}" FontSize="28" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -90,7 +90,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
-                            Background="{StaticResource OnlineStatusBrush}" Margin="0,0,15,0">
+                            Background="{DynamicResource OnlineStatusBrush}" Margin="0,0,15,0">
                         <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="24" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -98,7 +98,7 @@
                         <TextBlock Text="Online" FontSize="12" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding OnlinePCCount}" FontSize="28" FontWeight="Bold" 
-                                   Foreground="{StaticResource OnlineStatusBrush}"/>
+                                   Foreground="{DynamicResource OnlineStatusBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -111,7 +111,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
-                            Background="{StaticResource OfflineStatusBrush}" Margin="0,0,15,0">
+                            Background="{DynamicResource OfflineStatusBrush}" Margin="0,0,15,0">
                         <ui:SymbolIcon Symbol="DismissCircle24" FontSize="24" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -119,7 +119,7 @@
                         <TextBlock Text="Offline" FontSize="12" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding OfflinePCCount}" FontSize="28" FontWeight="Bold" 
-                                   Foreground="{StaticResource OfflineStatusBrush}"/>
+                                   Foreground="{DynamicResource OfflineStatusBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -132,7 +132,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Width="50" Height="50" CornerRadius="8" 
-                            Background="{StaticResource IdleStatusBrush}" Margin="0,0,15,0">
+                            Background="{DynamicResource IdleStatusBrush}" Margin="0,0,15,0">
                         <ui:SymbolIcon Symbol="Clock24" FontSize="24" Foreground="White" 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -140,7 +140,7 @@
                         <TextBlock Text="Idle" FontSize="12" 
                                    Foreground="#666666"/>
                         <TextBlock Text="{Binding IdlePCCount}" FontSize="28" FontWeight="Bold" 
-                                   Foreground="{StaticResource IdleStatusBrush}"/>
+                                   Foreground="{DynamicResource IdleStatusBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -162,9 +162,9 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Grid24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Grid24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Laboratory PCs" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -202,7 +202,7 @@
                                             <Setter Property="BorderThickness" Value="1"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                    <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
                                                     <Setter Property="BorderThickness" Value="2"/>
                                                 </DataTrigger>
                                             </Style.Triggers>

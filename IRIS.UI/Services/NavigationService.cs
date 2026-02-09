@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace IRIS.UI.Services
 {
@@ -10,6 +11,7 @@ namespace IRIS.UI.Services
         private IServiceScope? _currentScope;
         private readonly Stack<(string viewKey, object? parameter)> _navigationStack = new();
         private readonly Dictionary<string, Type> _viewRegistry = new();
+        private ILogger<NavigationService>? _logger;
 
         public NavigationService()
         {
@@ -20,6 +22,7 @@ namespace IRIS.UI.Services
         {
             _navigationFrame = navigationFrame;
             _serviceProvider = serviceProvider;
+            _logger = serviceProvider.GetService<ILogger<NavigationService>>();
         }
 
         public bool CanGoBack => _navigationStack.Count > 1;
@@ -70,8 +73,16 @@ namespace IRIS.UI.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Navigation error to '{viewKey}': {ex.Message}");
-                System.Windows.MessageBox.Show($"Failed to navigate to {viewKey}: {ex.Message}", "Navigation Error", 
+                var errorMsg = $"[NavigationService] Failed to navigate to '{viewKey}'.\n" +
+                               $"  Exception: {ex.GetType().FullName}\n" +
+                               $"  Message: {ex.Message}\n" +
+                               $"  Inner: {ex.InnerException?.Message}\n" +
+                               $"  StackTrace:\n{ex.StackTrace}";
+                System.Diagnostics.Debug.WriteLine(errorMsg);
+                _logger?.LogError(ex, "Navigation error to '{ViewKey}'", viewKey);
+                System.Windows.MessageBox.Show(
+                    $"Failed to navigate to {viewKey}:\n\n{ex.Message}\n\nInner: {ex.InnerException?.Message}",
+                    "Navigation Error",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
@@ -101,7 +112,13 @@ namespace IRIS.UI.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Navigation error (back) to '{viewKey}': {ex.Message}");
+                var errorMsg = $"[NavigationService] Failed to go back to '{viewKey}'.\n" +
+                               $"  Exception: {ex.GetType().FullName}\n" +
+                               $"  Message: {ex.Message}\n" +
+                               $"  Inner: {ex.InnerException?.Message}\n" +
+                               $"  StackTrace:\n{ex.StackTrace}";
+                System.Diagnostics.Debug.WriteLine(errorMsg);
+                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", viewKey);
             }
         }
     }

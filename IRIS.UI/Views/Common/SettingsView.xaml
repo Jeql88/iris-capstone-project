@@ -4,21 +4,21 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="30,20" MaxWidth="700">
+        <StackPanel Margin="25,20" MaxWidth="700">
             <!-- Header -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                <ui:SymbolIcon Symbol="Settings24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                <ui:SymbolIcon Symbol="Settings24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                 <TextBlock Text="Settings" FontSize="32" FontWeight="Bold" 
-                           Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- User Profile Card -->
             <ui:Card Margin="0,0,0,20">
                 <StackPanel Margin="15">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Person24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Person24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="User Profile" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                     
                     <Grid>
@@ -32,16 +32,23 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15" Foreground="#1a1a1a"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username}" FontSize="14" 
-                                   Foreground="#666666" Margin="0,0,0,15"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" 
+                                   Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username, FallbackValue='—'}" FontSize="14" 
+                                   Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15" Foreground="#1a1a1a"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName}" FontSize="14" 
-                                   Foreground="#666666" Margin="0,0,0,15"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" 
+                                   Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName, FallbackValue='—'}" FontSize="14" 
+                                   Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold" Foreground="#1a1a1a"/>
-                        <ui:Badge Grid.Row="2" Grid.Column="1" Content="{Binding Role}" Appearance="Danger" HorizontalAlignment="Left"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold" 
+                                   Foreground="#1a1a1a" VerticalAlignment="Center"/>
+                        <Border Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left"
+                                Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="4" Padding="10,4">
+                            <TextBlock Text="{Binding Role, FallbackValue='—'}" FontSize="13" 
+                                       Foreground="White" FontWeight="SemiBold"/>
+                        </Border>
                     </Grid>
                 </StackPanel>
             </ui:Card>
@@ -50,9 +57,9 @@
             <ui:Card Margin="0,0,0,20">
                 <StackPanel Margin="15">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Key24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Key24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Change Password" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                     
                     <TextBlock Text="Current Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
@@ -86,9 +93,9 @@
             <ui:Card>
                 <StackPanel Margin="15">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="SignOut24" Foreground="{StaticResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="SignOut24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Session" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{StaticResource IRISSecondaryBrush}"/>
+                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                     
                     <ui:Button x:Name="LogoutButton" 

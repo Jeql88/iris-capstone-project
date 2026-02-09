@@ -17,9 +17,9 @@
 
         <!-- Header Section -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
-            <ui:SymbolIcon Symbol="AppsAddIn24" FontSize="32" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+            <ui:SymbolIcon Symbol="AppsAddIn24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
             <TextBlock Text="Software &amp; File Management" FontSize="32" FontWeight="Bold" 
-                       Foreground="{StaticResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                       Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- Main Content -->
@@ -59,9 +59,9 @@
                         <!-- Destination Path -->
                         <StackPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <ui:SymbolIcon Symbol="Folder24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                <ui:SymbolIcon Symbol="Folder24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                 <TextBlock Text="Destination Path" FontWeight="Bold" FontSize="14" 
-                                           Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                           Foreground="{DynamicResource IRISPrimaryBrush}"/>
                             </StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -83,7 +83,7 @@
                         <!-- File Upload Area -->
                         <Border Height="250" CornerRadius="12" Margin="0,0,0,15"
                                 Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{StaticResource IRISPrimaryBrush}"
+                                BorderBrush="{DynamicResource IRISPrimaryBrush}"
                                 BorderThickness="2" 
                                 AllowDrop="True"
                                 Drop="FileDropZone_Drop"
@@ -91,7 +91,7 @@
                             <Grid>
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                                     <Border Width="80" Height="80" CornerRadius="40" 
-                                            Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,0,15"
+                                            Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,0,15"
                                             HorizontalAlignment="Center">
                                         <ui:SymbolIcon Symbol="ArrowUpload24" FontSize="36" Foreground="White"/>
                                     </Border>
@@ -111,7 +111,7 @@
                         <!-- Selected Files List -->
                         <StackPanel Visibility="{Binding HasSelectedFiles, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <ui:SymbolIcon Symbol="DocumentMultiple24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                <ui:SymbolIcon Symbol="DocumentMultiple24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                                 <TextBlock Text="Selected Files" FontWeight="Bold" FontSize="14" Foreground="#1a1a1a"/>
                                 <ui:Badge Appearance="Primary" Margin="10,0,0,0">
                                     <TextBlock Text="{Binding SelectedFilesCount}" FontSize="11"/>
@@ -121,7 +121,7 @@
                                 <ItemsControl ItemsSource="{Binding SelectedFiles}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,0,5" Padding="10" CornerRadius="6"
+                                            <Border Margin="0,0,0,5" Padding="10" CornerRadius="8"
                                                     Background="{DynamicResource ControlFillColorSecondaryBrush}">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -130,7 +130,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <ui:SymbolIcon Grid.Column="0" Symbol="Document24" Margin="0,0,10,0" 
-                                                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                                                     <TextBlock Grid.Column="1" Text="{Binding FileName}" 
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="#1a1a1a"/>
                                                     <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss24}"
@@ -149,9 +149,9 @@
                     <!-- Uninstall Mode Content -->
                     <StackPanel Grid.Row="1" x:Name="UninstallModePanel" Visibility="Collapsed">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <ui:SymbolIcon Symbol="Apps24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                            <ui:SymbolIcon Symbol="Apps24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Installed Applications" FontWeight="Bold" FontSize="14" 
-                                       Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
                         </StackPanel>
                         
                         <ui:TextBox PlaceholderText="Search applications..."
@@ -175,8 +175,9 @@
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource IRISDarkBrush}"/>
-                                                            <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                            <Setter Property="Background" Value="{DynamicResource IRISLightBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="2"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -188,7 +189,7 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Width="45" Height="45" CornerRadius="8"
-                                                        Background="{StaticResource IRISPrimaryBrush}" Margin="0,0,12,0">
+                                                        Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0">
                                                     <ui:SymbolIcon Symbol="Apps24" FontSize="20" Foreground="White"/>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -229,9 +230,9 @@
 
                     <!-- Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                        <ui:SymbolIcon Symbol="Desktop24" Foreground="{StaticResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                        <ui:SymbolIcon Symbol="Desktop24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
                         <TextBlock Text="Target PCs" FontWeight="Bold" FontSize="16" 
-                                   Foreground="{StaticResource IRISPrimaryBrush}"/>
+                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
                     </StackPanel>
 
                     <!-- Room Selector -->
@@ -242,7 +243,7 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding RoomNumber}" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="{Binding}" Foreground="#1a1a1a"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
@@ -262,8 +263,9 @@
                                                 <Setter Property="BorderThickness" Value="1"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource IRISDarkBrush}"/>
-                                                        <Setter Property="BorderBrush" Value="{StaticResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource IRISLightBrush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="2"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -274,13 +276,13 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6" Margin="0,0,10,0">
+                                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
-                                                        <Setter Property="Background" Value="{StaticResource OnlineStatusBrush}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource OnlineStatusBrush}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Status}" Value="Offline">
-                                                                <Setter Property="Background" Value="{StaticResource OfflineStatusBrush}"/>
+                                                                <Setter Property="Background" Value="{DynamicResource OfflineStatusBrush}"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
