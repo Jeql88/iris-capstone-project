@@ -13,23 +13,32 @@ namespace IRIS.UI.ViewModels
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
         private int _pcId;
-        private bool _isDetailsExpanded;
-        private string _pcName = "LB448";
-        private string _pcNumber = "PC12";
-        private string _ip = "192.168.1.102";
+        private bool _isDetailsExpanded = true;
+        private string _pcName = string.Empty;
+        private string _pcNumber = string.Empty;
+        private string _roomName = string.Empty;
+        private string _ip = string.Empty;
+        private string _macAddress = string.Empty;
         private string _subnet = "255.255.255.0";
-        private string _network = "32 Mbps";
-        private string _os = "Windows 10 Pro";
-        private string _cpu = "74%";
-        private string _cpuTemp = "63°C";
-        private string _gpuTemp = "44°C";
-        private string _ram = "15%";
-        private string _cpuModel = "CPU: AMD Ryzen 9 7950X";
-        private string _gpuModel = "GPU: NVIDIA RTX 4070 Super 12GB";
-        private string _motherboard = "Motherboard: ASUS ProArt X670E-Creator WiFi";
-        private string _ramModel = "RAM: Corsair Vengeance 64GB DDR5 5600MHz";
-        private string _storagePrimary = "Storage (Primary): Samsung 990 PRO 2TB NVMe SSD";
-        private string _storageSecondary = "Storage (Secondary): Seagate Barracuda 4TB HDD (7200 RPM)";
+        private string _network = string.Empty;
+        private string _os = string.Empty;
+        private string _cpu = string.Empty;
+        private string _cpuTemp = "N/A";
+        private string _gpuTemp = "N/A";
+        private string _ram = string.Empty;
+        private double _cpuUsage;
+        private double _ramUsage;
+        private double _diskUsage;
+        private string _cpuModel = string.Empty;
+        private string _gpuModel = string.Empty;
+        private string _motherboard = string.Empty;
+        private string _ramModel = string.Empty;
+        private string _storagePrimary = string.Empty;
+        private string _storageSecondary = string.Empty;
+        private string _connectionStatus = "Connected";
+        private bool _isConnected = true;
+        private bool _isLoading;
+        private bool _isDisconnected;
 
         public ViewScreenViewModel(INavigationService navigationService, IMonitoringService monitoringService)
         {
@@ -38,7 +47,12 @@ namespace IRIS.UI.ViewModels
             ToggleDetailsCommand = new RelayCommand(async () => await ToggleDetailsAsync(), () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => true);
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
+            ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
+            RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
+            FullscreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+            RefreshScreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+            RetryConnectionCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
         }
 
@@ -59,7 +73,9 @@ namespace IRIS.UI.ViewModels
 
         public string PCName { get => _pcName; set { _pcName = value; OnPropertyChanged(); } }
         public string PCNumber { get => _pcNumber; set { _pcNumber = value; OnPropertyChanged(); } }
+        public string RoomName { get => _roomName; set { _roomName = value; OnPropertyChanged(); } }
         public string IP { get => _ip; set { _ip = value; OnPropertyChanged(); } }
+        public string MacAddress { get => _macAddress; set { _macAddress = value; OnPropertyChanged(); } }
         public string Subnet { get => _subnet; set { _subnet = value; OnPropertyChanged(); } }
         public string Network { get => _network; set { _network = value; OnPropertyChanged(); } }
         public string OS { get => _os; set { _os = value; OnPropertyChanged(); } }
@@ -67,29 +83,50 @@ namespace IRIS.UI.ViewModels
         public string CPUTemp { get => _cpuTemp; set { _cpuTemp = value; OnPropertyChanged(); } }
         public string GPUTemp { get => _gpuTemp; set { _gpuTemp = value; OnPropertyChanged(); } }
         public string RAM { get => _ram; set { _ram = value; OnPropertyChanged(); } }
+        public double CpuUsage { get => _cpuUsage; set { _cpuUsage = value; OnPropertyChanged(); } }
+        public double RamUsage { get => _ramUsage; set { _ramUsage = value; OnPropertyChanged(); } }
+        public double DiskUsage { get => _diskUsage; set { _diskUsage = value; OnPropertyChanged(); } }
         public string CPUModel { get => _cpuModel; set { _cpuModel = value; OnPropertyChanged(); } }
         public string GPUModel { get => _gpuModel; set { _gpuModel = value; OnPropertyChanged(); } }
         public string Motherboard { get => _motherboard; set { _motherboard = value; OnPropertyChanged(); } }
         public string RAMModel { get => _ramModel; set { _ramModel = value; OnPropertyChanged(); } }
         public string StoragePrimary { get => _storagePrimary; set { _storagePrimary = value; OnPropertyChanged(); } }
         public string StorageSecondary { get => _storageSecondary; set { _storageSecondary = value; OnPropertyChanged(); } }
+        public string ConnectionStatus { get => _connectionStatus; set { _connectionStatus = value; OnPropertyChanged(); } }
+        public bool IsConnected { get => _isConnected; set { _isConnected = value; OnPropertyChanged(); } }
+        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
+        public bool IsDisconnected { get => _isDisconnected; set { _isDisconnected = value; OnPropertyChanged(); } }
 
         public ICommand ToggleDetailsCommand { get; }
         public ICommand LockScreenCommand { get; }
         public ICommand ShutDownCommand { get; }
+        public ICommand ShutdownPCCommand { get; }
+        public ICommand RestartPCCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
+        public ICommand FullscreenCommand { get; }
+        public ICommand RefreshScreenCommand { get; }
+        public ICommand RetryConnectionCommand { get; }
         public ICommand BackCommand { get; }
 
         public async void LoadPCData(PCDisplayModel pc)
         {
             _pcId = pc.Id;
-            PCName = "LB448";
-            PCNumber = pc.Name;
-            IP = pc.IP.Replace("IP: ", "");
-            Network = pc.Network.Replace("Network: ", "");
-            OS = pc.OS.Replace("OS: ", "");
-            CPU = pc.CPU.Replace("CPU: ", "");
-            RAM = pc.RAM.Replace("RAM: ", "");
+            PCName = pc.PCName;
+            PCNumber = pc.PCName;
+            RoomName = pc.RoomName;
+            IP = pc.IPAddress;
+            MacAddress = pc.MacAddress;
+            Network = pc.Network;
+            OS = pc.OS;
+            CPU = pc.CPU;
+            RAM = pc.RAM;
+            CpuUsage = pc.CpuUsagePercent;
+            RamUsage = pc.RamUsagePercent;
+            DiskUsage = pc.DiskUsagePercent;
+
+            ConnectionStatus = pc.Status == "Online" ? "Connected" : "Disconnected";
+            IsConnected = pc.Status == "Online";
+            IsDisconnected = pc.Status == "Offline";
             
             await LoadHardwareConfigAsync();
         }

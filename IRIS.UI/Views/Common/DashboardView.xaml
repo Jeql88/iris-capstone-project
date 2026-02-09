@@ -3,6 +3,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:IRIS.UI.Views.Common">
+
+    <UserControl.Resources>
+        <!-- Sidebar navigation button style that forces white text/icon -->
+        <Style x:Key="SidebarNavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     
     <Grid x:Name="MainGrid">
         <Grid.ColumnDefinitions>
@@ -35,99 +70,73 @@
                 
                 <!-- Navigation Items -->
                 <StackPanel Grid.Row="1" Margin="10,0">
-                    <ui:Button x:Name="DashboardBtn" 
-                              Content="Dashboard" 
-                              Icon="{ui:SymbolIcon Home24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="DashboardBtn_Click"/>
+                    <Button x:Name="DashboardBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="DashboardBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Home24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Dashboard" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="MonitorBtn" 
-                              Content="Monitor" 
-                              Icon="{ui:SymbolIcon Desktop24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="MonitorBtn_Click"/>
+                    <Button x:Name="MonitorBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="MonitorBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Desktop24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Monitor" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="SoftwareManagementBtn" 
-                              Content="Software Management" 
-                              Icon="{ui:SymbolIcon Apps24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="SoftwareManagementBtn_Click"/>
+                    <Button x:Name="SoftwareManagementBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="SoftwareManagementBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Apps24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Software Management" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="PolicyBtn" 
-                              Content="Policy Enforcement" 
-                              Icon="{ui:SymbolIcon Shield24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="PolicyBtn_Click"/>
+                    <Button x:Name="PolicyBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="PolicyBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Shield24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Policy Enforcement" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="AccessLogsBtn" 
-                              Content="Access Logs" 
-                              Icon="{ui:SymbolIcon ClipboardTextLtr24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="AccessLogsBtn_Click"/>
+                    <Button x:Name="AccessLogsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="AccessLogsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Access Logs" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="UserManagementBtn" 
-                              Content="User Management" 
-                              Icon="{ui:SymbolIcon People24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="UserManagementBtn_Click"/>
+                    <Button x:Name="UserManagementBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="UserManagementBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="People24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="User Management" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="UsageMetricsBtn" 
-                              Content="Usage Metrics" 
-                              Icon="{ui:SymbolIcon DataUsage24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="UsageMetricsBtn_Click"/>
+                    <Button x:Name="UsageMetricsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="UsageMetricsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="DataUsage24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Usage Metrics" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                     
-                    <ui:Button x:Name="SettingsBtn" 
-                              Content="Settings" 
-                              Icon="{ui:SymbolIcon Settings24}"
-                              Appearance="Secondary"
-                              Foreground="White"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="SettingsBtn_Click"/>
+                    <Button x:Name="SettingsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="SettingsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Settings24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Settings" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
                 
                 <!-- Logout Button -->
                 <StackPanel Grid.Row="2" Margin="10,10,10,20">
                     <Separator Margin="0,0,0,10" Background="#44FFFFFF"/>
-                    <ui:Button x:Name="LogoutBtn" 
-                              Content="Logout" 
-                              Icon="{ui:SymbolIcon SignOut24}"
-                              Appearance="Secondary"
-                              Foreground="#FFCCCCCC"
-                              HorizontalAlignment="Stretch"
-                              HorizontalContentAlignment="Left"
-                              Margin="0,2"
-                              Click="LogoutBtn_Click"/>
+                    <Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click"
+                            Background="#CC0000">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Logout" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

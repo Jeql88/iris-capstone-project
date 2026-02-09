@@ -146,6 +146,7 @@ namespace IRIS.Core.Services
             var query = _context.PCs
                 .Include(p => p.HardwareMetrics)
                 .Include(p => p.UserLogs)
+                .Include(p => p.Room)
                 .AsQueryable();
 
             if (roomId.HasValue)
@@ -168,11 +169,14 @@ namespace IRIS.Core.Services
                     Id = pc.Id,
                     Name = pc.Hostname ?? "Unknown",
                     IpAddress = pc.IpAddress ?? "N/A",
+                    MacAddress = pc.MacAddress ?? "",
+                    RoomName = pc.Room?.RoomNumber ?? "Unassigned",
                     OperatingSystem = pc.OperatingSystem ?? "Unknown",
                     Status = pc.Status.ToString(),
                     CpuUsage = latestMetric?.CpuUsage ?? 0,
                     RamUsage = latestMetric?.MemoryUsage ?? 0,
-                    NetworkUsage = 0, // Will be calculated from NetworkMetrics
+                    DiskUsage = latestMetric?.DiskUsage ?? 0,
+                    NetworkUsage = 0,
                     User = latestUser?.User?.Username ?? ""
                 };
             }).ToList();

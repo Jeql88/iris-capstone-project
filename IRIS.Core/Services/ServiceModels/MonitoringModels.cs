@@ -44,10 +44,13 @@ namespace IRIS.Core.Services.ServiceModels
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string IpAddress { get; set; } = string.Empty;
+        public string MacAddress { get; set; } = string.Empty;
+        public string RoomName { get; set; } = string.Empty;
         public string OperatingSystem { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public double CpuUsage { get; set; }
         public double RamUsage { get; set; }
+        public double DiskUsage { get; set; }
         public double NetworkUsage { get; set; }
         public string User { get; set; } = string.Empty;
     }

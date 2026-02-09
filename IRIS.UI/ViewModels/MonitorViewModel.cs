@@ -143,11 +143,16 @@ namespace IRIS.UI.ViewModels
                         Id = pc.Id,
                         PCName = pc.Name,
                         IPAddress = pc.IpAddress,
+                        MacAddress = pc.MacAddress,
+                        RoomName = pc.RoomName,
                         Status = pc.Status,
                         OS = pc.OperatingSystem,
                         CPU = $"{pc.CpuUsage:F0}%",
                         Network = $"{pc.NetworkUsage:F1} Mbps",
                         RAM = $"{pc.RamUsage:F0}%",
+                        CpuUsagePercent = pc.CpuUsage,
+                        RamUsagePercent = pc.RamUsage,
+                        DiskUsagePercent = pc.DiskUsage,
                         User = pc.User
                     });
                 }
@@ -215,6 +220,11 @@ namespace IRIS.UI.ViewModels
         private string _network = string.Empty;
         private string _ram = string.Empty;
         private string _user = string.Empty;
+        private string _macAddress = string.Empty;
+        private string _roomName = string.Empty;
+        private double _cpuUsagePercent;
+        private double _ramUsagePercent;
+        private double _diskUsagePercent;
         private bool _isSelected;
 
         public int Id
@@ -269,6 +279,36 @@ namespace IRIS.UI.ViewModels
         {
             get => _user;
             set { _user = value; OnPropertyChanged(); }
+        }
+
+        public string MacAddress
+        {
+            get => _macAddress;
+            set { _macAddress = value; OnPropertyChanged(); }
+        }
+
+        public string RoomName
+        {
+            get => _roomName;
+            set { _roomName = value; OnPropertyChanged(); }
+        }
+
+        public double CpuUsagePercent
+        {
+            get => _cpuUsagePercent;
+            set { _cpuUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double RamUsagePercent
+        {
+            get => _ramUsagePercent;
+            set { _ramUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double DiskUsagePercent
+        {
+            get => _diskUsagePercent;
+            set { _diskUsagePercent = value; OnPropertyChanged(); }
         }
 
         public bool IsSelected

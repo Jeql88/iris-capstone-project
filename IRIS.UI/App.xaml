@@ -24,7 +24,7 @@
             <SolidColorBrush x:Key="IRISDarkBrush" Color="{StaticResource IRISDark}" />
             <SolidColorBrush x:Key="IRISLightBrush" Color="{StaticResource IRISLight}" />
             
-            <!-- Override WPF-UI accent colors with red theme -->
+            <!-- Override WPF-UI accent colors with red theme (Brush overrides) -->
             <SolidColorBrush x:Key="SystemAccentColorPrimaryBrush" Color="#DC143C" />
             <SolidColorBrush x:Key="SystemAccentColorSecondaryBrush" Color="#8B0000" />
             <SolidColorBrush x:Key="SystemAccentColorTertiaryBrush" Color="#FF4141" />

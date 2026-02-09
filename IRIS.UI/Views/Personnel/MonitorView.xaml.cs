@@ -22,6 +22,7 @@ namespace IRIS.UI.Views.Personnel
                 if (DataContext is MonitorViewModel vm)
                 {
                     vm.SelectedPC = pc;
+                    vm.ViewScreenCommand.Execute(null);
                 }
             }
         }

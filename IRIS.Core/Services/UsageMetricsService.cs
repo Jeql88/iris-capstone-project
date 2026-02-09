@@ -77,4 +77,72 @@ public class UsageMetricsService : IUsageMetricsService
 
         return results;
     }
+
+    public async Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.SoftwareUsageHistory
+            .Include(s => s.PC)
+                .ThenInclude(p => p.Room)
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate)
+            .OrderByDescending(s => s.StartTime)
+            .Select(s => new ApplicationUsageDetailDto
+            {
+                Id = s.Id,
+                ApplicationName = s.ApplicationName,
+                PCName = s.PC.Hostname ?? "Unknown",
+                RoomNumber = s.PC.Room != null ? s.PC.Room.RoomNumber : "Unassigned",
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                Duration = s.Duration
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.WebsiteUsageHistory
+            .Include(w => w.PC)
+                .ThenInclude(p => p.Room)
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate)
+            .OrderByDescending(w => w.VisitedAt)
+            .Select(w => new WebsiteUsageDetailDto
+            {
+                Id = w.Id,
+                Url = w.Url,
+                Title = w.Domain ?? w.Url,
+                PCName = w.PC.Hostname ?? "Unknown",
+                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned",
+                VisitTime = w.VisitedAt,
+                VisitCount = w.VisitCount
+            })
+            .ToListAsync();
+    }
+
+    public async Task<UsageMetricsSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate)
+    {
+        var totalApps = await _context.SoftwareUsageHistory
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate)
+            .Select(s => s.ApplicationName)
+            .Distinct()
+            .CountAsync();
+
+        var totalWebsites = await _context.WebsiteUsageHistory
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate)
+            .Select(w => w.Domain)
+            .Distinct()
+            .CountAsync();
+
+        var totalHours = (await _context.SoftwareUsageHistory
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate && s.Duration != null)
+            .Select(s => s.Duration)
+            .ToListAsync())
+            .Sum(d => d?.TotalHours ?? 0);
+
+        return new UsageMetricsSummaryDto
+        {
+            TotalApplications = totalApps,
+            TotalWebsites = totalWebsites,
+            TotalHours = totalHours
+        };
+    }
 }

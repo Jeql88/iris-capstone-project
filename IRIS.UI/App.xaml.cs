@@ -45,7 +45,16 @@ namespace IRIS.UI
 
         private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show($"An unexpected error occurred:\n\n{e.Exception.Message}\n\n{e.Exception.StackTrace}", 
+            var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
+            var errorText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UNHANDLED DISPATCHER EXCEPTION\n" +
+                            $"  Type: {e.Exception.GetType().FullName}\n" +
+                            $"  Message: {e.Exception.Message}\n" +
+                            $"  Inner: {e.Exception.InnerException?.Message}\n" +
+                            $"  InnerInner: {e.Exception.InnerException?.InnerException?.Message}\n" +
+                            $"  StackTrace:\n{e.Exception.StackTrace}\n" +
+                            $"  InnerStackTrace:\n{e.Exception.InnerException?.StackTrace}\n\n";
+            System.IO.File.AppendAllText(logPath, errorText);
+            MessageBox.Show($"An unexpected error occurred:\n\n{e.Exception.Message}\n\nInner: {e.Exception.InnerException?.Message}\n\nLogged to: {logPath}", 
                 "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         }

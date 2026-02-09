@@ -12,7 +12,9 @@ namespace IRIS.UI.Views.Common
     {
         private INavigationService? _navigationService;
         private ScrollViewer? dashboardContent;
-        private static readonly SolidColorBrush ActiveBrush = new(Color.FromArgb(50, 255, 255, 255));
+        private static readonly SolidColorBrush ActiveBrush = new(Color.FromRgb(180, 40, 40));
+        private static readonly SolidColorBrush DefaultForeground = Brushes.White;
+        private static readonly SolidColorBrush ActiveForeground = Brushes.White;
 
         public DashboardView()
         {
@@ -45,9 +47,11 @@ namespace IRIS.UI.Views.Common
             foreach (var btn in allButtons)
             {
                 btn.Background = Brushes.Transparent;
+                btn.Foreground = DefaultForeground;
             }
 
             activeButton.Background = ActiveBrush;
+            activeButton.Foreground = ActiveForeground;
         }
 
         private void CollapseRightPanel()
