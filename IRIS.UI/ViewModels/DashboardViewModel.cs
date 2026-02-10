@@ -1,10 +1,17 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
+using System.Threading.Tasks;
 using System.Windows.Threading;
+using System.Collections.Generic;
+using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Series;
 
 namespace IRIS.UI.ViewModels
 {
@@ -12,7 +19,7 @@ namespace IRIS.UI.ViewModels
     {
         private readonly IMonitoringService _monitoringService;
         private readonly DispatcherTimer _refreshTimer;
-        private readonly int? _selectedRoomId = null; // null means all rooms
+        private int? _selectedRoomId = null; // null means all rooms
 
         public DashboardViewModel(IMonitoringService monitoringService)
         {
@@ -22,15 +29,23 @@ namespace IRIS.UI.ViewModels
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
             _refreshTimer.Start();
 
-            _ = LoadDataAsync();
+            _ = InitializeAsync();
         }
 
-        private string _selectedLab = "Archi Lab 1";
-        public string SelectedLab
+        private RoomDto? _selectedRoom;
+        public RoomDto? SelectedRoom
         {
-            get => _selectedLab;
-            set { _selectedLab = value; OnPropertyChanged(); _ = LoadDataAsync(); }
+            get => _selectedRoom;
+            set
+            {
+                _selectedRoom = value;
+                _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
+                OnPropertyChanged();
+                _ = LoadDataAsync();
+            }
         }
+
+        public ObservableCollection<RoomDto> Rooms { get; } = new();
 
         private double _averageLatency;
         public double AverageLatency
@@ -73,35 +88,33 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<HeavyApp> HeavyApplications { get; } = new();
         public ObservableCollection<LabStatus> LabStatuses { get; } = new();
 
+        public PlotModel LatencyPlot { get; private set; } = new();
+        public PlotModel BandwidthPlot { get; private set; } = new();
+        public PlotModel PacketLossPlot { get; private set; } = new();
+
+        private async Task InitializeAsync()
+        {
+            await LoadRoomsAsync();
+            await LoadDataAsync();
+        }
+
         private async Task LoadDataAsync()
         {
             try
             {
-                var metrics = await _monitoringService.GetDashboardMetricsAsync(_selectedRoomId);
-                AverageLatency = metrics.AverageLatency;
-                CurrentBandwidth = metrics.CurrentBandwidth;
-                PeakBandwidth = metrics.PeakBandwidth;
-                OnlinePCs = metrics.OnlinePCs;
-                TotalPCs = metrics.TotalPCs;
+                var summary = await _monitoringService.GetDashboardSummaryAsync(_selectedRoomId);
+                AverageLatency = summary.AverageLatency;
+                CurrentBandwidth = summary.CurrentBandwidth;
+                PeakBandwidth = summary.PeakBandwidth;
+                OnlinePCs = summary.OnlinePCs;
+                TotalPCs = summary.TotalPCs;
 
-                var latency = await _monitoringService.GetLatencyHistoryAsync(24);
-                LatencyData.Clear();
-                foreach (var point in latency)
-                    LatencyData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
+                LabStatuses.Clear();
+                foreach (var lab in summary.LabStatuses)
+                    LabStatuses.Add(new LabStatus { Name = lab.Key, ActivePCs = lab.Value });
 
-                var bandwidth = await _monitoringService.GetBandwidthHistoryAsync(24);
-                BandwidthData.Clear();
-                foreach (var point in bandwidth)
-                    BandwidthData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
-
-                var packetLoss = await _monitoringService.GetPacketLossHistoryAsync(24);
-                PacketLossData.Clear();
-                foreach (var point in packetLoss)
-                    PacketLossData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
-
-                var apps = await _monitoringService.GetHeavyApplicationsAsync(_selectedRoomId);
                 HeavyApplications.Clear();
-                foreach (var app in apps)
+                foreach (var app in summary.HeavyApplications)
                     HeavyApplications.Add(new HeavyApp
                     {
                         Name = app.Name,
@@ -110,15 +123,102 @@ namespace IRIS.UI.ViewModels
                         RamUsage = app.AverageRamUsage
                     });
 
-                var labs = await _monitoringService.GetActiveLabPCsAsync();
-                LabStatuses.Clear();
-                foreach (var lab in labs)
-                    LabStatuses.Add(new LabStatus { Name = lab.Key, ActivePCs = lab.Value });
+                var latency = await _monitoringService.GetLatencyHistoryAsync(24);
+                LatencyData.Clear();
+                foreach (var point in latency)
+                    LatencyData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
+                LatencyPlot = BuildLinePlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), "HH:mm", v => $"{v:F0} ms");
+                OnPropertyChanged(nameof(LatencyPlot));
+
+                var bandwidth = await _monitoringService.GetBandwidthHistoryAsync(24);
+                BandwidthData.Clear();
+                foreach (var point in bandwidth)
+                    BandwidthData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
+                BandwidthPlot = BuildLinePlot("Bandwidth (Mbps)", bandwidth.Select(p => (p.Timestamp, p.Value)), "HH:mm", v => $"{v:F1} Mbps");
+                OnPropertyChanged(nameof(BandwidthPlot));
+
+                var packetLoss = await _monitoringService.GetPacketLossHistoryAsync(24);
+                PacketLossData.Clear();
+                foreach (var point in packetLoss)
+                    PacketLossData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
+                PacketLossPlot = BuildLinePlot("Packet Loss (%)", packetLoss.Select(p => (p.Timestamp, p.Value)), "HH:mm", v => $"{v:F1}%");
+                OnPropertyChanged(nameof(PacketLossPlot));
+
             }
             catch { }
         }
 
         private async Task RefreshDataAsync() => await LoadDataAsync();
+
+        private async Task LoadRoomsAsync()
+        {
+            try
+            {
+                var rooms = await _monitoringService.GetRoomsAsync();
+                Rooms.Clear();
+
+                // All Labs option represented by null room id
+                Rooms.Add(new RoomDto(-1, "All Labs", "", 0, true, DateTime.UtcNow));
+
+                foreach (var room in rooms)
+                {
+                    Rooms.Add(room);
+                }
+
+                if (SelectedRoom == null && Rooms.Any())
+                {
+                    SelectedRoom = Rooms.First();
+                }
+            }
+            catch { }
+        }
+
+        private PlotModel BuildLinePlot(string title, IEnumerable<(DateTime Timestamp, double Value)> points, string timeFormat, Func<double, string> valueFormatter)
+        {
+            var model = new PlotModel { Title = title, TitleFontSize = 14, TitlePadding = 4 };
+
+            var timeAxis = new DateTimeAxis
+            {
+                Position = AxisPosition.Bottom,
+                StringFormat = timeFormat,
+                IntervalType = DateTimeIntervalType.Hours,
+                MinorIntervalType = DateTimeIntervalType.Minutes,
+                FontSize = 11,
+                IsZoomEnabled = false,
+                IsPanEnabled = false
+            };
+
+            var valueAxis = new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                LabelFormatter = valueFormatter,
+                FontSize = 11,
+                IsZoomEnabled = false,
+                IsPanEnabled = false,
+                MinimumPadding = 0.1,
+                MaximumPadding = 0.1
+            };
+
+            model.Axes.Add(timeAxis);
+            model.Axes.Add(valueAxis);
+
+            var series = new LineSeries
+            {
+                Color = OxyColor.FromRgb(180, 40, 40),
+                StrokeThickness = 2,
+                MarkerType = MarkerType.None,
+                LineJoin = LineJoin.Round,
+                CanTrackerInterpolatePoints = false
+            };
+
+            foreach (var p in points.OrderBy(p => p.Timestamp))
+            {
+                series.Points.Add(new OxyPlot.DataPoint(DateTimeAxis.ToDouble(p.Timestamp), p.Value));
+            }
+
+            model.Series.Add(series);
+            return model;
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>

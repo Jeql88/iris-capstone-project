@@ -41,7 +41,7 @@
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
-                                <TextBlock Text="{Binding}" Foreground="#1a1a1a"/>
+                                <TextBlock Text="{Binding RoomNumber}" Foreground="#1a1a1a"/>
                             </StackPanel>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>

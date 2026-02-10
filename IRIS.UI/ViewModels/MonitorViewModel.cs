@@ -8,6 +8,7 @@ using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
+using IRIS.Core.DTOs;
 
 namespace IRIS.UI.ViewModels
 {
@@ -17,7 +18,8 @@ namespace IRIS.UI.ViewModels
         private readonly IMonitoringService _monitoringService;
         private readonly DispatcherTimer _refreshTimer;
         private string _searchText = string.Empty;
-        private string? _selectedRoom;
+        private RoomDto? _selectedRoom;
+        private int? _selectedRoomId = null;
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
@@ -33,14 +35,8 @@ namespace IRIS.UI.ViewModels
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
             ShutdownPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
-            
-            // Initialize rooms
-            Rooms.Add("All Rooms");
-            Rooms.Add("Archi Lab 1");
-            Rooms.Add("Archi Lab 2");
-            Rooms.Add("Archi Lab 3");
-            Rooms.Add("Archi Lab 4");
-            _selectedRoom = Rooms.FirstOrDefault();
+
+            _ = LoadRoomsAsync();
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
@@ -51,7 +47,7 @@ namespace IRIS.UI.ViewModels
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
         public ObservableCollection<PCDisplayModel> FilteredPCs { get; } = new();
-        public ObservableCollection<string> Rooms { get; } = new();
+        public ObservableCollection<RoomDto> Rooms { get; } = new();
 
         public string SearchText
         {
@@ -64,10 +60,16 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        public string? SelectedRoom
+        public RoomDto? SelectedRoom
         {
             get => _selectedRoom;
-            set { _selectedRoom = value; OnPropertyChanged(); _ = LoadPCDataAsync(); }
+            set
+            {
+                _selectedRoom = value;
+                _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
+                OnPropertyChanged();
+                _ = LoadPCDataAsync();
+            }
         }
 
         public int TotalPCCount
@@ -131,8 +133,8 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var pcs = await _monitoringService.GetPCsForMonitorAsync();
-                var counts = await _monitoringService.GetPCStatusCountsAsync();
+                var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
+                var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
                 
                 PCs.Clear();
                 
@@ -167,6 +169,29 @@ namespace IRIS.UI.ViewModels
             catch
             {
                 // Fallback to empty if error
+            }
+        }
+
+        private async Task LoadRoomsAsync()
+        {
+            try
+            {
+                var rooms = await _monitoringService.GetRoomsAsync();
+                Rooms.Clear();
+                Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+                foreach (var room in rooms)
+                {
+                    Rooms.Add(room);
+                }
+
+                if (SelectedRoom == null && Rooms.Any())
+                {
+                    SelectedRoom = Rooms.First();
+                }
+            }
+            catch
+            {
+                // ignore for now
             }
         }
 

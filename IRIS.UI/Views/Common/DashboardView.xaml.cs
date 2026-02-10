@@ -5,20 +5,28 @@ using IRIS.Core.Services.Contracts;
 using IRIS.UI.ViewModels;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IRIS.UI.Views.Common
 {
     public partial class DashboardView : UserControl
     {
+        private readonly DashboardViewModel _viewModel;
         private INavigationService? _navigationService;
         private ScrollViewer? dashboardContent;
         private static readonly SolidColorBrush ActiveBrush = new(Color.FromRgb(180, 40, 40));
         private static readonly SolidColorBrush DefaultForeground = Brushes.White;
         private static readonly SolidColorBrush ActiveForeground = Brushes.White;
 
-        public DashboardView()
+        public DashboardView() : this(((App)Application.Current).GetServiceProvider().GetRequiredService<DashboardViewModel>())
         {
+        }
+
+        public DashboardView(DashboardViewModel viewModel)
+        {
+            _viewModel = viewModel;
             InitializeComponent();
+            DataContext = _viewModel;
             Loaded += OnLoaded;
         }
 
@@ -40,7 +48,7 @@ namespace IRIS.UI.Views.Common
             var allButtons = new[]
             {
                 DashboardBtn, MonitorBtn, SoftwareManagementBtn,
-                PolicyBtn, AccessLogsBtn, UserManagementBtn,
+                PolicyBtn, LabsBtn, AccessLogsBtn, UserManagementBtn,
                 UsageMetricsBtn, SettingsBtn
             };
 
@@ -89,6 +97,13 @@ namespace IRIS.UI.Views.Common
             SetActiveButton(PolicyBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("PolicyEnforcement");
+        }
+
+        private void LabsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveButton(LabsBtn);
+            CollapseRightPanel();
+            _navigationService?.NavigateTo("Labs");
         }
 
         private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)

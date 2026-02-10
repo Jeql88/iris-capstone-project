@@ -38,6 +38,7 @@ namespace IRIS.UI.Services
             // Admin Views
             _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
             _viewRegistry["PolicyEnforcement"] = typeof(Views.Admin.PolicyEnforcementView);
+            _viewRegistry["Labs"] = typeof(Views.Admin.LabsView);
             
             // Personnel Views
             _viewRegistry["Monitor"] = typeof(Views.Personnel.MonitorView);

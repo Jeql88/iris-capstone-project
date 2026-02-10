@@ -88,6 +88,8 @@ namespace IRIS.UI
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IAccessLogsService, AccessLogsService>();
             services.AddScoped<IMonitoringService, MonitoringService>();
+            services.AddScoped<IRoomService, RoomService>();
+            services.AddScoped<IPCAdminService, PCAdminService>();
             services.AddScoped<IPolicyService, PolicyService>();
             services.AddScoped<IUsageMetricsService, UsageMetricsService>();
             services.AddScoped<IApplicationUsageService, ApplicationUsageService>();
@@ -100,6 +102,7 @@ namespace IRIS.UI
             services.AddTransient<ViewScreenViewModel>();
             services.AddTransient<SoftwareManagementViewModel>();
             services.AddTransient<PolicyEnforcementViewModel>();
+            services.AddTransient<LabsViewModel>();
             services.AddTransient<UsageMetricsViewModel>();
             services.AddTransient<UserManagementViewModel>();
             services.AddTransient<AccessLogsViewModel>();
@@ -118,6 +121,7 @@ namespace IRIS.UI
             // Views - Admin
             services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
             services.AddTransient(sp => new PolicyEnforcementView(sp.GetRequiredService<PolicyEnforcementViewModel>()));
+            services.AddTransient(sp => new LabsView(sp.GetRequiredService<LabsViewModel>()));
             
             // Views - Personnel
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
