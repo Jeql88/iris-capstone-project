@@ -1,0 +1,79 @@
+<UserControl x:Class="IRIS.UI.Views.Admin.LabsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.ColumnSpan="3" Text="Laboratories" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,0,12"/>
+
+        <!-- Rooms list and form -->
+        <ui:Card Grid.Row="1" Grid.Column="0">
+            <StackPanel Margin="15">
+                <TextBlock Text="Rooms" FontSize="16" FontWeight="SemiBold"/>
+                <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" Height="220">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Vertical">
+                                <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#666"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Text="Room Number" FontWeight="SemiBold"/>
+                <TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <TextBlock Text="Description" FontWeight="SemiBold"/>
+                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <TextBlock Text="Capacity" FontWeight="SemiBold"/>
+                <TextBox Text="{Binding Capacity, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <CheckBox Content="Active" IsChecked="{Binding IsActive}"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <ui:Button Content="Create" Command="{Binding CreateCommand}" Appearance="Primary" Margin="0,0,8,0"/>
+                    <ui:Button Content="Update" Command="{Binding UpdateCommand}" Margin="0,0,8,0"/>
+                    <ui:Button Content="Delete" Command="{Binding DeleteCommand}" Appearance="Danger"/>
+                </StackPanel>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Unassigned PCs -->
+        <ui:Card Grid.Row="1" Grid.Column="2">
+            <StackPanel Margin="15">
+                <TextBlock Text="Unassigned PCs" FontSize="16" FontWeight="SemiBold"/>
+                <ItemsControl ItemsSource="{Binding UnassignedPCs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#ddd" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="#666"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ui:Button Content="Assign to Selected Room" Command="{Binding AssignCommand}" Appearance="Primary"/>
+            </StackPanel>
+        </ui:Card>
+    </Grid>
+</UserControl>
