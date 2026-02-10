@@ -6,5 +6,6 @@ namespace IRIS.Agent.Services.Contracts
     {
         Task SendHeartbeatAsync();
         Task CaptureHardwareMetricsAsync();
+        Task CaptureNetworkMetricsAsync();
     }
 }

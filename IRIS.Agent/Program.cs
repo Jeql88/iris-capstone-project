@@ -42,7 +42,10 @@ namespace IRIS.Agent
             var networkInfo = PCLogic.GetNetworkInfo();
 
             // Initialize monitoring components
-            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress);
+            var pingHost = configuration["AgentSettings:PingHost"] ?? "8.8.8.8";
+            var pingTimeout = int.TryParse(configuration["AgentSettings:PingTimeoutMs"], out var pto) ? pto : 1000;
+
+            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
 
             // Execute startup logic: Register PC

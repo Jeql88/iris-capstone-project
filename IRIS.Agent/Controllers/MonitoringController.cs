@@ -15,6 +15,7 @@ namespace IRIS.Agent.Controllers
         private bool _isMonitoring;
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _metricsIntervalSeconds;
+        private DateTime _lastMetricsRunUtc = DateTime.MinValue;
 
         public MonitoringController(IMonitoringService monitoringLogic, IConfiguration configuration)
         {
@@ -69,9 +70,11 @@ namespace IRIS.Agent.Controllers
                 await _monitoringLogic.SendHeartbeatAsync();
 
                 // Capture metrics at configured interval
-                if ((int)now.TimeOfDay.TotalSeconds % _metricsIntervalSeconds == 0)
+                if ((now - _lastMetricsRunUtc).TotalSeconds >= _metricsIntervalSeconds)
                 {
                     await _monitoringLogic.CaptureHardwareMetricsAsync();
+                    await _monitoringLogic.CaptureNetworkMetricsAsync();
+                    _lastMetricsRunUtc = now;
                 }
             }
             catch (Exception ex)

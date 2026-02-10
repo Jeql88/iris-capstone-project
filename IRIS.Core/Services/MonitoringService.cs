@@ -15,6 +15,52 @@ namespace IRIS.Core.Services
             _context = context;
         }
 
+        public async Task<DashboardSummary> GetDashboardSummaryAsync(int? roomId = null)
+        {
+            var since = DateTime.UtcNow.AddHours(-24);
+
+            var pcQuery = _context.PCs.AsQueryable();
+            if (roomId.HasValue)
+                pcQuery = pcQuery.Where(p => p.RoomId == roomId.Value);
+
+            var totalPCs = await pcQuery.CountAsync();
+            var onlinePCs = await pcQuery.CountAsync(p => p.Status == Models.PCStatus.Online);
+            var offlinePCs = await pcQuery.CountAsync(p => p.Status == Models.PCStatus.Offline);
+            var warningPCs = await pcQuery.CountAsync(p => p.Status == Models.PCStatus.Warning);
+
+            var networkQuery = _context.NetworkMetrics
+                .Where(nm => nm.Timestamp >= since);
+
+            if (roomId.HasValue)
+            {
+                networkQuery = networkQuery.Where(nm => _context.PCs.Any(p => p.Id == nm.PCId && p.RoomId == roomId.Value));
+            }
+
+            var networkList = await networkQuery.ToListAsync();
+
+            var avgLatency = networkList.Any() ? networkList.Average(n => n.Latency ?? 0) : 0;
+            var avgPacketLoss = networkList.Any() ? networkList.Average(n => n.PacketLoss ?? 0) : 0;
+            var currentBandwidth = networkList.Any() ? networkList.Where(n => n.Timestamp >= DateTime.UtcNow.AddHours(-1)).Average(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0)) : 0;
+            var peakBandwidth = networkList.Any() ? networkList.Max(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0)) : 0;
+
+            var labStatuses = await GetActiveLabPCsAsync();
+            var heavyApps = await GetHeavyApplicationsAsync(roomId);
+
+            return new DashboardSummary
+            {
+                AverageLatency = avgLatency,
+                AveragePacketLoss = avgPacketLoss,
+                CurrentBandwidth = currentBandwidth,
+                PeakBandwidth = peakBandwidth,
+                TotalPCs = totalPCs,
+                OnlinePCs = onlinePCs,
+                OfflinePCs = offlinePCs,
+                WarningPCs = warningPCs,
+                LabStatuses = labStatuses,
+                HeavyApplications = heavyApps
+            };
+        }
+
         public async Task<DashboardMetrics> GetDashboardMetricsAsync(int? roomId = null)
         {
             var query = _context.PCs.AsQueryable();
@@ -139,6 +185,21 @@ namespace IRIS.Core.Services
             }
 
             return result;
+        }
+
+        public async Task<List<RoomDto>> GetRoomsAsync()
+        {
+            return await _context.Rooms
+                .AsNoTracking()
+                .OrderBy(r => r.RoomNumber)
+                .Select(r => new RoomDto(
+                    r.Id,
+                    r.RoomNumber,
+                    r.Description,
+                    r.Capacity,
+                    r.IsActive,
+                    r.CreatedAt))
+                .ToListAsync();
         }
 
         public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)

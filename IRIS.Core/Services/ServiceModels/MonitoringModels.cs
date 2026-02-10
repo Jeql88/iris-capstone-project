@@ -13,6 +13,20 @@ namespace IRIS.Core.Services.ServiceModels
         public int OnlinePCs { get; set; }
     }
 
+    public class DashboardSummary
+    {
+        public double AverageLatency { get; set; }
+        public double AveragePacketLoss { get; set; }
+        public double CurrentBandwidth { get; set; }
+        public double PeakBandwidth { get; set; }
+        public int TotalPCs { get; set; }
+        public int OnlinePCs { get; set; }
+        public int OfflinePCs { get; set; }
+        public int WarningPCs { get; set; }
+        public Dictionary<string, int> LabStatuses { get; set; } = new();
+        public List<HeavyApplication> HeavyApplications { get; set; } = new();
+    }
+
     public class LatencyDataPoint
     {
         public DateTime Timestamp { get; set; }
