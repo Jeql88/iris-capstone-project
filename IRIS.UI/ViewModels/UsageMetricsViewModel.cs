@@ -22,7 +22,10 @@ namespace IRIS.UI.ViewModels
         private int _appTotalPages = 1;
         private int _webCurrentPage = 1;
         private int _webTotalPages = 1;
-        private const int PageSize = 50;
+        private int _appTotalCount = 0;
+        private int _webTotalCount = 0;
+        private int _pageSize = 10;
+        public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 
         public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
         {
@@ -30,10 +33,10 @@ namespace IRIS.UI.ViewModels
             ApplyFilterCommand = new RelayCommand(async () => await LoadDataAsync(), () => !IsLoading);
             ExportAppUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             ExportWebUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
-            AppPreviousPageCommand = new RelayCommand(async () => await LoadAppPageAsync(_appCurrentPage - 1), () => _appCurrentPage > 1);
-            AppNextPageCommand = new RelayCommand(async () => await LoadAppPageAsync(_appCurrentPage + 1), () => _appCurrentPage < _appTotalPages);
-            WebPreviousPageCommand = new RelayCommand(async () => await LoadWebPageAsync(_webCurrentPage - 1), () => _webCurrentPage > 1);
-            WebNextPageCommand = new RelayCommand(async () => await LoadWebPageAsync(_webCurrentPage + 1), () => _webCurrentPage < _webTotalPages);
+            AppPreviousPageCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => true);
+            AppNextPageCommand = new RelayCommand(async () => await AppNextPageAsync(), () => true);
+            WebPreviousPageCommand = new RelayCommand(async () => await WebPreviousPageAsync(), () => true);
+            WebNextPageCommand = new RelayCommand(async () => await WebNextPageAsync(), () => true);
             _ = LoadDataAsync();
         }
 
@@ -112,8 +115,26 @@ namespace IRIS.UI.ViewModels
             set { _webTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
         }
 
-        public string AppPageInfo => $"Page {AppCurrentPage} of {AppTotalPages}";
-        public string WebPageInfo => $"Page {WebCurrentPage} of {WebTotalPages}";
+        public int AppTotalCount
+        {
+            get => _appTotalCount;
+            set { _appTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int WebTotalCount
+        {
+            get => _webTotalCount;
+            set { _webTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set { _pageSize = value; OnPropertyChanged(); _ = LoadDataAsync(); }
+        }
+
+        public string AppPageInfo => $"Page {AppCurrentPage} of {AppTotalPages} ({AppTotalCount} total entries)";
+        public string WebPageInfo => $"Page {WebCurrentPage} of {WebTotalPages} ({WebTotalCount} total entries)";
 
         public ICommand ApplyFilterCommand { get; }
         public ICommand ExportAppUsageCommand { get; }
@@ -164,7 +185,7 @@ namespace IRIS.UI.ViewModels
                 var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
-                    startUtc, endUtc, pageNumber, PageSize, AppSearchText);
+                    startUtc, endUtc, pageNumber, _pageSize, AppSearchText);
 
                 FilteredApplicationUsage.Clear();
                 foreach (var item in result.Items)
@@ -182,8 +203,25 @@ namespace IRIS.UI.ViewModels
 
                 AppCurrentPage = result.PageNumber;
                 AppTotalPages = result.TotalPages;
+                AppTotalCount = result.TotalCount;
             }
             catch { }
+        }
+
+        private async Task AppPreviousPageAsync()
+        {
+            if (AppCurrentPage > 1)
+            {
+                await LoadAppPageAsync(AppCurrentPage - 1);
+            }
+        }
+
+        private async Task AppNextPageAsync()
+        {
+            if (AppCurrentPage < AppTotalPages)
+            {
+                await LoadAppPageAsync(AppCurrentPage + 1);
+            }
         }
 
         private async Task LoadWebPageAsync(int pageNumber)
@@ -194,7 +232,7 @@ namespace IRIS.UI.ViewModels
                 var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetWebsiteUsageDetailsPaginatedAsync(
-                    startUtc, endUtc, pageNumber, PageSize, WebSearchText);
+                    startUtc, endUtc, pageNumber, _pageSize, WebSearchText);
 
                 FilteredWebsiteUsage.Clear();
                 foreach (var item in result.Items)
@@ -212,8 +250,25 @@ namespace IRIS.UI.ViewModels
 
                 WebCurrentPage = result.PageNumber;
                 WebTotalPages = result.TotalPages;
+                WebTotalCount = result.TotalCount;
             }
             catch { }
+        }
+
+        private async Task WebPreviousPageAsync()
+        {
+            if (WebCurrentPage > 1)
+            {
+                await LoadWebPageAsync(WebCurrentPage - 1);
+            }
+        }
+
+        private async Task WebNextPageAsync()
+        {
+            if (WebCurrentPage < WebTotalPages)
+            {
+                await LoadWebPageAsync(WebCurrentPage + 1);
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

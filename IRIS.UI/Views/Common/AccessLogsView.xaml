@@ -88,8 +88,7 @@
                             <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
                                          ItemsSource="{Binding PageSizeOptions}"
                                          Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="#1a1a1a"/>
-                            <ui:Badge Appearance="Danger" Content="{Binding PageInfo}"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="#1a1a1a"/>
                         </StackPanel>
                     </Grid>
 
