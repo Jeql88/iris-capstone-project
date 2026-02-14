@@ -13,11 +13,16 @@ public class ProcessMonitor
     private readonly HashSet<string> _ignoredProcesses = new()
     {
         "svchost", "System", "Registry", "smss", "csrss", "wininit", "services",
-        "lsass", "winlogon", "dwm", "RuntimeBroker", "SearchIndexer", "conhost",
-        "taskhostw", "explorer", "sihost", "ctfmon", "fontdrvhost", "dllhost",
-        "updater", "crashpad_handler", "elevation_service"
+        "lsass", "winlogon", "dwm", "runtimebroker", "SearchIndexer", "conhost",
+        "taskhostw", "sihost", "ctfmon", "fontdrvhost", "dllhost",
+        "updater", "crashpad_handler", "elevation_service", "wmic", "wmiapsrv",
+        "backgroundtaskhost", "MoUsoCoreWorker", "SecurityHealthService",
+        "SgrmBroker", "spoolsv", "WmiPrvSE", "audiodg", "dasHost",
+        "TextInputHost", "StartMenuExperienceHost", "SearchHost", "ShellExperienceHost",
+        "ApplicationFrameHost", "SystemSettings", "LockApp", "UserOOBEBroker",
+        "MusNotification", "MusNotifyIcon", "WUDFHost", "CompPkgSrv", "explorer"
     };
-    private readonly HashSet<string> _multiProcessApps = new() { "brave", "chrome", "msedge", "firefox" };
+    private readonly HashSet<string> _multiProcessApps = new() { "brave", "chrome", "msedge", "firefox", "msedgewebview2" };
 
     public List<ProcessUsageRecord> GetCompletedRecords()
     {
@@ -47,32 +52,40 @@ public class ProcessMonitor
                         continue;
                     }
 
-                    currentProcessIds.Add(process.Id);
-                    var processNameLower = process.ProcessName.ToLower();
-
-                    // Track multi-process apps as single entity
-                    if (_multiProcessApps.Contains(processNameLower))
+                    // Skip processes without main windows (background services)
+                    if (string.IsNullOrEmpty(process.MainWindowTitle))
                     {
-                        currentMultiProcessApps.Add(processNameLower);
-                        if (!_mainProcessStartTimes.ContainsKey(processNameLower))
-                        {
-                            _mainProcessStartTimes[processNameLower] = DateTime.UtcNow;
-                            Log.Debug("Detected multi-process app: {ProcessName}", process.ProcessName);
-                        }
                         continue;
                     }
 
-                    // Track regular processes
+                    var processNameLower = process.ProcessName.ToLower();
+
+                    // Track multi-process apps as single entity by name only
+                    if (_multiProcessApps.Contains(processNameLower))
+                    {
+                        var friendlyName = GetFriendlyName(process);
+                        currentMultiProcessApps.Add(friendlyName);
+                        if (!_mainProcessStartTimes.ContainsKey(friendlyName))
+                        {
+                            _mainProcessStartTimes[friendlyName] = DateTime.UtcNow;
+                            Log.Debug("Detected multi-process app: {ProcessName}", friendlyName);
+                        }
+                        continue; // Skip PID tracking for multi-process apps
+                    }
+
+                    // Track regular processes by PID
+                    currentProcessIds.Add(process.Id);
                     if (!_activeProcesses.ContainsKey(process.Id))
                     {
+                        var friendlyName = GetFriendlyName(process);
                         _activeProcesses[process.Id] = new ProcessInfo
                         {
                             ProcessId = process.Id,
-                            ProcessName = process.ProcessName,
-                            StartTime = process.StartTime
+                            ProcessName = friendlyName,
+                            StartTime = DateTime.UtcNow
                         };
                         Log.Debug("Detected new process: {ProcessName} (PID: {ProcessId})", 
-                            process.ProcessName, process.Id);
+                            friendlyName, process.Id);
                     }
                 }
                 catch
@@ -114,14 +127,14 @@ public class ProcessMonitor
             {
                 var processInfo = _activeProcesses[processId];
                 var endTime = DateTime.UtcNow;
-                var duration = endTime - processInfo.StartTime.ToUniversalTime();
+                var duration = endTime - processInfo.StartTime;
 
                 lock (_completedRecords)
                 {
                     _completedRecords.Add(new ProcessUsageRecord
                     {
                         ApplicationName = processInfo.ProcessName,
-                        StartTime = processInfo.StartTime.ToUniversalTime(),
+                        StartTime = processInfo.StartTime,
                         EndTime = endTime,
                         Duration = duration
                     });
@@ -136,6 +149,35 @@ public class ProcessMonitor
         {
             Log.Error(ex, "Error scanning processes");
         }
+    }
+
+    private string GetFriendlyName(Process process)
+    {
+        try
+        {
+            var fileDescription = process.MainModule?.FileVersionInfo?.FileDescription;
+            if (!string.IsNullOrEmpty(fileDescription))
+            {
+                return fileDescription;
+            }
+        }
+        catch
+        {
+            // Access denied - use fallback
+        }
+
+        // Fallback: Map common process names
+        return process.ProcessName.ToLower() switch
+        {
+            "chrome" => "Google Chrome",
+            "msedge" => "Microsoft Edge",
+            "brave" => "Brave Browser",
+            "firefox" => "Mozilla Firefox",
+            "explorer" => "File Explorer",
+            "teams" => "Microsoft Teams",
+            "msedgewebview2" => "Microsoft Edge",   
+            _ => process.ProcessName
+        };
     }
 }
 

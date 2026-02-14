@@ -18,9 +18,11 @@ namespace IRIS.UI.ViewModels
         private bool _isLoading;
         private string _appSearchText = string.Empty;
         private string _webSearchText = string.Empty;
-
-        private List<AppUsageRow> _allApplicationUsage = new();
-        private List<WebUsageRow> _allWebsiteUsage = new();
+        private int _appCurrentPage = 1;
+        private int _appTotalPages = 1;
+        private int _webCurrentPage = 1;
+        private int _webTotalPages = 1;
+        private const int PageSize = 50;
 
         public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
         {
@@ -28,6 +30,10 @@ namespace IRIS.UI.ViewModels
             ApplyFilterCommand = new RelayCommand(async () => await LoadDataAsync(), () => !IsLoading);
             ExportAppUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             ExportWebUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+            AppPreviousPageCommand = new RelayCommand(async () => await LoadAppPageAsync(_appCurrentPage - 1), () => _appCurrentPage > 1);
+            AppNextPageCommand = new RelayCommand(async () => await LoadAppPageAsync(_appCurrentPage + 1), () => _appCurrentPage < _appTotalPages);
+            WebPreviousPageCommand = new RelayCommand(async () => await LoadWebPageAsync(_webCurrentPage - 1), () => _webCurrentPage > 1);
+            WebNextPageCommand = new RelayCommand(async () => await LoadWebPageAsync(_webCurrentPage + 1), () => _webCurrentPage < _webTotalPages);
             _ = LoadDataAsync();
         }
 
@@ -73,18 +79,49 @@ namespace IRIS.UI.ViewModels
         public string AppSearchText
         {
             get => _appSearchText;
-            set { _appSearchText = value; OnPropertyChanged(); ApplyAppFilter(); }
+            set { _appSearchText = value; OnPropertyChanged(); _ = LoadAppPageAsync(1); }
         }
 
         public string WebSearchText
         {
             get => _webSearchText;
-            set { _webSearchText = value; OnPropertyChanged(); ApplyWebFilter(); }
+            set { _webSearchText = value; OnPropertyChanged(); _ = LoadWebPageAsync(1); }
         }
+
+        public int AppCurrentPage
+        {
+            get => _appCurrentPage;
+            set { _appCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int AppTotalPages
+        {
+            get => _appTotalPages;
+            set { _appTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int WebCurrentPage
+        {
+            get => _webCurrentPage;
+            set { _webCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public int WebTotalPages
+        {
+            get => _webTotalPages;
+            set { _webTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public string AppPageInfo => $"Page {AppCurrentPage} of {AppTotalPages}";
+        public string WebPageInfo => $"Page {WebCurrentPage} of {WebTotalPages}";
 
         public ICommand ApplyFilterCommand { get; }
         public ICommand ExportAppUsageCommand { get; }
         public ICommand ExportWebUsageCommand { get; }
+        public ICommand AppPreviousPageCommand { get; }
+        public ICommand AppNextPageCommand { get; }
+        public ICommand WebPreviousPageCommand { get; }
+        public ICommand WebNextPageCommand { get; }
 
         private async Task LoadDataAsync()
         {
@@ -99,30 +136,8 @@ namespace IRIS.UI.ViewModels
                 TotalWebsites = summary.TotalWebsites;
                 TotalHours = summary.TotalHours;
 
-                var appDetails = await _usageMetricsService.GetApplicationUsageDetailsAsync(startUtc, endUtc);
-                _allApplicationUsage = appDetails.Select(a => new AppUsageRow
-                {
-                    ApplicationName = a.ApplicationName,
-                    PCName = a.PCName,
-                    RoomNumber = a.RoomNumber,
-                    StartTime = a.StartTime,
-                    EndTime = a.EndTime,
-                    Duration = a.Duration
-                }).ToList();
-
-                var webDetails = await _usageMetricsService.GetWebsiteUsageDetailsAsync(startUtc, endUtc);
-                _allWebsiteUsage = webDetails.Select(w => new WebUsageRow
-                {
-                    Url = w.Url,
-                    Title = w.Title,
-                    PCName = w.PCName,
-                    RoomNumber = w.RoomNumber,
-                    VisitTime = w.VisitTime,
-                    VisitCount = w.VisitCount
-                }).ToList();
-
-                ApplyAppFilter();
-                ApplyWebFilter();
+                await LoadAppPageAsync(1);
+                await LoadWebPageAsync(1);
             }
             catch (Exception ex)
             {
@@ -141,31 +156,64 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void ApplyAppFilter()
+        private async Task LoadAppPageAsync(int pageNumber)
         {
-            FilteredApplicationUsage.Clear();
-            var filtered = string.IsNullOrEmpty(AppSearchText)
-                ? _allApplicationUsage
-                : _allApplicationUsage.Where(a =>
-                    a.ApplicationName.Contains(AppSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    a.PCName.Contains(AppSearchText, StringComparison.OrdinalIgnoreCase));
+            try
+            {
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
-            foreach (var item in filtered)
-                FilteredApplicationUsage.Add(item);
+                var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
+                    startUtc, endUtc, pageNumber, PageSize, AppSearchText);
+
+                FilteredApplicationUsage.Clear();
+                foreach (var item in result.Items)
+                {
+                    FilteredApplicationUsage.Add(new AppUsageRow
+                    {
+                        ApplicationName = item.ApplicationName,
+                        PCName = item.PCName,
+                        RoomNumber = item.RoomNumber,
+                        StartTime = item.StartTime,
+                        EndTime = item.EndTime,
+                        Duration = item.Duration
+                    });
+                }
+
+                AppCurrentPage = result.PageNumber;
+                AppTotalPages = result.TotalPages;
+            }
+            catch { }
         }
 
-        private void ApplyWebFilter()
+        private async Task LoadWebPageAsync(int pageNumber)
         {
-            FilteredWebsiteUsage.Clear();
-            var filtered = string.IsNullOrEmpty(WebSearchText)
-                ? _allWebsiteUsage
-                : _allWebsiteUsage.Where(w =>
-                    w.Url.Contains(WebSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    w.Title.Contains(WebSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    w.PCName.Contains(WebSearchText, StringComparison.OrdinalIgnoreCase));
+            try
+            {
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
-            foreach (var item in filtered)
-                FilteredWebsiteUsage.Add(item);
+                var result = await _usageMetricsService.GetWebsiteUsageDetailsPaginatedAsync(
+                    startUtc, endUtc, pageNumber, PageSize, WebSearchText);
+
+                FilteredWebsiteUsage.Clear();
+                foreach (var item in result.Items)
+                {
+                    FilteredWebsiteUsage.Add(new WebUsageRow
+                    {
+                        Url = item.Url,
+                        Title = item.Title,
+                        PCName = item.PCName,
+                        RoomNumber = item.RoomNumber,
+                        VisitTime = item.VisitTime,
+                        VisitCount = item.VisitCount
+                    });
+                }
+
+                WebCurrentPage = result.PageNumber;
+                WebTotalPages = result.TotalPages;
+            }
+            catch { }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

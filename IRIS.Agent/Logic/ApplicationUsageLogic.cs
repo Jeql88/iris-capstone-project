@@ -35,8 +35,8 @@ public class ApplicationUsageLogic : IDisposable
         // Scan processes every 10 seconds
         _scanTimer = new Timer(_ => _processMonitor.ScanProcesses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
 
-        // Send data to server every 5 minutes
-        _sendTimer = new Timer(async _ => await SendUsageDataAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5));
+        // Send data to server every 1 minute
+        _sendTimer = new Timer(async _ => await SendUsageDataAsync(), null, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1));
 
         Log.Information("Application usage monitoring started");
     }

@@ -1,5 +1,6 @@
 using IRIS.Core.Data;
 using IRIS.Core.DTOs;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,6 +77,91 @@ public class UsageMetricsService : IUsageMetricsService
         }
 
         return results;
+    }
+
+    public async Task<PaginatedResult<ApplicationUsageDetailDto>> GetApplicationUsageDetailsPaginatedAsync(
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
+    {
+        var query = _context.SoftwareUsageHistory
+            .Include(s => s.PC)
+                .ThenInclude(p => p.Room)
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            query = query.Where(s => 
+                s.ApplicationName.Contains(searchText) ||
+                (s.PC.Hostname != null && s.PC.Hostname.Contains(searchText)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(s => s.StartTime)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new ApplicationUsageDetailDto
+            {
+                Id = s.Id,
+                ApplicationName = s.ApplicationName,
+                PCName = s.PC.Hostname ?? "Unknown",
+                RoomNumber = s.PC.Room != null ? s.PC.Room.RoomNumber : "Unassigned",
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                Duration = s.Duration
+            })
+            .ToListAsync();
+
+        return new PaginatedResult<ApplicationUsageDetailDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<PaginatedResult<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsPaginatedAsync(
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
+    {
+        var query = _context.WebsiteUsageHistory
+            .Include(w => w.PC)
+                .ThenInclude(p => p.Room)
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            query = query.Where(w => 
+                w.Url.Contains(searchText) ||
+                (w.Domain != null && w.Domain.Contains(searchText)) ||
+                (w.PC.Hostname != null && w.PC.Hostname.Contains(searchText)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(w => w.VisitedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(w => new WebsiteUsageDetailDto
+            {
+                Id = w.Id,
+                Url = w.Url,
+                Title = w.Domain ?? w.Url,
+                PCName = w.PC.Hostname ?? "Unknown",
+                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned",
+                VisitTime = w.VisitedAt,
+                VisitCount = w.VisitCount
+            })
+            .ToListAsync();
+
+        return new PaginatedResult<WebsiteUsageDetailDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 
     public async Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate)

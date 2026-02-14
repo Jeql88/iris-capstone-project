@@ -182,7 +182,7 @@
                                 CanUserAddRows="False"
                                 CanUserDeleteRows="False"
                                 SelectionMode="Single"
-                                Margin="10,0">
+                                Margin="10,0,10,15">
                         <ui:DataGrid.Columns>
                             <DataGridTemplateColumn Header="Application" Width="*" SortMemberPath="ApplicationName">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -204,6 +204,18 @@
                             <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>
+
+                    <!-- Pagination Controls -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                        <ui:Button Icon="{ui:SymbolIcon ChevronLeft24}" 
+                                   Command="{Binding AppPreviousPageCommand}"
+                                   Appearance="Secondary" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding AppPageInfo}" VerticalAlignment="Center" 
+                                   FontSize="14" Margin="10,0"/>
+                        <ui:Button Icon="{ui:SymbolIcon ChevronRight24}" 
+                                   Command="{Binding AppNextPageCommand}"
+                                   Appearance="Secondary" Margin="10,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Website Usage Tab -->
@@ -249,7 +261,7 @@
                                 CanUserAddRows="False"
                                 CanUserDeleteRows="False"
                                 SelectionMode="Single"
-                                Margin="10,0">
+                                Margin="10,0,10,15">
                         <ui:DataGrid.Columns>
                             <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Url">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -276,6 +288,18 @@
                             <DataGridTextColumn Header="Visit Time" Binding="{Binding VisitTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>
+
+                    <!-- Pagination Controls -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                        <ui:Button Icon="{ui:SymbolIcon ChevronLeft24}" 
+                                   Command="{Binding WebPreviousPageCommand}"
+                                   Appearance="Secondary" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding WebPageInfo}" VerticalAlignment="Center" 
+                                   FontSize="14" Margin="10,0"/>
+                        <ui:Button Icon="{ui:SymbolIcon ChevronRight24}" 
+                                   Command="{Binding WebNextPageCommand}"
+                                   Appearance="Secondary" Margin="10,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Loading Indicator -->

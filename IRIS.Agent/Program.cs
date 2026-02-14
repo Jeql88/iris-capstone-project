@@ -23,6 +23,7 @@ namespace IRIS.Agent
 
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .CreateLogger();
 
