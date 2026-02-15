@@ -126,9 +126,13 @@ namespace IRIS.UI
             // Views - Personnel
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
             services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
+            services.AddTransient<PersonnelDashboardView>();
+            services.AddTransient<PersonnelMainWindow>();
             
             // Views - Faculty
             services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
+            services.AddTransient<FacultyDashboardView>();
+            services.AddTransient<FacultyMainWindow>();
         }
     }
 }

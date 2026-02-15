@@ -2,7 +2,7 @@
 using BCrypt.Net;
 
 // Connection string from appsettings.json
-var connectionString = "Host=localhost;Port=5432;Database=iris_db;Username=postgres;Password=postgres";
+var connectionString = "Host=localhost;Port=5432;Database=iris_db;Username=postgres;Password=password";
 
 Console.WriteLine("=== IRIS Password Verification & Fix Tool ===\n");
 

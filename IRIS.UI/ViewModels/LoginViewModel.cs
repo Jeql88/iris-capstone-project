@@ -7,6 +7,8 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.UI.Helpers;
 using IRIS.UI.Views.Shared;
+using IRIS.UI.Views.Personnel;
+using IRIS.UI.Views.Faculty;
 
 namespace IRIS.UI.ViewModels
 {
@@ -122,7 +124,22 @@ namespace IRIS.UI.ViewModels
                         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
                         var scope = scopeFactory.CreateScope();
                         
-                        var mainWindow = scope.ServiceProvider.GetRequiredService<MainWindow>();
+                        Window? mainWindow = null;
+                        
+                        // Show appropriate window based on user role
+                        if (user.Role == UserRole.ITPersonnel)
+                        {
+                            mainWindow = scope.ServiceProvider.GetRequiredService<PersonnelMainWindow>();
+                        }
+                        else if (user.Role == UserRole.Faculty)
+                        {
+                            mainWindow = scope.ServiceProvider.GetRequiredService<FacultyMainWindow>();
+                        }
+                        else
+                        {
+                            mainWindow = scope.ServiceProvider.GetRequiredService<MainWindow>();
+                        }
+                        
                         if (mainWindow != null)
                         {
                             mainWindow.Show();
