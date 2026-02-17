@@ -33,9 +33,23 @@ namespace IRIS.Core.Services
 
         public async Task<RoomDto> CreateRoomAsync(RoomCreateUpdateDto request)
         {
+            var normalizedRoomNumber = request.RoomNumber?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedRoomNumber))
+            {
+                throw new InvalidOperationException("Room number is required.");
+            }
+
+            var exists = await _context.Rooms
+                .AnyAsync(r => r.RoomNumber.ToUpper() == normalizedRoomNumber.ToUpper());
+
+            if (exists)
+            {
+                throw new InvalidOperationException("A room with the same number already exists.");
+            }
+
             var room = new Room
             {
-                RoomNumber = request.RoomNumber,
+                RoomNumber = normalizedRoomNumber,
                 Description = request.Description,
                 Capacity = request.Capacity,
                 IsActive = request.IsActive,
@@ -53,7 +67,21 @@ namespace IRIS.Core.Services
             var room = await _context.Rooms.FirstOrDefaultAsync(r => r.Id == id);
             if (room == null) return null;
 
-            room.RoomNumber = request.RoomNumber;
+            var normalizedRoomNumber = request.RoomNumber?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedRoomNumber))
+            {
+                throw new InvalidOperationException("Room number is required.");
+            }
+
+            var exists = await _context.Rooms
+                .AnyAsync(r => r.Id != id && r.RoomNumber.ToUpper() == normalizedRoomNumber.ToUpper());
+
+            if (exists)
+            {
+                throw new InvalidOperationException("A room with the same number already exists.");
+            }
+
+            room.RoomNumber = normalizedRoomNumber;
             room.Description = request.Description;
             room.Capacity = request.Capacity;
             room.IsActive = request.IsActive;
@@ -73,9 +101,38 @@ namespace IRIS.Core.Services
                 return false; // safeguard: do not delete DEFAULT room
             }
 
+            var defaultRoom = await EnsureDefaultRoomAsync();
+            var roomPcs = await _context.PCs.Where(p => p.RoomId == room.Id).ToListAsync();
+            foreach (var pc in roomPcs)
+            {
+                pc.RoomId = defaultRoom.Id;
+            }
+
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private async Task<Room> EnsureDefaultRoomAsync()
+        {
+            var defaultRoom = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomNumber == "DEFAULT");
+            if (defaultRoom != null)
+            {
+                return defaultRoom;
+            }
+
+            defaultRoom = new Room
+            {
+                RoomNumber = "DEFAULT",
+                Description = "Default Room",
+                Capacity = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Rooms.Add(defaultRoom);
+            await _context.SaveChangesAsync();
+            return defaultRoom;
         }
     }
 }

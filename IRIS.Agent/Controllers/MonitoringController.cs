@@ -11,7 +11,7 @@ namespace IRIS.Agent.Controllers
     {
         private readonly IMonitoringService _monitoringLogic;
         private readonly IConfiguration _configuration;
-        private Timer? _timer;
+        private System.Threading.Timer? _timer;
         private bool _isMonitoring;
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _metricsIntervalSeconds;
@@ -38,7 +38,7 @@ namespace IRIS.Agent.Controllers
                 _heartbeatIntervalSeconds, _metricsIntervalSeconds);
 
             // Start periodic tasks
-            _timer = new Timer(async _ => await PerformMonitoringAsync(), null, TimeSpan.Zero,
+            _timer = new System.Threading.Timer(async _ => await PerformMonitoringAsync(), null, TimeSpan.Zero,
                 TimeSpan.FromSeconds(Math.Min(_heartbeatIntervalSeconds, _metricsIntervalSeconds)));
             
             return Task.CompletedTask;

@@ -75,4 +75,16 @@ namespace IRIS.Core.Services.ServiceModels
         public int OfflineCount { get; set; }
         public int WarningCount { get; set; }
     }
+
+    public class LiveAlertItem
+    {
+        public int PCId { get; set; }
+        public string PCName { get; set; } = string.Empty;
+        public string RoomName { get; set; } = string.Empty;
+        public string Severity { get; set; } = "Medium";
+        public string Type { get; set; } = "System";
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public int SeverityRank { get; set; }
+    }
 }

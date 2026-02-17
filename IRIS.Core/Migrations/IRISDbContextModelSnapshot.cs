@@ -69,7 +69,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Alerts");
+                    b.ToTable("Alerts", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.HardwareMetric", b =>
@@ -132,7 +132,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("PCId", "Timestamp");
 
-                    b.ToTable("HardwareMetrics");
+                    b.ToTable("HardwareMetrics", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.NetworkMetric", b =>
@@ -177,7 +177,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("PCId", "Timestamp");
 
-                    b.ToTable("NetworkMetrics");
+                    b.ToTable("NetworkMetrics", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.PC", b =>
@@ -233,7 +233,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("RoomId");
 
-                    b.ToTable("PCs");
+                    b.ToTable("PCs", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.PCHardwareConfig", b =>
@@ -279,7 +279,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("PCId");
 
-                    b.ToTable("PCHardwareConfigs");
+                    b.ToTable("PCHardwareConfigs", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.Policy", b =>
@@ -326,7 +326,7 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("RoomId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Policies");
+                    b.ToTable("Policies", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.Room", b =>
@@ -360,7 +360,7 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("RoomNumber")
                         .IsUnique();
 
-                    b.ToTable("Rooms");
+                    b.ToTable("Rooms", (string)null);
 
                     b.HasData(
                         new
@@ -437,7 +437,7 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Software");
+                    b.ToTable("Software", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.SoftwareInstalled", b =>
@@ -474,7 +474,7 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("PCId", "SoftwareId")
                         .IsUnique();
 
-                    b.ToTable("SoftwareInstalled");
+                    b.ToTable("SoftwareInstalled", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.SoftwareRequest", b =>
@@ -516,7 +516,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("SoftwareRequests");
+                    b.ToTable("SoftwareRequests", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.SoftwareUsageHistory", b =>
@@ -551,7 +551,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("PCId", "StartTime");
 
-                    b.ToTable("SoftwareUsageHistory");
+                    b.ToTable("SoftwareUsageHistory", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.User", b =>
@@ -597,7 +597,7 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
 
                     b.HasData(
                         new
@@ -667,7 +667,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("UserId", "Timestamp");
 
-                    b.ToTable("UserLogs");
+                    b.ToTable("UserLogs", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.WebsiteUsageHistory", b =>
@@ -703,7 +703,7 @@ namespace IRIS.Core.Migrations
 
                     b.HasIndex("PCId", "VisitedAt");
 
-                    b.ToTable("WebsiteUsageHistory");
+                    b.ToTable("WebsiteUsageHistory", (string)null);
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.Alert", b =>

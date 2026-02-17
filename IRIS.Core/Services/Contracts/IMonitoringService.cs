@@ -15,6 +15,7 @@ namespace IRIS.Core.Services.Contracts
         Task<List<RoomDto>> GetRoomsAsync();
         Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null);
         Task<PCStatusCounts> GetPCStatusCountsAsync(int? roomId = null);
+        Task<List<LiveAlertItem>> GetLiveAlertsAsync(int? roomId = null, int maxItems = 50);
         Task<PCHardwareConfigDto?> GetPCHardwareConfigAsync(int pcId);
     }
 }

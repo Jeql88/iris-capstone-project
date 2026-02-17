@@ -37,9 +37,22 @@
                 <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
 
                 <TextBlock Text="Capacity" FontWeight="SemiBold"/>
-                <TextBox Text="{Binding Capacity, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}"/>
 
                 <CheckBox Content="Active" IsChecked="{Binding IsActive}"/>
+
+                <TextBlock Margin="0,8,0,0" Text="{Binding StatusMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#0B6A0B"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                    <Setter Property="Foreground" Value="#B00020"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <ui:Button Content="Create" Command="{Binding CreateCommand}" Appearance="Primary" Margin="0,0,8,0"/>

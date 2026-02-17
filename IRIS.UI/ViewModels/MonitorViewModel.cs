@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -9,6 +10,7 @@ using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.Core.DTOs;
+using Microsoft.Extensions.Configuration;
 
 namespace IRIS.UI.ViewModels
 {
@@ -16,7 +18,10 @@ namespace IRIS.UI.ViewModels
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
+        private readonly int _screenStreamPort;
+        private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _refreshTimer;
+        private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(2200) };
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
         private int? _selectedRoomId = null;
@@ -25,11 +30,17 @@ namespace IRIS.UI.ViewModels
         private int _offlinePCCount;
         private int _idlePCCount;
         private bool _hasNoPCs = true;
+        private int _criticalAlertCount;
+        private int _highAlertCount;
+        private string _topAlertMessage = "No active alerts";
+        private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
 
-        public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService)
+        public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService, IConfiguration configuration)
         {
             _navigationService = navigationService;
             _monitoringService = monitoringService;
+            _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
+            _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ViewScreenCommand = new RelayCommand(async () => await ViewScreenAsync(), () => SelectedPC != null);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
@@ -41,13 +52,14 @@ namespace IRIS.UI.ViewModels
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
             _refreshTimer.Start();
-            
+
             _ = LoadPCDataAsync();
         }
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
         public ObservableCollection<PCDisplayModel> FilteredPCs { get; } = new();
         public ObservableCollection<RoomDto> Rooms { get; } = new();
+        public ObservableCollection<LiveAlertDisplayModel> ActiveAlerts { get; } = new();
 
         public string SearchText
         {
@@ -100,6 +112,24 @@ namespace IRIS.UI.ViewModels
         {
             get => _hasNoPCs;
             set { _hasNoPCs = value; OnPropertyChanged(); }
+        }
+
+        public int CriticalAlertCount
+        {
+            get => _criticalAlertCount;
+            set { _criticalAlertCount = value; OnPropertyChanged(); }
+        }
+
+        public int HighAlertCount
+        {
+            get => _highAlertCount;
+            set { _highAlertCount = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertMessage
+        {
+            get => _topAlertMessage;
+            set { _topAlertMessage = value; OnPropertyChanged(); }
         }
 
         public bool HasSelectedPC => SelectedPC != null;
@@ -155,7 +185,10 @@ namespace IRIS.UI.ViewModels
                         CpuUsagePercent = pc.CpuUsage,
                         RamUsagePercent = pc.RamUsage,
                         DiskUsagePercent = pc.DiskUsage,
-                        User = pc.User
+                        User = pc.User,
+                        SnapshotImageBase64 = null,
+                        TopAlertSeverity = "None",
+                        TopAlertMessage = "No active alerts"
                     });
                 }
                 
@@ -163,6 +196,13 @@ namespace IRIS.UI.ViewModels
                 OfflinePCCount = counts.OfflineCount;
                 IdlePCCount = counts.WarningCount;
                 TotalPCCount = OnlinePCCount + OfflinePCCount + IdlePCCount;
+
+                if ((DateTime.UtcNow - _lastAlertRefreshUtc).TotalSeconds >= 10)
+                {
+                    await LoadLiveAlertsAsync();
+                }
+
+                await LoadSnapshotsAsync();
                 
                 ApplyFilter();
             }
@@ -214,6 +254,106 @@ namespace IRIS.UI.ViewModels
             HasNoPCs = FilteredPCs.Count == 0;
         }
 
+        private async Task LoadLiveAlertsAsync()
+        {
+            var alerts = await _monitoringService.GetLiveAlertsAsync(_selectedRoomId, 30);
+            ActiveAlerts.Clear();
+
+            foreach (var alert in alerts)
+            {
+                ActiveAlerts.Add(new LiveAlertDisplayModel
+                {
+                    PCId = alert.PCId,
+                    PCName = alert.PCName,
+                    RoomName = alert.RoomName,
+                    Severity = alert.Severity,
+                    Type = alert.Type,
+                    Message = alert.Message,
+                    Timestamp = alert.Timestamp
+                });
+            }
+
+            CriticalAlertCount = alerts.Count(a => a.Severity == "Critical");
+            HighAlertCount = alerts.Count(a => a.Severity == "High");
+            TopAlertMessage = alerts.FirstOrDefault()?.Message ?? "No active alerts";
+
+            var topByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(a => a.SeverityRank).ThenByDescending(a => a.Timestamp).First());
+
+            foreach (var pc in PCs)
+            {
+                if (topByPc.TryGetValue(pc.Id, out var topAlert))
+                {
+                    pc.TopAlertSeverity = topAlert.Severity;
+                    pc.TopAlertMessage = topAlert.Message;
+                }
+                else
+                {
+                    pc.TopAlertSeverity = "None";
+                    pc.TopAlertMessage = "No active alerts";
+                }
+            }
+
+            _lastAlertRefreshUtc = DateTime.UtcNow;
+        }
+
+        private async Task LoadSnapshotsAsync()
+        {
+            var connectedPcs = PCs
+                .Where(p => !p.Status.Equals("Offline", StringComparison.OrdinalIgnoreCase))
+                .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .ToList();
+
+            var semaphore = new SemaphoreSlim(4);
+            var tasks = connectedPcs.Select(async pc =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var base64 = await GetSnapshotBase64Async(pc.IPAddress);
+                    if (!string.IsNullOrWhiteSpace(base64))
+                    {
+                        pc.SnapshotImageBase64 = base64;
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task<string?> GetSnapshotBase64Async(string ipAddress)
+        {
+            try
+            {
+                var url = $"http://{ipAddress}:{_screenStreamPort}/snapshot";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (!string.IsNullOrWhiteSpace(_screenStreamToken))
+                {
+                    request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
+                }
+
+                using var response = await SnapshotHttpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                return bytes.Length > 0 ? Convert.ToBase64String(bytes) : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private async Task ViewScreenAsync()
         {
             if (SelectedPC != null)
@@ -250,6 +390,9 @@ namespace IRIS.UI.ViewModels
         private double _cpuUsagePercent;
         private double _ramUsagePercent;
         private double _diskUsagePercent;
+        private string? _snapshotImageBase64;
+        private string _topAlertSeverity = "None";
+        private string _topAlertMessage = "No active alerts";
         private bool _isSelected;
 
         public int Id
@@ -336,6 +479,24 @@ namespace IRIS.UI.ViewModels
             set { _diskUsagePercent = value; OnPropertyChanged(); }
         }
 
+        public string? SnapshotImageBase64
+        {
+            get => _snapshotImageBase64;
+            set { _snapshotImageBase64 = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertSeverity
+        {
+            get => _topAlertSeverity;
+            set { _topAlertSeverity = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertMessage
+        {
+            get => _topAlertMessage;
+            set { _topAlertMessage = value; OnPropertyChanged(); }
+        }
+
         public bool IsSelected
         {
             get => _isSelected;
@@ -356,5 +517,16 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    public class LiveAlertDisplayModel
+    {
+        public int PCId { get; set; }
+        public string PCName { get; set; } = string.Empty;
+        public string RoomName { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
     }
 }
