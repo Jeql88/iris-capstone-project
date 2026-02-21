@@ -22,7 +22,11 @@ namespace IRIS.Agent.Logic
         private long _lastBytesReceived = -1;
         private DateTime _lastNetworkSample = DateTime.MinValue;
 
-        public MonitoringLogic(IRISDbContext context, string macAddress, string pingHost, int pingTimeoutMs)
+        public MonitoringLogic(
+            IRISDbContext context,
+            string macAddress,
+            string pingHost,
+            int pingTimeoutMs)
         {
             _context = context;
             _macAddress = macAddress;
@@ -251,5 +255,6 @@ namespace IRIS.Agent.Logic
                 return 0; // Fallback
             }
         }
+
     }
 }

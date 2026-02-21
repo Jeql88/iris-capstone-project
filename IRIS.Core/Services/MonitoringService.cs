@@ -206,6 +206,7 @@ namespace IRIS.Core.Services
         {
             var query = _context.PCs
                 .Include(p => p.HardwareMetrics)
+                .Include(p => p.NetworkMetrics)
                 .Include(p => p.UserLogs)
                 .Include(p => p.Room)
                 .AsQueryable();
@@ -225,6 +226,12 @@ namespace IRIS.Core.Services
                     .OrderByDescending(u => u.Timestamp)
                     .FirstOrDefault();
 
+                var latestNetwork = pc.NetworkMetrics
+                    .OrderByDescending(n => n.Timestamp)
+                    .FirstOrDefault();
+
+                var networkUsage = (latestNetwork?.DownloadSpeed ?? 0) + (latestNetwork?.UploadSpeed ?? 0);
+
                 return new PCMonitorInfo
                 {
                     Id = pc.Id,
@@ -237,7 +244,7 @@ namespace IRIS.Core.Services
                     CpuUsage = latestMetric?.CpuUsage ?? 0,
                     RamUsage = latestMetric?.MemoryUsage ?? 0,
                     DiskUsage = latestMetric?.DiskUsage ?? 0,
-                    NetworkUsage = 0,
+                    NetworkUsage = networkUsage,
                     User = latestUser?.User?.Username ?? ""
                 };
             }).ToList();
@@ -255,6 +262,55 @@ namespace IRIS.Core.Services
                 OfflineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Offline),
                 WarningCount = await query.CountAsync(p => p.Status == Models.PCStatus.Warning)
             };
+        }
+
+        public async Task<List<LiveAlertItem>> GetLiveAlertsAsync(int? roomId = null, int maxItems = 50)
+        {
+            var lookback = DateTime.UtcNow.AddMinutes(-5);
+
+            var query = _context.PCs
+                .Include(p => p.Room)
+                .Include(p => p.HardwareMetrics)
+                .Include(p => p.NetworkMetrics)
+                .AsQueryable();
+
+            if (roomId.HasValue)
+                query = query.Where(p => p.RoomId == roomId.Value);
+
+            var pcs = await query.ToListAsync();
+            var alerts = new List<LiveAlertItem>();
+
+            foreach (var pc in pcs)
+            {
+                var pcName = pc.Hostname ?? $"PC-{pc.Id}";
+                var roomName = pc.Room?.RoomNumber ?? "Unassigned";
+                var latestHardware = pc.HardwareMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                var latestNetwork = pc.NetworkMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+
+                if (pc.Status == Models.PCStatus.Offline || pc.LastSeen < lookback)
+                {
+                    alerts.Add(CreateAlert(pc.Id, pcName, roomName, "Critical", "System", "PC is offline or heartbeat is stale", pc.LastSeen));
+                }
+
+                if (latestHardware != null)
+                {
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "CPU", latestHardware.CpuUsage, 85, 95, latestHardware.Timestamp, "%");
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "RAM", latestHardware.MemoryUsage, 85, 95, latestHardware.Timestamp, "%");
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "Disk", latestHardware.DiskUsage, 90, 98, latestHardware.Timestamp, "%");
+                }
+
+                if (latestNetwork != null)
+                {
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Packet loss", latestNetwork.PacketLoss, 3, 10, latestNetwork.Timestamp, "%");
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Latency", latestNetwork.Latency, 150, 300, latestNetwork.Timestamp, " ms");
+                }
+            }
+
+            return alerts
+                .OrderByDescending(a => a.SeverityRank)
+                .ThenByDescending(a => a.Timestamp)
+                .Take(Math.Max(1, maxItems))
+                .ToList();
         }
 
         public async Task<PCHardwareConfigDto?> GetPCHardwareConfigAsync(int pcId)
@@ -278,6 +334,64 @@ namespace IRIS.Core.Services
                 AppliedAt: config.AppliedAt,
                 IsActive: config.IsActive
             );
+        }
+
+        private static void AddThresholdAlert(
+            List<LiveAlertItem> alerts,
+            int pcId,
+            string pcName,
+            string roomName,
+            string type,
+            string metricName,
+            double? value,
+            double warningThreshold,
+            double criticalThreshold,
+            DateTime timestamp,
+            string unit)
+        {
+            if (!value.HasValue)
+            {
+                return;
+            }
+
+            if (value.Value >= criticalThreshold)
+            {
+                alerts.Add(CreateAlert(pcId, pcName, roomName, "Critical", type, $"{metricName} is critical ({value.Value:F1}{unit})", timestamp));
+                return;
+            }
+
+            if (value.Value >= warningThreshold)
+            {
+                alerts.Add(CreateAlert(pcId, pcName, roomName, "High", type, $"{metricName} is high ({value.Value:F1}{unit})", timestamp));
+            }
+        }
+
+        private static LiveAlertItem CreateAlert(
+            int pcId,
+            string pcName,
+            string roomName,
+            string severity,
+            string type,
+            string message,
+            DateTime timestamp)
+        {
+            return new LiveAlertItem
+            {
+                PCId = pcId,
+                PCName = pcName,
+                RoomName = roomName,
+                Severity = severity,
+                Type = type,
+                Message = message,
+                Timestamp = timestamp,
+                SeverityRank = severity switch
+                {
+                    "Critical" => 4,
+                    "High" => 3,
+                    "Medium" => 2,
+                    _ => 1
+                }
+            };
         }
     }
 }

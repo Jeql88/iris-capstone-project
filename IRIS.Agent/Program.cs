@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -48,6 +51,40 @@ namespace IRIS.Agent
 
             var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
+            var screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
+            var streamToken = configuration["AgentSettings:ScreenStreamToken"];
+            var allowedSourceIpEntries = (configuration["AgentSettings:AllowedSnapshotSourceIps"] ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            var autoAllowLocalSubnet = allowedSourceIpEntries.Any(x => x.Equals("auto", StringComparison.OrdinalIgnoreCase));
+            var selfOnlyMode = allowedSourceIpEntries.Any(x => x.Equals("self", StringComparison.OrdinalIgnoreCase));
+            var controllerDiscoveryMode = allowedSourceIpEntries.Any(x =>
+                x.Equals("core", StringComparison.OrdinalIgnoreCase) ||
+                x.Equals("controller", StringComparison.OrdinalIgnoreCase));
+
+            var allowedSourceIps = allowedSourceIpEntries
+                .Where(x => !x.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                .Where(x => !x.Equals("self", StringComparison.OrdinalIgnoreCase))
+                .Where(x => !x.Equals("core", StringComparison.OrdinalIgnoreCase))
+                .Where(x => !x.Equals("controller", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            if (selfOnlyMode)
+            {
+                allowedSourceIps = allowedSourceIps
+                    .Concat(GetLocalHostIpv4Addresses())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            using var snapshotServer = new ScreenSnapshotServer(
+                screenStreamPort,
+                640,
+                55,
+                streamToken,
+                allowedSourceIps,
+                autoAllowLocalSubnet,
+                controllerDiscoveryMode);
 
             // Execute startup logic: Register PC
             await pcController.RegisterPCAsync();
@@ -68,9 +105,10 @@ namespace IRIS.Agent
 
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
+            await snapshotServer.StartAsync();
 
             // Start policy enforcement
-            var policyTimer = new Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            var policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
             Log.Information("Agent initialized successfully. Monitoring loop started.");
 
@@ -88,6 +126,7 @@ namespace IRIS.Agent
                 e.Cancel = true; // Prevent immediate exit
                 Log.Information("Ctrl+C detected. Handling shutdown...");
                 await monitoringController.StopMonitoringAsync();
+                await snapshotServer.StopAsync();
                 await appUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
                 appUsageLogic.Dispose();
@@ -176,6 +215,33 @@ namespace IRIS.Agent
             }
             
             return TimeSpan.Zero;
+        }
+
+        private static IEnumerable<string> GetLocalHostIpv4Addresses()
+        {
+            var ips = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "127.0.0.1"
+            };
+
+            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                {
+                    continue;
+                }
+
+                var properties = nic.GetIPProperties();
+                foreach (var unicast in properties.UnicastAddresses)
+                {
+                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        ips.Add(unicast.Address.ToString());
+                    }
+                }
+            }
+
+            return ips;
         }
     }
 }

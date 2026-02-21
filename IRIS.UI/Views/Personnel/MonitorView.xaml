@@ -8,6 +8,7 @@
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
+        <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter"/>
     </UserControl.Resources>
 
     <Grid Margin="25,20">
@@ -151,6 +152,7 @@
             <Grid Margin="15">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -183,8 +185,37 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Live Alerts Summary -->
+                <Border Grid.Row="1" Margin="0,0,0,12" Padding="12" CornerRadius="8"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Badge Grid.Column="0" Appearance="Danger">
+                            <TextBlock Text="{Binding CriticalAlertCount, StringFormat=Critical: {0}}" FontWeight="SemiBold"/>
+                        </ui:Badge>
+
+                        <ui:Badge Grid.Column="2" Appearance="Caution">
+                            <TextBlock Text="{Binding HighAlertCount, StringFormat=High: {0}}" FontWeight="SemiBold"/>
+                        </ui:Badge>
+
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding TopAlertMessage}"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </Border>
+
                 <!-- PC Items Grid -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding FilteredPCs}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -195,6 +226,20 @@
                             <DataTemplate>
                                 <Border Width="200" Margin="0,0,15,15" CornerRadius="10" Cursor="Hand"
                                         MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
+                                    <Border.ToolTip>
+                                        <ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding PCName}" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding IPAddress, StringFormat=IP: {0}}"/>
+                                                <TextBlock Text="{Binding CPU, StringFormat=CPU: {0}}"/>
+                                                <TextBlock Text="{Binding RAM, StringFormat=RAM: {0}}"/>
+                                                <TextBlock Text="{Binding Network, StringFormat=Network: {0}}"/>
+                                                <TextBlock Text="{Binding TopAlertMessage, StringFormat=Alert: {0}}"
+                                                           TextWrapping="Wrap"
+                                                           MaxWidth="260"/>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </Border.ToolTip>
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
@@ -218,16 +263,41 @@
 
                                         <!-- PC Icon with Status -->
                                         <Grid Grid.Row="0" Margin="0,0,0,12">
-                                            <Border Width="60" Height="60" CornerRadius="10" 
-                                                    Background="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
-                                                    HorizontalAlignment="Center">
-                                                <ui:SymbolIcon Symbol="Desktop24" FontSize="28" Foreground="White"/>
+                                            <Border Width="160" Height="90" CornerRadius="8" 
+                                                    Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                                                    HorizontalAlignment="Center"
+                                                    ClipToBounds="True">
+                                                <Grid>
+                                                    <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    <Image Source="{Binding SnapshotImageBase64, Converter={StaticResource Base64ToImageSourceConverter}}"
+                                                           Stretch="UniformToFill"/>
+                                                </Grid>
                                             </Border>
                                             <!-- Status Indicator -->
                                             <Ellipse Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Top"
                                                      Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
                                                      Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                                                      StrokeThickness="2"/>
+
+                                            <ui:Badge HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,0,0">
+                                                <ui:Badge.Style>
+                                                    <Style TargetType="ui:Badge">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding TopAlertSeverity}" Value="High">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Appearance" Value="Caution"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding TopAlertSeverity}" Value="Critical">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Appearance" Value="Danger"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ui:Badge.Style>
+                                                <TextBlock Text="!" FontWeight="Bold"/>
+                                            </ui:Badge>
                                         </Grid>
 
                                         <!-- PC Name -->
@@ -267,7 +337,7 @@
                 </ScrollViewer>
 
                 <!-- Empty State -->
-                <Border Grid.Row="1" 
+                <Border Grid.Row="2" 
                         Visibility="{Binding HasNoPCs, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ui:SymbolIcon Symbol="Desktop24" FontSize="64" 

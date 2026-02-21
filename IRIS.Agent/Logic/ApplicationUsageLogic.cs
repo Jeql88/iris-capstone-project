@@ -12,8 +12,8 @@ public class ApplicationUsageLogic : IDisposable
     private readonly IRISDbContext _context;
     private readonly string _macAddress;
     private readonly ProcessMonitor _processMonitor;
-    private Timer? _scanTimer;
-    private Timer? _sendTimer;
+    private System.Threading.Timer? _scanTimer;
+    private System.Threading.Timer? _sendTimer;
     private int? _pcId;
 
     public ApplicationUsageLogic(IRISDbContext context, string macAddress)
@@ -33,10 +33,10 @@ public class ApplicationUsageLogic : IDisposable
         }
 
         // Scan processes every 10 seconds
-        _scanTimer = new Timer(_ => _processMonitor.ScanProcesses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+        _scanTimer = new System.Threading.Timer(_ => _processMonitor.ScanProcesses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
 
         // Send data to server every 1 minute
-        _sendTimer = new Timer(async _ => await SendUsageDataAsync(), null, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1));
+        _sendTimer = new System.Threading.Timer(async _ => await SendUsageDataAsync(), null, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1));
 
         Log.Information("Application usage monitoring started");
     }

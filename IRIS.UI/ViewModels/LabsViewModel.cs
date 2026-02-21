@@ -53,7 +53,12 @@ namespace IRIS.UI.ViewModels
         public string RoomNumber
         {
             get => _roomNumber;
-            set { _roomNumber = value; OnPropertyChanged(); }
+            set
+            {
+                _roomNumber = value;
+                OnPropertyChanged();
+                CreateCommand.RaiseCanExecuteChanged();
+            }
         }
 
         private string? _description;
@@ -63,11 +68,11 @@ namespace IRIS.UI.ViewModels
             set { _description = value; OnPropertyChanged(); }
         }
 
-        private int _capacity;
-        public int Capacity
+        private string _capacityText = "0";
+        public string CapacityText
         {
-            get => _capacity;
-            set { _capacity = value; OnPropertyChanged(); }
+            get => _capacityText;
+            set { _capacityText = value; OnPropertyChanged(); }
         }
 
         private bool _isActive = true;
@@ -75,6 +80,20 @@ namespace IRIS.UI.ViewModels
         {
             get => _isActive;
             set { _isActive = value; OnPropertyChanged(); }
+        }
+
+        private string _statusMessage = string.Empty;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set { _statusMessage = value; OnPropertyChanged(); }
+        }
+
+        private bool _isStatusError;
+        public bool IsStatusError
+        {
+            get => _isStatusError;
+            set { _isStatusError = value; OnPropertyChanged(); }
         }
 
         public RelayCommand CreateCommand { get; }
@@ -96,12 +115,18 @@ namespace IRIS.UI.ViewModels
             _ = LoadUnassignedAsync();
         }
 
-        private async Task LoadRoomsAsync()
+        private async Task LoadRoomsAsync(int? selectedRoomId = null)
         {
             var rooms = await _roomService.GetRoomsAsync();
             Rooms.Clear();
             foreach (var room in rooms)
                 Rooms.Add(room);
+
+            var targetId = selectedRoomId ?? SelectedRoom?.Id;
+            if (targetId.HasValue)
+            {
+                SelectedRoom = Rooms.FirstOrDefault(r => r.Id == targetId.Value);
+            }
         }
 
         private async Task LoadUnassignedAsync()
@@ -127,14 +152,14 @@ namespace IRIS.UI.ViewModels
             {
                 RoomNumber = string.Empty;
                 Description = string.Empty;
-                Capacity = 0;
+                CapacityText = "0";
                 IsActive = true;
             }
             else
             {
                 RoomNumber = SelectedRoom.RoomNumber;
                 Description = SelectedRoom.Description;
-                Capacity = SelectedRoom.Capacity;
+                CapacityText = SelectedRoom.Capacity.ToString();
                 IsActive = SelectedRoom.IsActive;
             }
             UpdateCommand.RaiseCanExecuteChanged();
@@ -144,22 +169,46 @@ namespace IRIS.UI.ViewModels
 
         private async Task CreateAsync()
         {
-            var dto = new RoomCreateUpdateDto(RoomNumber, Description, Capacity, IsActive);
-            var created = await _roomService.CreateRoomAsync(dto);
-            Rooms.Add(created);
-            SelectedRoom = created;
+            if (!TryBuildRequest(out var request, out var validationError))
+            {
+                SetStatus(validationError, true);
+                return;
+            }
+
+            try
+            {
+                var created = await _roomService.CreateRoomAsync(request);
+                await LoadRoomsAsync(created.Id);
+                SetStatus($"Room {created.RoomNumber} created.", false);
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
+            }
         }
 
         private async Task UpdateAsync()
         {
             if (SelectedRoom == null) return;
-            var dto = new RoomCreateUpdateDto(RoomNumber, Description, Capacity, IsActive);
-            var updated = await _roomService.UpdateRoomAsync(SelectedRoom.Id, dto);
-            if (updated != null)
+
+            if (!TryBuildRequest(out var request, out var validationError))
             {
-                var index = Rooms.IndexOf(SelectedRoom);
-                Rooms[index] = updated;
-                SelectedRoom = updated;
+                SetStatus(validationError, true);
+                return;
+            }
+
+            try
+            {
+                var updated = await _roomService.UpdateRoomAsync(SelectedRoom.Id, request);
+                if (updated != null)
+                {
+                    await LoadRoomsAsync(updated.Id);
+                    SetStatus($"Room {updated.RoomNumber} updated.", false);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
             }
         }
 
@@ -167,11 +216,25 @@ namespace IRIS.UI.ViewModels
         {
             if (SelectedRoom == null) return;
             if (SelectedRoom.RoomNumber == "DEFAULT") return; // safeguard
-            var deleted = await _roomService.DeleteRoomAsync(SelectedRoom.Id);
-            if (deleted)
+
+            try
             {
-                Rooms.Remove(SelectedRoom);
-                SelectedRoom = null;
+                var deleted = await _roomService.DeleteRoomAsync(SelectedRoom.Id);
+                if (deleted)
+                {
+                    SelectedRoom = null;
+                    await LoadRoomsAsync();
+                    await LoadUnassignedAsync();
+                    SetStatus("Room deleted.", false);
+                }
+                else
+                {
+                    SetStatus("Could not delete room.", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
             }
         }
 
@@ -181,8 +244,51 @@ namespace IRIS.UI.ViewModels
             var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
             if (!selectedIds.Any()) return;
 
-            await _pcAdminService.AssignPCsToRoomAsync(selectedIds, SelectedRoom.Id);
-            await LoadUnassignedAsync();
+            try
+            {
+                var success = await _pcAdminService.AssignPCsToRoomAsync(selectedIds, SelectedRoom.Id);
+                if (success)
+                {
+                    await LoadUnassignedAsync();
+                    SetStatus($"Assigned {selectedIds.Count} PC(s) to room {SelectedRoom.RoomNumber}.", false);
+                }
+                else
+                {
+                    SetStatus("No PCs were assigned.", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
+            }
+        }
+
+        private bool TryBuildRequest(out RoomCreateUpdateDto request, out string error)
+        {
+            request = new RoomCreateUpdateDto(string.Empty, null, 0, true);
+            error = string.Empty;
+
+            var normalizedRoomNumber = RoomNumber?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedRoomNumber))
+            {
+                error = "Room number is required.";
+                return false;
+            }
+
+            if (!int.TryParse(CapacityText, out var parsedCapacity) || parsedCapacity < 0)
+            {
+                error = "Capacity must be a valid non-negative number.";
+                return false;
+            }
+
+            request = new RoomCreateUpdateDto(normalizedRoomNumber, Description?.Trim(), parsedCapacity, IsActive);
+            return true;
+        }
+
+        private void SetStatus(string message, bool isError)
+        {
+            StatusMessage = message;
+            IsStatusError = isError;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

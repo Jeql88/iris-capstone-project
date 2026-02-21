@@ -1,10 +1,16 @@
 using System.ComponentModel;
+using System.IO;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
+using Microsoft.Extensions.Configuration;
 
 namespace IRIS.UI.ViewModels
 {
@@ -12,7 +18,12 @@ namespace IRIS.UI.ViewModels
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
+        private readonly int _screenStreamPort;
+        private readonly string? _screenStreamToken;
+        private readonly DispatcherTimer _screenRefreshTimer;
+        private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
         private int _pcId;
+        private bool _isActive;
         private bool _isDetailsExpanded = true;
         private string _pcName = string.Empty;
         private string _pcNumber = string.Empty;
@@ -39,11 +50,14 @@ namespace IRIS.UI.ViewModels
         private bool _isConnected = true;
         private bool _isLoading;
         private bool _isDisconnected;
+        private ImageSource? _screenImage;
 
-        public ViewScreenViewModel(INavigationService navigationService, IMonitoringService monitoringService)
+        public ViewScreenViewModel(INavigationService navigationService, IMonitoringService monitoringService, IConfiguration configuration)
         {
             _navigationService = navigationService;
             _monitoringService = monitoringService;
+            _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
+            _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ToggleDetailsCommand = new RelayCommand(async () => await ToggleDetailsAsync(), () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => true);
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
@@ -51,9 +65,12 @@ namespace IRIS.UI.ViewModels
             RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             FullscreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
-            RefreshScreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
-            RetryConnectionCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+            RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
+            RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
+
+            _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _screenRefreshTimer.Tick += async (_, _) => await RefreshScreenAsync();
         }
 
         public bool IsDetailsExpanded
@@ -96,6 +113,7 @@ namespace IRIS.UI.ViewModels
         public bool IsConnected { get => _isConnected; set { _isConnected = value; OnPropertyChanged(); } }
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
         public bool IsDisconnected { get => _isDisconnected; set { _isDisconnected = value; OnPropertyChanged(); } }
+        public ImageSource? ScreenImage { get => _screenImage; set { _screenImage = value; OnPropertyChanged(); } }
 
         public ICommand ToggleDetailsCommand { get; }
         public ICommand LockScreenCommand { get; }
@@ -127,8 +145,73 @@ namespace IRIS.UI.ViewModels
             ConnectionStatus = pc.Status == "Online" ? "Connected" : "Disconnected";
             IsConnected = pc.Status == "Online";
             IsDisconnected = pc.Status == "Offline";
-            
+
+            _isActive = true;
             await LoadHardwareConfigAsync();
+            await RefreshScreenAsync();
+            _screenRefreshTimer.Start();
+        }
+
+        private async Task RefreshScreenAsync()
+        {
+            if (_pcId <= 0 || !_isActive)
+            {
+                return;
+            }
+
+            try
+            {
+                IsLoading = true;
+                var imageBase64 = await GetSnapshotBase64Async(IP);
+                if (!string.IsNullOrWhiteSpace(imageBase64))
+                {
+                    ScreenImage = CreateImage(imageBase64);
+                    IsDisconnected = false;
+                }
+                else
+                {
+                    IsDisconnected = true;
+                }
+            }
+            catch
+            {
+                IsDisconnected = true;
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async Task<string?> GetSnapshotBase64Async(string ipAddress)
+        {
+            if (string.IsNullOrWhiteSpace(ipAddress) || ipAddress == "N/A")
+            {
+                return null;
+            }
+
+            try
+            {
+                var url = $"http://{ipAddress}:{_screenStreamPort}/snapshot";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (!string.IsNullOrWhiteSpace(_screenStreamToken))
+                {
+                    request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
+                }
+
+                using var response = await SnapshotHttpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                return bytes.Length > 0 ? Convert.ToBase64String(bytes) : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private async Task LoadHardwareConfigAsync()
@@ -184,7 +267,46 @@ namespace IRIS.UI.ViewModels
         private async Task BackAsync()
         {
             await Task.CompletedTask;
+            OnDeactivated();
             _navigationService.GoBack();
+        }
+
+        public async Task OnActivatedAsync()
+        {
+            if (_pcId <= 0)
+            {
+                return;
+            }
+
+            _isActive = true;
+            await RefreshScreenAsync();
+            _screenRefreshTimer.Start();
+        }
+
+        public void OnDeactivated()
+        {
+            _isActive = false;
+            _screenRefreshTimer.Stop();
+        }
+
+        private static BitmapImage? CreateImage(string base64)
+        {
+            try
+            {
+                var bytes = Convert.FromBase64String(base64);
+                using var ms = new MemoryStream(bytes);
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = ms;
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
