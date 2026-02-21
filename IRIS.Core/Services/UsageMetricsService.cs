@@ -47,38 +47,6 @@ public class UsageMetricsService : IUsageMetricsService
         return results;
     }
 
-    public async Task<List<WebsiteUsageDto>> GetMostVisitedWebsitesAsync(int days, int limit = 10)
-    {
-        var cutoffDate = DateTime.UtcNow.AddDays(-days);
-
-        var totalCount = await _context.WebsiteUsageHistory
-            .Where(w => w.CreatedAt >= cutoffDate)
-            .CountAsync();
-
-        if (totalCount == 0)
-            return new List<WebsiteUsageDto>();
-
-        var results = await _context.WebsiteUsageHistory
-            .Where(w => w.CreatedAt >= cutoffDate && w.Domain != null)
-            .GroupBy(w => w.Domain)
-            .Select(g => new WebsiteUsageDto
-            {
-                Domain = g.Key!,
-                VisitCount = g.Count(),
-                Percentage = 0
-            })
-            .OrderByDescending(w => w.VisitCount)
-            .Take(limit)
-            .ToListAsync();
-
-        foreach (var result in results)
-        {
-            result.Percentage = Math.Round((double)result.VisitCount / totalCount * 100, 1);
-        }
-
-        return results;
-    }
-
     public async Task<PaginatedResult<ApplicationUsageDetailDto>> GetApplicationUsageDetailsPaginatedAsync(
         DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
     {
@@ -121,49 +89,6 @@ public class UsageMetricsService : IUsageMetricsService
         };
     }
 
-    public async Task<PaginatedResult<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsPaginatedAsync(
-        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
-    {
-        var query = _context.WebsiteUsageHistory
-            .Include(w => w.PC)
-                .ThenInclude(p => p.Room)
-            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
-
-        if (!string.IsNullOrEmpty(searchText))
-        {
-            query = query.Where(w => 
-                w.Url.Contains(searchText) ||
-                (w.Domain != null && w.Domain.Contains(searchText)) ||
-                (w.PC.Hostname != null && w.PC.Hostname.Contains(searchText)));
-        }
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .OrderByDescending(w => w.VisitedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(w => new WebsiteUsageDetailDto
-            {
-                Id = w.Id,
-                Url = w.Url,
-                Title = w.Domain ?? w.Url,
-                PCName = w.PC.Hostname ?? "Unknown",
-                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned",
-                VisitTime = w.VisitedAt,
-                VisitCount = w.VisitCount
-            })
-            .ToListAsync();
-
-        return new PaginatedResult<WebsiteUsageDetailDto>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            PageNumber = pageNumber,
-            PageSize = pageSize
-        };
-    }
-
     public async Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate)
     {
         return await _context.SoftwareUsageHistory
@@ -184,25 +109,6 @@ public class UsageMetricsService : IUsageMetricsService
             .ToListAsync();
     }
 
-    public async Task<List<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsAsync(DateTime startDate, DateTime endDate)
-    {
-        return await _context.WebsiteUsageHistory
-            .Include(w => w.PC)
-                .ThenInclude(p => p.Room)
-            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate)
-            .OrderByDescending(w => w.VisitedAt)
-            .Select(w => new WebsiteUsageDetailDto
-            {
-                Id = w.Id,
-                Url = w.Url,
-                Title = w.Domain ?? w.Url,
-                PCName = w.PC.Hostname ?? "Unknown",
-                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned",
-                VisitTime = w.VisitedAt,
-                VisitCount = w.VisitCount
-            })
-            .ToListAsync();
-    }
 
     public async Task<UsageMetricsSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate)
     {
@@ -229,6 +135,58 @@ public class UsageMetricsService : IUsageMetricsService
             TotalApplications = totalApps,
             TotalWebsites = totalWebsites,
             TotalHours = totalHours
+        };
+    }
+
+    public async Task<PaginatedResult<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsPaginatedAsync(
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
+    {
+        var query = _context.WebsiteUsageHistory
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            query = query.Where(w =>
+                w.Domain.Contains(searchText) ||
+                w.Browser.Contains(searchText) ||
+                (w.PC.Hostname != null && w.PC.Hostname.Contains(searchText)) ||
+                (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(searchText)));
+        }
+
+        var groupedQuery = query
+            .GroupBy(w => new
+            {
+                w.Domain,
+                w.Browser,
+                PCName = w.PC.Hostname,
+                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned"
+            })
+            .Select(g => new WebsiteUsageDetailDto
+            {
+                Id = 0,
+                Domain = g.Key.Domain,
+                Browser = g.Key.Browser,
+                PCName = g.Key.PCName ?? "Unknown",
+                RoomNumber = g.Key.RoomNumber,
+                VisitTime = g.Max(x => x.VisitedAt),
+                VisitCount = g.Sum(x => x.VisitCount)
+            });
+
+        var totalCount = await groupedQuery.CountAsync();
+
+        var items = await groupedQuery
+            .OrderByDescending(w => w.VisitCount)
+            .ThenByDescending(w => w.VisitTime)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PaginatedResult<WebsiteUsageDetailDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
         };
     }
 }

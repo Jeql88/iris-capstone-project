@@ -281,7 +281,7 @@
                                 SelectionMode="Single"
                                 Margin="10,0,10,0">
                         <ui:DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Url">
+                            <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Domain">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="10,5">
@@ -290,9 +290,9 @@
                                                 <ui:SymbolIcon Symbol="Globe24" FontSize="16" Foreground="White"/>
                                             </Border>
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" 
+                                                <TextBlock Text="{Binding Domain}" FontWeight="SemiBold" 
                                                            TextTrimming="CharacterEllipsis" MaxWidth="300" Foreground="#1a1a1a"/>
-                                                <TextBlock Text="{Binding Url}" FontSize="11" 
+                                                <TextBlock Text="{Binding Browser}" FontSize="11" 
                                                            Foreground="#666666"
                                                            TextTrimming="CharacterEllipsis" MaxWidth="300"/>
                                             </StackPanel>
@@ -302,7 +302,7 @@
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
                             <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
-                            <DataGridTextColumn Header="Duration" Binding="{Binding FormattedDuration}" Width="120"/>
+                            <DataGridTextColumn Header="Visits" Binding="{Binding VisitCount}" Width="120"/>
                             <DataGridTextColumn Header="Visit Time" Binding="{Binding VisitTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>

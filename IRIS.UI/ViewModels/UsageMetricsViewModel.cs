@@ -20,9 +20,9 @@ namespace IRIS.UI.ViewModels
         private string _webSearchText = string.Empty;
         private int _appCurrentPage = 1;
         private int _appTotalPages = 1;
+        private int _appTotalCount = 0;
         private int _webCurrentPage = 1;
         private int _webTotalPages = 1;
-        private int _appTotalCount = 0;
         private int _webTotalCount = 0;
         private int _pageSize = 10;
         public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
@@ -61,16 +61,16 @@ namespace IRIS.UI.ViewModels
             set { _totalApplications = value; OnPropertyChanged(); }
         }
 
-        public int TotalWebsites
-        {
-            get => _totalWebsites;
-            set { _totalWebsites = value; OnPropertyChanged(); }
-        }
-
         public double TotalHours
         {
             get => _totalHours;
             set { _totalHours = value; OnPropertyChanged(); }
+        }
+
+        public int TotalWebsites
+        {
+            get => _totalWebsites;
+            set { _totalWebsites = value; OnPropertyChanged(); }
         }
 
         public bool IsLoading
@@ -103,6 +103,12 @@ namespace IRIS.UI.ViewModels
             set { _appTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
         }
 
+        public int AppTotalCount
+        {
+            get => _appTotalCount;
+            set { _appTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
         public int WebCurrentPage
         {
             get => _webCurrentPage;
@@ -113,12 +119,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _webTotalPages;
             set { _webTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
-        }
-
-        public int AppTotalCount
-        {
-            get => _appTotalCount;
-            set { _appTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
         }
 
         public int WebTotalCount
@@ -239,8 +239,8 @@ namespace IRIS.UI.ViewModels
                 {
                     FilteredWebsiteUsage.Add(new WebUsageRow
                     {
-                        Url = item.Url,
-                        Title = item.Title,
+                        Domain = item.Domain,
+                        Browser = item.Browser,
                         PCName = item.PCName,
                         RoomNumber = item.RoomNumber,
                         VisitTime = item.VisitTime,
@@ -306,14 +306,12 @@ namespace IRIS.UI.ViewModels
 
     public class WebUsageRow : INotifyPropertyChanged
     {
-        public string Url { get; set; } = string.Empty;
-        public string Title { get; set; } = string.Empty;
+        public string Domain { get; set; } = string.Empty;
+        public string Browser { get; set; } = string.Empty;
         public string PCName { get; set; } = string.Empty;
         public string RoomNumber { get; set; } = string.Empty;
         public DateTime VisitTime { get; set; }
         public int VisitCount { get; set; }
-
-        public string FormattedDuration => $"{VisitCount} visits";
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>

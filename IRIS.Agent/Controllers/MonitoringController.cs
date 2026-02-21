@@ -16,6 +16,7 @@ namespace IRIS.Agent.Controllers
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _metricsIntervalSeconds;
         private DateTime _lastMetricsRunUtc = DateTime.MinValue;
+        private int _isCycleRunning = 0;
 
         public MonitoringController(IMonitoringService monitoringLogic, IConfiguration configuration)
         {
@@ -62,6 +63,11 @@ namespace IRIS.Agent.Controllers
         {
             if (!_isMonitoring) return;
 
+            if (Interlocked.Exchange(ref _isCycleRunning, 1) == 1)
+            {
+                return;
+            }
+
             try
             {
                 var now = DateTime.UtcNow;
@@ -80,6 +86,10 @@ namespace IRIS.Agent.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error during monitoring cycle");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isCycleRunning, 0);
             }
         }
     }

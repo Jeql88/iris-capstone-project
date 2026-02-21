@@ -14,8 +14,8 @@ public class ApplicationUsageDetailDto
 public class WebsiteUsageDetailDto
 {
     public int Id { get; set; }
-    public string Url { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
+    public string Domain { get; set; } = string.Empty;
+    public string Browser { get; set; } = string.Empty;
     public string PCName { get; set; } = string.Empty;
     public string RoomNumber { get; set; } = string.Empty;
     public DateTime VisitTime { get; set; }

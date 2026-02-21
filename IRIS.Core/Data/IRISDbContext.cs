@@ -38,7 +38,6 @@ namespace IRIS.Core.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
-        public DbSet<WallpaperAsset> WallpaperAssets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -265,8 +264,9 @@ namespace IRIS.Core.Data
                 .HasForeignKey(wuh => wuh.PCId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<WebsiteUsageHistory>()
-                .HasIndex(wuh => new { wuh.PCId, wuh.VisitedAt });
+           modelBuilder.Entity<WebsiteUsageHistory>()
+                .HasIndex(wuh => new { wuh.PCId, wuh.Browser, wuh.Domain, wuh.VisitedAt })
+                .IsUnique();
         }
 
         private void ConfigureUserLog(ModelBuilder modelBuilder)

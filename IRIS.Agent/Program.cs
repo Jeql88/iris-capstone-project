@@ -103,9 +103,41 @@ namespace IRIS.Agent
             var appUsageLogic = new ApplicationUsageLogic(appUsageContext, networkInfo.MacAddress);
             await appUsageLogic.StartMonitoringAsync();
 
+            var websiteUsageCollectInterval = int.TryParse(configuration["AgentSettings:WebsiteCollectIntervalSeconds"], out var wcis) ? wcis : 120;
+            var websiteUsageSyncInterval = int.TryParse(configuration["AgentSettings:WebsiteSyncIntervalSeconds"], out var wsis) ? wsis : 60;
+            var websiteUsageBucketMinutes = int.TryParse(configuration["AgentSettings:WebsiteBucketMinutes"], out var wbm) ? wbm : 5;
+
+            var websiteUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
+                .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
+                .Options;
+            var websiteUsageContext = new IRISDbContext(websiteUsageOptions);
+            var websiteUsageLogic = new WebsiteUsageLogic(
+                websiteUsageContext,
+                networkInfo.MacAddress,
+                websiteUsageCollectInterval,
+                websiteUsageSyncInterval,
+                websiteUsageBucketMinutes);
+            Log.Information("Initializing website usage monitoring...");
+            try
+            {
+                await websiteUsageLogic.StartMonitoringAsync();
+                Log.Information("Website usage monitoring initialization completed.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Website usage monitoring failed to initialize");
+            }
+
             // Start monitoring loop
             await monitoringController.StartMonitoringAsync();
-            await snapshotServer.StartAsync();
+            try
+            {
+                await snapshotServer.StartAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Screen snapshot server failed to start. Agent will continue without snapshot streaming.");
+            }
 
             // Start policy enforcement
             var policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
@@ -117,7 +149,10 @@ namespace IRIS.Agent
             AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
             {
                 Log.Information("Shutdown detected. Handling final update...");
+                await websiteUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
+                websiteUsageLogic.Dispose();
+                websiteUsageContext.Dispose();
                 Log.CloseAndFlush();
             };
 
@@ -128,9 +163,12 @@ namespace IRIS.Agent
                 await monitoringController.StopMonitoringAsync();
                 await snapshotServer.StopAsync();
                 await appUsageLogic.StopMonitoringAsync();
+                await websiteUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
                 appUsageLogic.Dispose();
                 appUsageContext.Dispose();
+                websiteUsageLogic.Dispose();
+                websiteUsageContext.Dispose();
                 Log.CloseAndFlush();
                 Environment.Exit(0);
             };

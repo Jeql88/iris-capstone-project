@@ -17,6 +17,7 @@ namespace IRIS.Agent.Logic
         private readonly string _macAddress;
         private readonly string _pingHost;
         private readonly int _pingTimeoutMs;
+        private readonly SemaphoreSlim _contextLock = new(1, 1);
 
         private long _lastBytesSent = -1;
         private long _lastBytesReceived = -1;
@@ -36,6 +37,7 @@ namespace IRIS.Agent.Logic
 
         public async Task SendHeartbeatAsync()
         {
+            await _contextLock.WaitAsync();
             try
             {
                 var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
@@ -56,10 +58,15 @@ namespace IRIS.Agent.Logic
                 Log.Error(ex, "Failed to send heartbeat for PC {MacAddress}", _macAddress);
                 throw;
             }
+            finally
+            {
+                _contextLock.Release();
+            }
         }
 
         public async Task CaptureHardwareMetricsAsync()
         {
+            await _contextLock.WaitAsync();
             try
             {
                 var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
@@ -98,10 +105,15 @@ namespace IRIS.Agent.Logic
                 Log.Error(ex, "Failed to capture hardware metrics for PC {MacAddress}", _macAddress);
                 throw;
             }
+            finally
+            {
+                _contextLock.Release();
+            }
         }
 
         public async Task CaptureNetworkMetricsAsync()
         {
+            await _contextLock.WaitAsync();
             try
             {
                 var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
@@ -180,6 +192,10 @@ namespace IRIS.Agent.Logic
             {
                 Log.Error(ex, "Failed to capture network metrics for PC {MacAddress}", _macAddress);
                 throw;
+            }
+            finally
+            {
+                _contextLock.Release();
             }
         }
 
