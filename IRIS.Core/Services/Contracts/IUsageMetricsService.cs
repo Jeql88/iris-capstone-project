@@ -9,6 +9,7 @@ namespace IRIS.Core.Services.Contracts
         Task<PaginatedResult<ApplicationUsageDetailDto>> GetApplicationUsageDetailsPaginatedAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null);
         Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate);
         Task<PaginatedResult<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsPaginatedAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null);
+        Task<byte[]> ExportUsageMetricsToExcelAsync(DateTime startDate, DateTime endDate, string? appSearchText = null, string? webSearchText = null);
         Task<UsageMetricsSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate);
     }
 }

@@ -1,15 +1,21 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
 {
     public class UsageMetricsViewModel : INotifyPropertyChanged
     {
         private readonly IUsageMetricsService _usageMetricsService;
+        private readonly RelayCommand _applyFilterRelayCommand;
+        private readonly RelayCommand _exportAppUsageRelayCommand;
+        private readonly RelayCommand _exportWebUsageRelayCommand;
         private DateTime _startDate = DateTime.UtcNow.Date.AddDays(-7);
         private DateTime _endDate = DateTime.UtcNow.Date;
         private int _totalApplications;
@@ -30,9 +36,14 @@ namespace IRIS.UI.ViewModels
         public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
         {
             _usageMetricsService = usageMetricsService;
-            ApplyFilterCommand = new RelayCommand(async () => await LoadDataAsync(), () => !IsLoading);
-            ExportAppUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
-            ExportWebUsageCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+
+            _applyFilterRelayCommand = new RelayCommand(async () => await LoadDataAsync(), () => !IsLoading);
+            _exportAppUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
+            _exportWebUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
+
+            ApplyFilterCommand = _applyFilterRelayCommand;
+            ExportAppUsageCommand = _exportAppUsageRelayCommand;
+            ExportWebUsageCommand = _exportWebUsageRelayCommand;
             AppPreviousPageCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => true);
             AppNextPageCommand = new RelayCommand(async () => await AppNextPageAsync(), () => true);
             WebPreviousPageCommand = new RelayCommand(async () => await WebPreviousPageAsync(), () => true);
@@ -76,7 +87,14 @@ namespace IRIS.UI.ViewModels
         public bool IsLoading
         {
             get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
+            set
+            {
+                _isLoading = value;
+                OnPropertyChanged();
+                _applyFilterRelayCommand.RaiseCanExecuteChanged();
+                _exportAppUsageRelayCommand.RaiseCanExecuteChanged();
+                _exportWebUsageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public string AppSearchText
@@ -268,6 +286,40 @@ namespace IRIS.UI.ViewModels
             if (WebCurrentPage < WebTotalPages)
             {
                 await LoadWebPageAsync(WebCurrentPage + 1);
+            }
+        }
+
+        private async Task ExportUsageMetricsAsync()
+        {
+            try
+            {
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+
+                var bytes = await _usageMetricsService.ExportUsageMetricsToExcelAsync(startUtc, endUtc, AppSearchText, WebSearchText);
+
+                var saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                    DefaultExt = "xlsx",
+                    FileName = $"UsageMetrics_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+                };
+
+                if (saveFileDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                await File.WriteAllBytesAsync(saveFileDialog.FileName, bytes);
+                MessageBox.Show(
+                    "Usage metrics for both Application and Website tabs were exported to an Excel file.",
+                    "Export Complete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export usage metrics: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

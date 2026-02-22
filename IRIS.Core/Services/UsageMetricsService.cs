@@ -2,6 +2,7 @@ using IRIS.Core.Data;
 using IRIS.Core.DTOs;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 
 namespace IRIS.Core.Services;
@@ -188,5 +189,122 @@ public class UsageMetricsService : IUsageMetricsService
             PageNumber = pageNumber,
             PageSize = pageSize
         };
+    }
+
+    public async Task<byte[]> ExportUsageMetricsToExcelAsync(DateTime startDate, DateTime endDate, string? appSearchText = null, string? webSearchText = null)
+    {
+        var appQuery = _context.SoftwareUsageHistory
+            .Include(s => s.PC)
+                .ThenInclude(p => p.Room)
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
+
+        if (!string.IsNullOrWhiteSpace(appSearchText))
+        {
+            appQuery = appQuery.Where(s =>
+                s.ApplicationName.Contains(appSearchText) ||
+                (s.PC.Hostname != null && s.PC.Hostname.Contains(appSearchText)));
+        }
+
+        var appItems = await appQuery
+            .OrderByDescending(s => s.StartTime)
+            .Select(s => new ApplicationUsageDetailDto
+            {
+                Id = s.Id,
+                ApplicationName = s.ApplicationName,
+                PCName = s.PC.Hostname ?? "Unknown",
+                RoomNumber = s.PC.Room != null ? s.PC.Room.RoomNumber : "Unassigned",
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                Duration = s.Duration
+            })
+            .ToListAsync();
+
+        var webQuery = _context.WebsiteUsageHistory
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
+
+        if (!string.IsNullOrWhiteSpace(webSearchText))
+        {
+            webQuery = webQuery.Where(w =>
+                w.Domain.Contains(webSearchText) ||
+                w.Browser.Contains(webSearchText) ||
+                (w.PC.Hostname != null && w.PC.Hostname.Contains(webSearchText)) ||
+                (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(webSearchText)));
+        }
+
+        var webItems = await webQuery
+            .GroupBy(w => new
+            {
+                w.Domain,
+                w.Browser,
+                PCName = w.PC.Hostname,
+                RoomNumber = w.PC.Room != null ? w.PC.Room.RoomNumber : "Unassigned"
+            })
+            .Select(g => new WebsiteUsageDetailDto
+            {
+                Id = 0,
+                Domain = g.Key.Domain,
+                Browser = g.Key.Browser,
+                PCName = g.Key.PCName ?? "Unknown",
+                RoomNumber = g.Key.RoomNumber,
+                VisitTime = g.Max(x => x.VisitedAt),
+                VisitCount = g.Sum(x => x.VisitCount)
+            })
+            .OrderByDescending(w => w.VisitCount)
+            .ThenByDescending(w => w.VisitTime)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+
+        var appSheet = workbook.Worksheets.Add("Application Usage");
+        appSheet.Cell(1, 1).Value = "Application";
+        appSheet.Cell(1, 2).Value = "PC Name";
+        appSheet.Cell(1, 3).Value = "Room";
+        appSheet.Cell(1, 4).Value = "Start Time (UTC)";
+        appSheet.Cell(1, 5).Value = "End Time (UTC)";
+        appSheet.Cell(1, 6).Value = "Duration";
+
+        for (var index = 0; index < appItems.Count; index++)
+        {
+            var row = index + 2;
+            var item = appItems[index];
+
+            appSheet.Cell(row, 1).Value = item.ApplicationName;
+            appSheet.Cell(row, 2).Value = item.PCName;
+            appSheet.Cell(row, 3).Value = item.RoomNumber;
+            appSheet.Cell(row, 4).Value = item.StartTime;
+            appSheet.Cell(row, 5).Value = item.EndTime;
+            appSheet.Cell(row, 6).Value = item.Duration?.ToString() ?? "Active";
+        }
+
+        var webSheet = workbook.Worksheets.Add("Website Usage");
+        webSheet.Cell(1, 1).Value = "Domain";
+        webSheet.Cell(1, 2).Value = "Browser";
+        webSheet.Cell(1, 3).Value = "PC Name";
+        webSheet.Cell(1, 4).Value = "Room";
+        webSheet.Cell(1, 5).Value = "Visit Count";
+        webSheet.Cell(1, 6).Value = "Last Visit (UTC)";
+
+        for (var index = 0; index < webItems.Count; index++)
+        {
+            var row = index + 2;
+            var item = webItems[index];
+
+            webSheet.Cell(row, 1).Value = item.Domain;
+            webSheet.Cell(row, 2).Value = item.Browser;
+            webSheet.Cell(row, 3).Value = item.PCName;
+            webSheet.Cell(row, 4).Value = item.RoomNumber;
+            webSheet.Cell(row, 5).Value = item.VisitCount;
+            webSheet.Cell(row, 6).Value = item.VisitTime;
+        }
+
+        appSheet.Columns().AdjustToContents();
+        webSheet.Columns().AdjustToContents();
+
+        appSheet.RangeUsed()?.SetAutoFilter();
+        webSheet.RangeUsed()?.SetAutoFilter();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 }
