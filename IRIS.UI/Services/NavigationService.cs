@@ -8,8 +8,7 @@ namespace IRIS.UI.Services
     {
         private ContentControl? _navigationFrame;
         private IServiceProvider? _serviceProvider;
-        private IServiceScope? _currentScope;
-        private readonly Stack<(string viewKey, object? parameter)> _navigationStack = new();
+        private readonly Stack<NavigationEntry> _navigationStack = new();
         private readonly Dictionary<string, Type> _viewRegistry = new();
         private ILogger<NavigationService>? _logger;
 
@@ -55,12 +54,9 @@ namespace IRIS.UI.Services
 
             try
             {
-                // Dispose previous scope and create a new one for scoped services
-                _currentScope?.Dispose();
-                _currentScope = _serviceProvider.CreateScope();
-                
-                var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
-                
+                var scope = _serviceProvider.CreateScope();
+                var view = scope.ServiceProvider.GetRequiredService(viewType);
+
                 if (view is UserControl userControl)
                 {
                     if (parameter != null && userControl is Views.Faculty.ViewScreenPage viewScreenPage)
@@ -68,8 +64,12 @@ namespace IRIS.UI.Services
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
                     }
 
-                    _navigationStack.Push((viewKey, parameter));
+                    _navigationStack.Push(new NavigationEntry(viewKey, parameter, userControl, scope));
                     _navigationFrame.Content = userControl;
+                }
+                else
+                {
+                    scope.Dispose();
                 }
             }
             catch (Exception ex)
@@ -92,35 +92,27 @@ namespace IRIS.UI.Services
         {
             if (!CanGoBack || _navigationFrame == null || _serviceProvider == null) return;
 
-            _navigationStack.Pop();
-            var (viewKey, parameter) = _navigationStack.Peek();
-            
-            if (!_viewRegistry.TryGetValue(viewKey, out var viewType))
-                return;
-
             try
             {
-                // Dispose previous scope and create a new one for scoped services
-                _currentScope?.Dispose();
-                _currentScope = _serviceProvider.CreateScope();
-                
-                var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
-                
-                if (view is UserControl userControl)
-                {
-                    _navigationFrame.Content = userControl;
-                }
+                var currentEntry = _navigationStack.Pop();
+                currentEntry.Scope.Dispose();
+
+                var previousEntry = _navigationStack.Peek();
+                _navigationFrame.Content = previousEntry.View;
             }
             catch (Exception ex)
             {
-                var errorMsg = $"[NavigationService] Failed to go back to '{viewKey}'.\n" +
+                var previousViewKey = _navigationStack.TryPeek(out var entry) ? entry.ViewKey : "Unknown";
+                var errorMsg = $"[NavigationService] Failed to go back to '{previousViewKey}'.\n" +
                                $"  Exception: {ex.GetType().FullName}\n" +
                                $"  Message: {ex.Message}\n" +
                                $"  Inner: {ex.InnerException?.Message}\n" +
                                $"  StackTrace:\n{ex.StackTrace}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
-                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", viewKey);
+                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", previousViewKey);
             }
         }
+
+        private sealed record NavigationEntry(string ViewKey, object? Parameter, UserControl View, IServiceScope Scope);
     }
 }

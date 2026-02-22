@@ -8,7 +8,7 @@ namespace IRIS.Core.Services
     public class AuthenticationService : IAuthenticationService
     {
         private readonly IRISDbContext _context;
-        private User? _currentUser;
+        private static User? _currentUser;
 
         public AuthenticationService(IRISDbContext context)
         {
@@ -31,6 +31,7 @@ namespace IRIS.Core.Services
 
 
                 var user = await _context.Users
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Username == username && u.IsActive)
                     .ConfigureAwait(false);
 
@@ -40,18 +41,28 @@ namespace IRIS.Core.Services
                 if (!VerifyPassword(password, user.PasswordHash))
                     return null;
 
-                // Update last login
-                user.LastLoginAt = DateTime.UtcNow;
+                // Update last login using direct update to avoid stale tracked entities
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await _context.Users
+                        .Where(u => u.Id == user.Id)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(u => u.LastLoginAt, DateTime.UtcNow));
                 }
                 catch (Exception saveEx)
                 {
                     System.Diagnostics.Debug.WriteLine($"Failed to update last login: {saveEx.Message}");
                 }
 
-                _currentUser = user;
+                _currentUser = new User
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    Role = user.Role,
+                    IsActive = user.IsActive,
+                    MustChangePassword = user.MustChangePassword
+                };
 
                 // Log successful login
                 await LogUserActionAsync("Login", $"User {username} logged in");
@@ -93,6 +104,11 @@ namespace IRIS.Core.Services
                 }
 
                 await LogUserActionAsync("Password Changed", $"User {user.Username} changed password");
+
+                if (_currentUser != null && _currentUser.Id == user.Id)
+                {
+                    _currentUser.MustChangePassword = false;
+                }
 
                 return true;
             }
