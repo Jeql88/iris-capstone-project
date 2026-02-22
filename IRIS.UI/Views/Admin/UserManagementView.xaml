@@ -98,6 +98,18 @@
                                      SelectedItem="{Binding SelectedUser}"
                                      AutoGenerateColumns="False" IsReadOnly="True"
                                      MinHeight="350">
+                            <ui:DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#D6E9FF"/>
+                                            <Setter Property="Foreground" Value="#1a1a1a"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:DataGrid.RowStyle>
                             <ui:DataGrid.Columns>
                                 <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
                                 <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
@@ -180,9 +192,9 @@
                                                Foreground="{DynamicResource IRISSecondaryBrush}"/>
                                 </StackPanel>
                                 <ui:Button x:Name="HelpIcon" 
-                                           ToolTip="Select a user from the table to edit"
                                            Icon="{ui:SymbolIcon QuestionCircle24}"
                                            Appearance="Secondary"
+                                           Click="HelpIcon_Click"
                                            HorizontalAlignment="Right"/>
                             </Grid>
                             

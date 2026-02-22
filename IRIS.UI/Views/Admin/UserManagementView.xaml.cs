@@ -17,7 +17,7 @@ namespace IRIS.UI.Views.Admin
             DataContext = viewModel;
             _viewModel = viewModel;
             _userService = userService;
-            
+
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
@@ -35,10 +35,23 @@ namespace IRIS.UI.Views.Admin
                     DeactivateUserButton.IsEnabled = true;
                     ClearSelectionButton.Visibility = System.Windows.Visibility.Visible;
                     HelpIcon.Visibility = System.Windows.Visibility.Collapsed;
-                    
+
+                    if (_viewModel.SelectedUser.IsActive)
+                    {
+                        DeactivateUserButton.Content = "Deactivate User";
+                        DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24 };
+                        DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Danger;
+                    }
+                    else
+                    {
+                        DeactivateUserButton.Content = "Reactivate User";
+                        DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.ArrowSync24 };
+                        DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
+                    }
+
                     EditFullNameTextBox.Text = _viewModel.SelectedUser.FullName;
                     EditUsernameTextBox.Text = _viewModel.SelectedUser.Username;
-                    
+
                     foreach (ComboBoxItem item in EditRoleComboBox.Items)
                     {
                         if (item.Content.ToString() == _viewModel.SelectedUser.Role)
@@ -58,7 +71,11 @@ namespace IRIS.UI.Views.Admin
                     DeactivateUserButton.IsEnabled = false;
                     ClearSelectionButton.Visibility = System.Windows.Visibility.Collapsed;
                     HelpIcon.Visibility = System.Windows.Visibility.Visible;
-                    
+
+                    DeactivateUserButton.Content = "Deactivate User";
+                    DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24 };
+                    DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Danger;
+
                     EditFullNameTextBox.Text = string.Empty;
                     EditUsernameTextBox.Text = string.Empty;
                     EditRoleComboBox.SelectedIndex = -1;
@@ -75,6 +92,16 @@ namespace IRIS.UI.Views.Admin
             EditFullNameTextBox.Text = string.Empty;
             EditUsernameTextBox.Text = string.Empty;
             EditRoleComboBox.SelectedIndex = -1;
+        }
+
+        private void HelpIcon_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "To edit a user, click a row in the users table first.\n\n" +
+                "The selected user's details will be loaded into the Manage User form.",
+                "Manage User Help",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private async void AddUser_Click(object sender, RoutedEventArgs e)
@@ -185,18 +212,29 @@ namespace IRIS.UI.Views.Admin
         {
             if (_viewModel?.SelectedUser == null) return;
 
-            var result = MessageBox.Show(
-                $"Are you sure you want to deactivate user '{_viewModel.SelectedUser.Username}'?\n\nThis user will no longer be able to log in.",
-                "Confirm Deactivation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var isActive = _viewModel.SelectedUser.IsActive;
+            var confirmMessage = isActive
+                ? $"Are you sure you want to deactivate user '{_viewModel.SelectedUser.Username}'?\n\nThis user will no longer be able to log in."
+                : $"Are you sure you want to reactivate user '{_viewModel.SelectedUser.Username}'?\n\nThe user can log in again and will be required to change password.";
+            var confirmTitle = isActive ? "Confirm Deactivation" : "Confirm Reactivation";
 
+            var result = MessageBox.Show(confirmMessage, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             try
             {
-                await _userService.DeleteUserAsync(_viewModel.SelectedUser.Id);
-
-                MessageBox.Show($"User '{_viewModel.SelectedUser.Username}' deactivated successfully!",
-                    "User Deactivated", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (isActive)
+                {
+                    await _userService.DeleteUserAsync(_viewModel.SelectedUser.Id);
+                    MessageBox.Show($"User '{_viewModel.SelectedUser.Username}' deactivated successfully!",
+                        "User Deactivated", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    await _userService.ReactivateUserAsync(_viewModel.SelectedUser.Id);
+                    MessageBox.Show($"User '{_viewModel.SelectedUser.Username}' reactivated successfully!\n\nTemporary Password: IRIS@2025\n\nUser must change password on next login.",
+                        "User Reactivated", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
 
                 _viewModel.RefreshCommand.Execute(null);
                 _viewModel.SelectedUser = null;

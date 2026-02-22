@@ -80,6 +80,24 @@ namespace IRIS.Core.Services
             return true;
         }
 
+        public async Task<bool> ReactivateUserAsync(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return false;
+
+            const string reactivationTempPassword = "IRIS@2025";
+
+            user.IsActive = true;
+            user.PasswordHash = HashPassword(reactivationTempPassword);
+            user.MustChangePassword = true;
+            await _context.SaveChangesAsync();
+
+            await _authService.LogUserActionAsync("User Reactivated", $"Reactivated user {user.Username} with temporary password reset");
+
+            return true;
+        }
+
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             return await _context.Users.FindAsync(userId);
@@ -99,7 +117,7 @@ namespace IRIS.Core.Services
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(u => u.Username.Contains(search) || 
+                query = query.Where(u => u.Username.Contains(search) ||
                                         (u.FullName != null && u.FullName.Contains(search)));
             }
 
@@ -116,7 +134,7 @@ namespace IRIS.Core.Services
             }
 
             var totalCount = await query.CountAsync();
-            
+
             var users = await query
                 .OrderBy(u => u.Username)
                 .Skip((pageNumber - 1) * pageSize)

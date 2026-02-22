@@ -33,16 +33,16 @@ namespace IRIS.UI.Services
             _viewRegistry["Settings"] = typeof(Views.Common.SettingsView);
             _viewRegistry["AccessLogs"] = typeof(Views.Common.AccessLogsView);
             _viewRegistry["UsageMetrics"] = typeof(Views.Common.UsageMetricsView);
-            
+
             // Admin Views
             _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
             _viewRegistry["PolicyEnforcement"] = typeof(Views.Admin.PolicyEnforcementView);
             _viewRegistry["Labs"] = typeof(Views.Admin.LabsView);
-            
+
             // Personnel Views
             _viewRegistry["Monitor"] = typeof(Views.Personnel.MonitorView);
             _viewRegistry["SoftwareManagement"] = typeof(Views.Personnel.SoftwareManagementView);
-            
+
             // Faculty Views
             _viewRegistry["ViewScreen"] = typeof(Views.Faculty.ViewScreenPage);
         }
