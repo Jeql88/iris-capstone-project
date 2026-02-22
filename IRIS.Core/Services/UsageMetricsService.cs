@@ -57,7 +57,7 @@ public class UsageMetricsService : IUsageMetricsService
 
         if (!string.IsNullOrEmpty(searchText))
         {
-            query = query.Where(s => 
+            query = query.Where(s =>
                 s.ApplicationName.Contains(searchText) ||
                 (s.PC.Hostname != null && s.PC.Hostname.Contains(searchText)));
         }

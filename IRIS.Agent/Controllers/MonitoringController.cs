@@ -41,7 +41,7 @@ namespace IRIS.Agent.Controllers
             // Start periodic tasks
             _timer = new System.Threading.Timer(async _ => await PerformMonitoringAsync(), null, TimeSpan.Zero,
                 TimeSpan.FromSeconds(Math.Min(_heartbeatIntervalSeconds, _metricsIntervalSeconds)));
-            
+
             return Task.CompletedTask;
         }
 

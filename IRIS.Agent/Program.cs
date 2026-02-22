@@ -91,7 +91,7 @@ namespace IRIS.Agent
 
             // Initialize wallpaper policy enforcer
             var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress);
-            
+
             // Enforce wallpaper policy on startup
             await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
 
@@ -179,7 +179,7 @@ namespace IRIS.Agent
 
         [DllImport("user32.dll")]
         static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-        
+
         [StructLayout(LayoutKind.Sequential)]
         struct LASTINPUTINFO
         {
@@ -194,7 +194,7 @@ namespace IRIS.Agent
                 var optionsBuilder = new DbContextOptionsBuilder<IRISDbContext>()
                     .UseNpgsql(context.Database.GetConnectionString())
                     .Options;
-                    
+
                 using var policyContext = new IRISDbContext(optionsBuilder);
                 var pc = await policyContext.PCs
                     .Include(p => p.Room)
@@ -205,7 +205,7 @@ namespace IRIS.Agent
                 {
                     // Initialize wallpaper enforcer for periodic checks - COMMENTED OUT: Only enforce on startup
                     // var wallpaperEnforcer = new WallpaperPolicyEnforcer(policyContext, macAddress);
-                    
+
                     foreach (var policy in pc.Room.Policies.Where(p => p.IsActive))
                     {
                         // Check wallpaper compliance - COMMENTED OUT: Only enforce on startup
@@ -213,7 +213,7 @@ namespace IRIS.Agent
                         // {
                         //     await wallpaperEnforcer.CheckAndEnforceWallpaperComplianceAsync();
                         // }
-                        
+
                         // Check auto-shutdown policy
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                         {
@@ -232,7 +232,7 @@ namespace IRIS.Agent
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
-            
+
             if (idleTime.TotalMinutes >= idleMinutes)
             {
                 Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
@@ -245,13 +245,13 @@ namespace IRIS.Agent
         {
             var lastInputInfo = new LASTINPUTINFO();
             lastInputInfo.cbSize = (uint)Marshal.SizeOf(lastInputInfo);
-            
+
             if (GetLastInputInfo(ref lastInputInfo))
             {
                 var idleTime = Environment.TickCount - lastInputInfo.dwTime;
                 return TimeSpan.FromMilliseconds(idleTime);
             }
-            
+
             return TimeSpan.Zero;
         }
 
