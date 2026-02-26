@@ -57,6 +57,7 @@ namespace IRIS.UI.Services
             try
             {
                 NotifyCurrentViewNavigatedFrom();
+                _navigationFrame.Content = null;
                 DisposeCurrentScopeSafe();
                 _currentScope = _serviceProvider.CreateScope();
                 
@@ -102,6 +103,7 @@ namespace IRIS.UI.Services
             try
             {
                 NotifyCurrentViewNavigatedFrom();
+                _navigationFrame.Content = null;
                 DisposeCurrentScopeSafe();
                 _currentScope = _serviceProvider.CreateScope();
                 
@@ -151,22 +153,29 @@ namespace IRIS.UI.Services
 
         private void DisposeCurrentScopeSafe()
         {
-            if (_currentScope == null)
+            var scopeToDispose = _currentScope;
+            _currentScope = null;
+
+            if (scopeToDispose == null)
             {
                 return;
             }
 
             try
             {
-                _currentScope.Dispose();
+                scopeToDispose.Dispose();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Scope was already disposed; safe to ignore.
+            }
+            catch (NullReferenceException ex)
+            {
+                _logger?.LogWarning(ex, "Null reference while disposing previous navigation scope; continuing navigation.");
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error disposing previous navigation scope; continuing navigation.");
-            }
-            finally
-            {
-                _currentScope = null;
             }
         }
     }
