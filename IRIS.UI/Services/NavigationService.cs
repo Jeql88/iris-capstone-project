@@ -9,7 +9,8 @@ namespace IRIS.UI.Services
     {
         private ContentControl? _navigationFrame;
         private IServiceProvider? _serviceProvider;
-        private readonly Stack<NavigationEntry> _navigationStack = new();
+        private IServiceScope? _currentScope;
+        private readonly Stack<(string viewKey, object? parameter)> _navigationStack = new();
         private readonly Dictionary<string, Type> _viewRegistry = new();
         private ILogger<NavigationService>? _logger;
 
@@ -69,12 +70,8 @@ namespace IRIS.UI.Services
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
                     }
 
-                    _navigationStack.Push(new NavigationEntry(viewKey, parameter, userControl, scope));
+                    _navigationStack.Push((viewKey, parameter));
                     _navigationFrame.Content = userControl;
-                }
-                else
-                {
-                    scope.Dispose();
                 }
             }
             catch (Exception ex)
@@ -97,6 +94,12 @@ namespace IRIS.UI.Services
         {
             if (!CanGoBack || _navigationFrame == null || _serviceProvider == null) return;
 
+            _navigationStack.Pop();
+            var (viewKey, parameter) = _navigationStack.Peek();
+
+            if (!_viewRegistry.TryGetValue(viewKey, out var viewType))
+                return;
+
             try
             {
                 NotifyCurrentViewNavigatedFrom();
@@ -108,19 +111,23 @@ namespace IRIS.UI.Services
                 
                 if (view is UserControl userControl)
                 {
+                    if (parameter != null && userControl is Views.Faculty.ViewScreenPage viewScreenPage)
+                    {
+                        viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
+                    }
+
                     _navigationFrame.Content = userControl;
                 }
             }
             catch (Exception ex)
             {
-                var previousViewKey = _navigationStack.TryPeek(out var entry) ? entry.ViewKey : "Unknown";
-                var errorMsg = $"[NavigationService] Failed to go back to '{previousViewKey}'.\n" +
+                var errorMsg = $"[NavigationService] Failed to go back to '{viewKey}'.\n" +
                                $"  Exception: {ex.GetType().FullName}\n" +
                                $"  Message: {ex.Message}\n" +
                                $"  Inner: {ex.InnerException?.Message}\n" +
                                $"  StackTrace:\n{ex.StackTrace}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
-                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", previousViewKey);
+                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", viewKey);
             }
         }
 
