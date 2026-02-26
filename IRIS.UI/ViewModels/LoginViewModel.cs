@@ -97,7 +97,7 @@ namespace IRIS.UI.ViewModels
                         var app = (App)Application.Current;
                         var serviceProvider = app.GetServiceProvider();
                         var authService = serviceProvider.GetService<IAuthenticationService>();
-                        
+
                         var changePasswordWindow = new ChangePasswordWindow(authService!, user);
                         var result = changePasswordWindow.ShowDialog();
 
@@ -116,30 +116,26 @@ namespace IRIS.UI.ViewModels
 
                     if (loginWindow != null)
                     {
-                        // Create and show main window using a scope
+                        // Create and show main window using root service provider
                         var app = (App)Application.Current;
                         var serviceProvider = app.GetServiceProvider();
-                        
-                        // Use IServiceScopeFactory to create a scope for the main window and its dependencies
-                        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-                        var scope = scopeFactory.CreateScope();
-                        
+
                         Window? mainWindow = null;
-                        
+
                         // Show appropriate window based on user role
                         if (user.Role == UserRole.ITPersonnel)
                         {
-                            mainWindow = scope.ServiceProvider.GetRequiredService<PersonnelMainWindow>();
+                            mainWindow = serviceProvider.GetRequiredService<PersonnelMainWindow>();
                         }
                         else if (user.Role == UserRole.Faculty)
                         {
-                            mainWindow = scope.ServiceProvider.GetRequiredService<FacultyMainWindow>();
+                            mainWindow = serviceProvider.GetRequiredService<FacultyMainWindow>();
                         }
                         else
                         {
-                            mainWindow = scope.ServiceProvider.GetRequiredService<MainWindow>();
+                            mainWindow = serviceProvider.GetRequiredService<MainWindow>();
                         }
-                        
+
                         if (mainWindow != null)
                         {
                             mainWindow.Show();

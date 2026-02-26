@@ -9,8 +9,7 @@ namespace IRIS.UI.Services
     {
         private ContentControl? _navigationFrame;
         private IServiceProvider? _serviceProvider;
-        private IServiceScope? _currentScope;
-        private readonly Stack<(string viewKey, object? parameter)> _navigationStack = new();
+        private readonly Stack<NavigationEntry> _navigationStack = new();
         private readonly Dictionary<string, Type> _viewRegistry = new();
         private ILogger<NavigationService>? _logger;
 
@@ -35,16 +34,16 @@ namespace IRIS.UI.Services
             _viewRegistry["Settings"] = typeof(Views.Common.SettingsView);
             _viewRegistry["AccessLogs"] = typeof(Views.Common.AccessLogsView);
             _viewRegistry["UsageMetrics"] = typeof(Views.Common.UsageMetricsView);
-            
+
             // Admin Views
             _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
             _viewRegistry["PolicyEnforcement"] = typeof(Views.Admin.PolicyEnforcementView);
             _viewRegistry["Labs"] = typeof(Views.Admin.LabsView);
-            
+
             // Personnel Views
             _viewRegistry["Monitor"] = typeof(Views.Personnel.MonitorView);
             _viewRegistry["SoftwareManagement"] = typeof(Views.Personnel.SoftwareManagementView);
-            
+
             // Faculty Views
             _viewRegistry["ViewScreen"] = typeof(Views.Faculty.ViewScreenPage);
         }
@@ -70,8 +69,12 @@ namespace IRIS.UI.Services
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
                     }
 
-                    _navigationStack.Push((viewKey, parameter));
+                    _navigationStack.Push(new NavigationEntry(viewKey, parameter, userControl, scope));
                     _navigationFrame.Content = userControl;
+                }
+                else
+                {
+                    scope.Dispose();
                 }
             }
             catch (Exception ex)
@@ -94,12 +97,6 @@ namespace IRIS.UI.Services
         {
             if (!CanGoBack || _navigationFrame == null || _serviceProvider == null) return;
 
-            _navigationStack.Pop();
-            var (viewKey, parameter) = _navigationStack.Peek();
-            
-            if (!_viewRegistry.TryGetValue(viewKey, out var viewType))
-                return;
-
             try
             {
                 NotifyCurrentViewNavigatedFrom();
@@ -116,13 +113,14 @@ namespace IRIS.UI.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"[NavigationService] Failed to go back to '{viewKey}'.\n" +
+                var previousViewKey = _navigationStack.TryPeek(out var entry) ? entry.ViewKey : "Unknown";
+                var errorMsg = $"[NavigationService] Failed to go back to '{previousViewKey}'.\n" +
                                $"  Exception: {ex.GetType().FullName}\n" +
                                $"  Message: {ex.Message}\n" +
                                $"  Inner: {ex.InnerException?.Message}\n" +
                                $"  StackTrace:\n{ex.StackTrace}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
-                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", viewKey);
+                _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", previousViewKey);
             }
         }
 

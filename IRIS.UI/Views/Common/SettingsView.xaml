@@ -34,19 +34,19 @@
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" 
                                    Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username, FallbackValue='—'}" FontSize="14" 
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username, TargetNullValue='—', FallbackValue='—'}" FontSize="14" 
                                    Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" 
                                    Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName, FallbackValue='—'}" FontSize="14" 
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName, TargetNullValue='—', FallbackValue='—'}" FontSize="14" 
                                    Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold" 
                                    Foreground="#1a1a1a" VerticalAlignment="Center"/>
                         <Border Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left"
                                 Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="4" Padding="10,4">
-                            <TextBlock Text="{Binding Role, FallbackValue='—'}" FontSize="13" 
+                            <TextBlock Text="{Binding Role, TargetNullValue='—', FallbackValue='—'}" FontSize="13" 
                                        Foreground="White" FontWeight="SemiBold"/>
                         </Border>
                     </Grid>
