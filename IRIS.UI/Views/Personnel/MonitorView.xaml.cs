@@ -17,12 +17,16 @@ namespace IRIS.UI.Views.Personnel
 
         private void PCCard_Click(object sender, MouseButtonEventArgs e)
         {
+            if (e.OriginalSource is DependencyObject source && FindParent<Button>(source) != null)
+            {
+                return;
+            }
+
             if (sender is FrameworkElement element && element.Tag is PCDisplayModel pc)
             {
                 if (DataContext is MonitorViewModel vm)
                 {
-                    vm.SelectedPC = pc;
-                    vm.ViewScreenCommand.Execute(null);
+                    vm.ToggleCardDetailsCommand.Execute(pc);
                 }
             }
         }

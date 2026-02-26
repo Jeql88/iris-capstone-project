@@ -242,9 +242,19 @@ namespace IRIS.Core.Services
                     OperatingSystem = pc.OperatingSystem ?? "Unknown",
                     Status = pc.Status.ToString(),
                     CpuUsage = latestMetric?.CpuUsage ?? 0,
+                    CpuTemperature = latestMetric?.CpuTemperature,
+                    CpuTemperatureSource = latestMetric?.CpuTemperatureSource,
+                    GpuUsage = latestMetric?.GpuUsage,
+                    GpuTemperature = latestMetric?.GpuTemperature,
+                    GpuTemperatureSource = latestMetric?.GpuTemperatureSource,
                     RamUsage = latestMetric?.MemoryUsage ?? 0,
                     DiskUsage = latestMetric?.DiskUsage ?? 0,
                     NetworkUsage = networkUsage,
+                    NetworkUploadMbps = latestNetwork?.UploadSpeed ?? 0,
+                    NetworkDownloadMbps = latestNetwork?.DownloadSpeed ?? 0,
+                    NetworkLatencyMs = latestNetwork?.Latency,
+                    PacketLossPercent = latestNetwork?.PacketLoss,
+                    LastMetricTimestamp = latestMetric?.Timestamp ?? latestNetwork?.Timestamp,
                     User = latestUser?.User?.Username ?? ""
                 };
             }).ToList();
@@ -270,6 +280,7 @@ namespace IRIS.Core.Services
 
             var query = _context.PCs
                 .Include(p => p.Room)
+                .ThenInclude(r => r.Policies)
                 .Include(p => p.HardwareMetrics)
                 .Include(p => p.NetworkMetrics)
                 .AsQueryable();
@@ -284,6 +295,7 @@ namespace IRIS.Core.Services
             {
                 var pcName = pc.Hostname ?? $"PC-{pc.Id}";
                 var roomName = pc.Room?.RoomNumber ?? "Unassigned";
+                var activePolicy = pc.Room?.Policies?.FirstOrDefault(p => p.IsActive);
                 var latestHardware = pc.HardwareMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
                 var latestNetwork = pc.NetworkMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
 
@@ -294,15 +306,43 @@ namespace IRIS.Core.Services
 
                 if (latestHardware != null)
                 {
-                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "CPU", latestHardware.CpuUsage, 85, 95, latestHardware.Timestamp, "%");
-                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "RAM", latestHardware.MemoryUsage, 85, 95, latestHardware.Timestamp, "%");
-                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "Disk", latestHardware.DiskUsage, 90, 98, latestHardware.Timestamp, "%");
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "CPU", latestHardware.CpuUsage,
+                        activePolicy?.CpuUsageWarningThreshold ?? 85,
+                        activePolicy?.CpuUsageCriticalThreshold ?? 95,
+                        latestHardware.Timestamp, "%");
+
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "RAM", latestHardware.MemoryUsage,
+                        activePolicy?.RamUsageWarningThreshold ?? 85,
+                        activePolicy?.RamUsageCriticalThreshold ?? 95,
+                        latestHardware.Timestamp, "%");
+
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "Disk", latestHardware.DiskUsage,
+                        activePolicy?.DiskUsageWarningThreshold ?? 90,
+                        activePolicy?.DiskUsageCriticalThreshold ?? 98,
+                        latestHardware.Timestamp, "%");
+
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Thermal", "CPU temperature", latestHardware.CpuTemperature,
+                        activePolicy?.CpuTemperatureWarningThreshold ?? 80,
+                        activePolicy?.CpuTemperatureCriticalThreshold ?? 90,
+                        latestHardware.Timestamp, " °C");
+
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Thermal", "GPU temperature", latestHardware.GpuTemperature,
+                        activePolicy?.GpuTemperatureWarningThreshold ?? 80,
+                        activePolicy?.GpuTemperatureCriticalThreshold ?? 90,
+                        latestHardware.Timestamp, " °C");
                 }
 
                 if (latestNetwork != null)
                 {
-                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Packet loss", latestNetwork.PacketLoss, 3, 10, latestNetwork.Timestamp, "%");
-                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Latency", latestNetwork.Latency, 150, 300, latestNetwork.Timestamp, " ms");
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Packet loss", latestNetwork.PacketLoss,
+                        activePolicy?.PacketLossWarningThreshold ?? 3,
+                        activePolicy?.PacketLossCriticalThreshold ?? 10,
+                        latestNetwork.Timestamp, "%");
+
+                    AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Latency", latestNetwork.Latency,
+                        activePolicy?.LatencyWarningThreshold ?? 150,
+                        activePolicy?.LatencyCriticalThreshold ?? 300,
+                        latestNetwork.Timestamp, " ms");
                 }
             }
 

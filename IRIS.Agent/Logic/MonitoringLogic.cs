@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
+using LibreHardwareMonitor.Hardware;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using IRIS.Core.Data;
@@ -22,6 +24,7 @@ namespace IRIS.Agent.Logic
         private long _lastBytesSent = -1;
         private long _lastBytesReceived = -1;
         private DateTime _lastNetworkSample = DateTime.MinValue;
+        private readonly Computer? _hardwareComputer;
 
         public MonitoringLogic(
             IRISDbContext context,
@@ -33,6 +36,20 @@ namespace IRIS.Agent.Logic
             _macAddress = macAddress;
             _pingHost = pingHost;
             _pingTimeoutMs = pingTimeoutMs;
+
+            try
+            {
+                _hardwareComputer = new Computer
+                {
+                    IsCpuEnabled = true,
+                    IsGpuEnabled = true
+                };
+                _hardwareComputer.Open();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Hardware sensors are not available; temperatures and GPU usage may be missing");
+            }
         }
 
         public async Task SendHeartbeatAsync()
@@ -85,20 +102,37 @@ namespace IRIS.Agent.Logic
                 // Capture Disk usage
                 var diskUsage = GetDiskUsage();
 
+                // Capture temperature and GPU load
+                var (cpuTemperature, cpuTempSource, gpuTemperature, gpuTempSource, gpuUsage) = GetTemperatureAndGpuMetrics();
+
                 var metric = new HardwareMetric
                 {
                     PCId = pc.Id,
                     CpuUsage = cpuUsage,
                     MemoryUsage = ramUsage,
                     DiskUsage = diskUsage,
+                    CpuTemperature = cpuTemperature,
+                    CpuTemperatureSource = cpuTempSource,
+                    GpuTemperature = gpuTemperature,
+                    GpuTemperatureSource = gpuTempSource,
+                    GpuUsage = gpuUsage,
                     Timestamp = DateTime.UtcNow
                 };
 
                 _context.HardwareMetrics.Add(metric);
                 await _context.SaveChangesAsync();
 
-                Log.Information("Hardware metrics captured for PC {MacAddress}: CPU={Cpu}%, RAM={Ram}%, Disk={Disk}%",
-                    _macAddress, cpuUsage, ramUsage, diskUsage);
+                Log.Information(
+                    "Hardware metrics captured for PC {MacAddress}: CPU={Cpu:F1}%, RAM={Ram:F1}%, Disk={Disk:F1}%, CPU Temp={CpuTemp} ({CpuSource}), GPU Temp={GpuTemp} ({GpuSource}), GPU={Gpu:F1}%",
+                    _macAddress,
+                    cpuUsage,
+                    ramUsage,
+                    diskUsage,
+                    cpuTemperature?.ToString("F1") ?? "N/A",
+                    cpuTempSource ?? "Unavailable",
+                    gpuTemperature?.ToString("F1") ?? "N/A",
+                    gpuTempSource ?? "Unavailable",
+                    gpuUsage ?? 0);
             }
             catch (Exception ex)
             {
@@ -269,6 +303,161 @@ namespace IRIS.Agent.Logic
             catch
             {
                 return 0; // Fallback
+            }
+        }
+
+        private (double? cpuTemperature, string? cpuSource, double? gpuTemperature, string? gpuSource, double? gpuUsage) GetTemperatureAndGpuMetrics()
+        {
+            if (_hardwareComputer == null)
+            {
+                var wmiTemp = TryGetWmiCpuTemperature();
+                return (wmiTemp, wmiTemp.HasValue ? "WMI" : "Unavailable", null, "Unavailable", null);
+            }
+
+            try
+            {
+                double? cpuTemperature = null;
+                string? cpuSource = null;
+                double? gpuTemperature = null;
+                string? gpuSource = null;
+                double? gpuUsage = null;
+
+                foreach (var hardware in _hardwareComputer.Hardware)
+                {
+                    UpdateHardwareRecursive(hardware);
+
+                    if (hardware.HardwareType == HardwareType.Cpu)
+                    {
+                        var temp = GetCpuTemperatureFromHardware(hardware);
+                        if (temp.HasValue)
+                        {
+                            cpuTemperature = temp;
+                            cpuSource = "LibreHardwareMonitor";
+                        }
+                        continue;
+                    }
+
+                    if (hardware.HardwareType == HardwareType.GpuAmd ||
+                        hardware.HardwareType == HardwareType.GpuNvidia ||
+                        hardware.HardwareType == HardwareType.GpuIntel)
+                    {
+                        gpuTemperature = GetSensorValue(hardware, SensorType.Temperature, "Core")
+                            ?? GetFirstSensorValue(hardware, SensorType.Temperature)
+                            ?? gpuTemperature;
+                        if (gpuTemperature.HasValue)
+                        {
+                            gpuSource = "LibreHardwareMonitor";
+                        }
+
+                        gpuUsage = GetSensorValue(hardware, SensorType.Load, "Core")
+                            ?? GetSensorValue(hardware, SensorType.Load, "D3D")
+                            ?? GetFirstSensorValue(hardware, SensorType.Load)
+                            ?? gpuUsage;
+                    }
+                }
+
+                if (!cpuTemperature.HasValue)
+                {
+                    cpuTemperature = TryGetWmiCpuTemperature();
+                    if (cpuTemperature.HasValue)
+                    {
+                        cpuSource = "WMI";
+                    }
+                }
+
+                cpuSource ??= "Unavailable";
+                gpuSource ??= "Unavailable";
+                return (cpuTemperature, cpuSource, gpuTemperature, gpuSource, gpuUsage);
+            }
+            catch
+            {
+                var wmiTemp = TryGetWmiCpuTemperature();
+                return (wmiTemp, wmiTemp.HasValue ? "WMI" : "Unavailable", null, "Unavailable", null);
+            }
+        }
+
+        private static void UpdateHardwareRecursive(IHardware hardware)
+        {
+            hardware.Update();
+            foreach (var subHardware in hardware.SubHardware)
+            {
+                UpdateHardwareRecursive(subHardware);
+            }
+        }
+
+        private static double? GetCpuTemperatureFromHardware(IHardware hardware)
+        {
+            var temperatures = CollectSensorValues(hardware, SensorType.Temperature)
+                .Where(v => v >= 10 && v <= 120)
+                .ToList();
+
+            if (!temperatures.Any())
+            {
+                return null;
+            }
+
+            return temperatures.Max();
+        }
+
+        private static double? GetSensorValue(IHardware hardware, SensorType sensorType, string nameContains)
+        {
+            var sensor = CollectSensors(hardware)
+                .FirstOrDefault(s => s.SensorType == sensorType &&
+                                     s.Value.HasValue &&
+                                     s.Name.Contains(nameContains, StringComparison.OrdinalIgnoreCase));
+
+            return sensor?.Value;
+        }
+
+        private static double? GetFirstSensorValue(IHardware hardware, SensorType sensorType)
+        {
+            var sensor = CollectSensors(hardware)
+                .FirstOrDefault(s => s.SensorType == sensorType && s.Value.HasValue);
+
+            return sensor?.Value;
+        }
+
+        private static IEnumerable<ISensor> CollectSensors(IHardware hardware)
+        {
+            foreach (var sensor in hardware.Sensors)
+            {
+                yield return sensor;
+            }
+
+            foreach (var subHardware in hardware.SubHardware)
+            {
+                foreach (var sensor in CollectSensors(subHardware))
+                {
+                    yield return sensor;
+                }
+            }
+        }
+
+        private static IEnumerable<double> CollectSensorValues(IHardware hardware, SensorType sensorType)
+        {
+            return CollectSensors(hardware)
+                .Where(s => s.SensorType == sensorType && s.Value.HasValue)
+                .Select(s => (double)s.Value!.Value);
+        }
+
+        private static double? TryGetWmiCpuTemperature()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
+                var values = searcher.Get()
+                    .Cast<ManagementObject>()
+                    .Select(mo => mo["CurrentTemperature"])
+                    .OfType<uint>()
+                    .Select(v => (v / 10.0) - 273.15)
+                    .Where(v => v >= 10 && v <= 120)
+                    .ToList();
+
+                return values.Any() ? values.Max() : null;
+            }
+            catch
+            {
+                return null;
             }
         }
 

@@ -16,6 +16,7 @@ namespace IRIS.Core.Models
         // CPU Metrics
         public double? CpuUsage { get; set; } // Percentage (0-100)
         public double? CpuTemperature { get; set; } // Celsius
+        public string? CpuTemperatureSource { get; set; }
 
         // Memory Metrics
         public double? MemoryUsage { get; set; } // Percentage (0-100)
@@ -25,6 +26,7 @@ namespace IRIS.Core.Models
         // GPU Metrics
         public double? GpuUsage { get; set; } // Percentage (0-100)
         public double? GpuTemperature { get; set; } // Celsius
+        public string? GpuTemperatureSource { get; set; }
         public long? GpuMemoryUsed { get; set; } // Bytes
         public long? GpuMemoryTotal { get; set; } // Bytes
 

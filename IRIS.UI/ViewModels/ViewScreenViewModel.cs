@@ -134,9 +134,11 @@ namespace IRIS.UI.ViewModels
             RoomName = pc.RoomName;
             IP = pc.IPAddress;
             MacAddress = pc.MacAddress;
-            Network = pc.Network;
+            Network = $"{pc.NetworkDownload} / {pc.NetworkUpload}";
             OS = pc.OS;
             CPU = pc.CPU;
+            CPUTemp = pc.CPUTemperature;
+            GPUTemp = pc.GPUTemperature;
             RAM = pc.RAM;
             CpuUsage = pc.CpuUsagePercent;
             RamUsage = pc.RamUsagePercent;

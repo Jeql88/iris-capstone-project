@@ -34,6 +34,9 @@ namespace IRIS.UI.ViewModels
         private int _criticalAlertCount;
         private int _highAlertCount;
         private string _topAlertMessage = "No active alerts";
+        private string _alertHeaderText = "All clear";
+        private bool _isPcAlertsPanelOpen;
+        private string _selectedPcAlertsTitle = "Device Alerts";
         private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
         private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
         private bool _isInitialized;
@@ -46,6 +49,10 @@ namespace IRIS.UI.ViewModels
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ViewScreenCommand = new RelayCommand(async () => await ViewScreenAsync(), () => SelectedPC != null);
+            ViewScreenForPCCommand = new RelayCommand<PCDisplayModel>(pc => ViewScreenForPC(pc));
+            ToggleCardDetailsCommand = new RelayCommand<PCDisplayModel>(pc => ToggleCardDetails(pc));
+            OpenPcAlertsForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenAlertsForPC(pc));
+            ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
@@ -61,6 +68,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<PCDisplayModel> FilteredPCs { get; } = new();
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<LiveAlertDisplayModel> ActiveAlerts { get; } = new();
+        public ObservableCollection<LiveAlertDisplayModel> SelectedPcAlerts { get; } = new();
 
         public string SearchText
         {
@@ -136,6 +144,24 @@ namespace IRIS.UI.ViewModels
             set { _topAlertMessage = value; OnPropertyChanged(); }
         }
 
+        public string AlertHeaderText
+        {
+            get => _alertHeaderText;
+            set { _alertHeaderText = value; OnPropertyChanged(); }
+        }
+
+        public bool IsPcAlertsPanelOpen
+        {
+            get => _isPcAlertsPanelOpen;
+            set { _isPcAlertsPanelOpen = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedPcAlertsTitle
+        {
+            get => _selectedPcAlertsTitle;
+            set { _selectedPcAlertsTitle = value; OnPropertyChanged(); }
+        }
+
         public bool HasSelectedPC => SelectedPC != null;
 
         private PCDisplayModel? _selectedPC;
@@ -158,6 +184,10 @@ namespace IRIS.UI.ViewModels
         }
 
         public ICommand ViewScreenCommand { get; }
+        public ICommand ViewScreenForPCCommand { get; }
+        public ICommand ToggleCardDetailsCommand { get; }
+        public ICommand OpenPcAlertsForPCCommand { get; }
+        public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand LockScreenCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand RestartPCCommand { get; }
@@ -207,15 +237,32 @@ namespace IRIS.UI.ViewModels
                         Status = pc.Status,
                         OS = pc.OperatingSystem,
                         CPU = $"{pc.CpuUsage:F0}%",
+                        CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
+                        CpuTempSource = string.IsNullOrWhiteSpace(pc.CpuTemperatureSource) ? "Unavailable" : pc.CpuTemperatureSource,
+                        GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
+                        GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
+                        GpuTempSource = string.IsNullOrWhiteSpace(pc.GpuTemperatureSource) ? "Unavailable" : pc.GpuTemperatureSource,
                         Network = $"{pc.NetworkUsage:F1} Mbps",
+                        NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
+                        NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
+                        NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A",
+                        PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A",
                         RAM = $"{pc.RamUsage:F0}%",
                         CpuUsagePercent = pc.CpuUsage,
+                        CpuTemperatureValue = pc.CpuTemperature,
+                        GpuUsagePercent = pc.GpuUsage,
+                        GpuTemperatureValue = pc.GpuTemperature,
                         RamUsagePercent = pc.RamUsage,
                         DiskUsagePercent = pc.DiskUsage,
+                        NetworkUploadMbps = pc.NetworkUploadMbps,
+                        NetworkDownloadMbps = pc.NetworkDownloadMbps,
+                        NetworkLatencyMs = pc.NetworkLatencyMs,
+                        PacketLossPercent = pc.PacketLossPercent,
                         User = pc.User,
                         SnapshotImageBase64 = null,
                         TopAlertSeverity = "None",
-                        TopAlertMessage = "No active alerts"
+                        TopAlertMessage = "No active alerts",
+                        LastMetricTimestamp = pc.LastMetricTimestamp
                     });
                 }
                 
@@ -313,6 +360,9 @@ namespace IRIS.UI.ViewModels
             CriticalAlertCount = alerts.Count(a => a.Severity == "Critical");
             HighAlertCount = alerts.Count(a => a.Severity == "High");
             TopAlertMessage = alerts.FirstOrDefault()?.Message ?? "No active alerts";
+            AlertHeaderText = CriticalAlertCount == 0 && HighAlertCount == 0
+                ? "All clear"
+                : $"Critical {CriticalAlertCount} • High {HighAlertCount}";
 
             var topByPc = alerts
                 .GroupBy(a => a.PCId)
@@ -320,18 +370,29 @@ namespace IRIS.UI.ViewModels
                     g => g.Key,
                     g => g.OrderByDescending(a => a.SeverityRank).ThenByDescending(a => a.Timestamp).First());
 
+            var countByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             foreach (var pc in PCs)
             {
                 if (topByPc.TryGetValue(pc.Id, out var topAlert))
                 {
                     pc.TopAlertSeverity = topAlert.Severity;
                     pc.TopAlertMessage = topAlert.Message;
+                    pc.AlertCount = countByPc.TryGetValue(pc.Id, out var alertCount) ? alertCount : 0;
                 }
                 else
                 {
                     pc.TopAlertSeverity = "None";
                     pc.TopAlertMessage = "No active alerts";
+                    pc.AlertCount = 0;
                 }
+            }
+
+            if (IsPcAlertsPanelOpen && SelectedPC != null)
+            {
+                PopulateSelectedPcAlerts(SelectedPC.Id);
             }
 
             _lastAlertRefreshUtc = DateTime.UtcNow;
@@ -400,6 +461,50 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private void ViewScreenForPC(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            _navigationService.NavigateTo("ViewScreen", pc);
+        }
+
+        private void ToggleCardDetails(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            pc.IsFlipped = !pc.IsFlipped;
+        }
+
+        private void OpenAlertsForPC(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            PopulateSelectedPcAlerts(pc.Id);
+            SelectedPcAlertsTitle = $"Alerts • {pc.PCName}";
+            IsPcAlertsPanelOpen = true;
+        }
+
+        private void PopulateSelectedPcAlerts(int pcId)
+        {
+            SelectedPcAlerts.Clear();
+            foreach (var alert in ActiveAlerts.Where(a => a.PCId == pcId).OrderByDescending(a => a.Timestamp))
+            {
+                SelectedPcAlerts.Add(alert);
+            }
+        }
+
         private async Task LockScreenAsync()
         {
             await Task.CompletedTask;
@@ -419,18 +524,37 @@ namespace IRIS.UI.ViewModels
         private string _status = string.Empty;
         private string _os = string.Empty;
         private string _cpu = string.Empty;
+        private string _cpuTemperature = "N/A";
+        private string _gpu = "N/A";
+        private string _gpuTemperature = "N/A";
+        private string _cpuTempSource = "Unavailable";
+        private string _gpuTempSource = "Unavailable";
         private string _network = string.Empty;
+        private string _networkUpload = "0 Mbps";
+        private string _networkDownload = "0 Mbps";
+        private string _networkLatency = "N/A";
+        private string _packetLoss = "N/A";
         private string _ram = string.Empty;
         private string _user = string.Empty;
         private string _macAddress = string.Empty;
         private string _roomName = string.Empty;
         private double _cpuUsagePercent;
+        private double? _cpuTemperatureValue;
+        private double? _gpuUsagePercent;
+        private double? _gpuTemperatureValue;
         private double _ramUsagePercent;
         private double _diskUsagePercent;
+        private double _networkUploadMbps;
+        private double _networkDownloadMbps;
+        private double? _networkLatencyMs;
+        private double? _packetLossPercent;
+        private DateTime? _lastMetricTimestamp;
         private string? _snapshotImageBase64;
         private string _topAlertSeverity = "None";
         private string _topAlertMessage = "No active alerts";
+        private int _alertCount;
         private bool _isSelected;
+        private bool _isFlipped;
 
         public int Id
         {
@@ -468,10 +592,76 @@ namespace IRIS.UI.ViewModels
             set { _cpu = value; OnPropertyChanged(); }
         }
 
+        public string CPUTemperature
+        {
+            get => _cpuTemperature;
+            set { _cpuTemperature = value; OnPropertyChanged(); }
+        }
+
+        public string GPU
+        {
+            get => _gpu;
+            set { _gpu = value; OnPropertyChanged(); }
+        }
+
+        public string GPUTemperature
+        {
+            get => _gpuTemperature;
+            set { _gpuTemperature = value; OnPropertyChanged(); }
+        }
+
+        public string CpuTempSource
+        {
+            get => _cpuTempSource;
+            set
+            {
+                _cpuTempSource = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SensorDiagnostics));
+                OnPropertyChanged(nameof(SensorHealth));
+            }
+        }
+
+        public string GpuTempSource
+        {
+            get => _gpuTempSource;
+            set
+            {
+                _gpuTempSource = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SensorDiagnostics));
+                OnPropertyChanged(nameof(SensorHealth));
+            }
+        }
+
         public string Network
         {
             get => _network;
             set { _network = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkUpload
+        {
+            get => _networkUpload;
+            set { _networkUpload = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkDownload
+        {
+            get => _networkDownload;
+            set { _networkDownload = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkLatency
+        {
+            get => _networkLatency;
+            set { _networkLatency = value; OnPropertyChanged(); }
+        }
+
+        public string PacketLoss
+        {
+            get => _packetLoss;
+            set { _packetLoss = value; OnPropertyChanged(); }
         }
 
         public string RAM
@@ -504,6 +694,34 @@ namespace IRIS.UI.ViewModels
             set { _cpuUsagePercent = value; OnPropertyChanged(); }
         }
 
+        public double? CpuTemperatureValue
+        {
+            get => _cpuTemperatureValue;
+            set
+            {
+                _cpuTemperatureValue = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SensorHealth));
+            }
+        }
+
+        public double? GpuUsagePercent
+        {
+            get => _gpuUsagePercent;
+            set { _gpuUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double? GpuTemperatureValue
+        {
+            get => _gpuTemperatureValue;
+            set
+            {
+                _gpuTemperatureValue = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SensorHealth));
+            }
+        }
+
         public double RamUsagePercent
         {
             get => _ramUsagePercent;
@@ -514,6 +732,36 @@ namespace IRIS.UI.ViewModels
         {
             get => _diskUsagePercent;
             set { _diskUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double NetworkUploadMbps
+        {
+            get => _networkUploadMbps;
+            set { _networkUploadMbps = value; OnPropertyChanged(); }
+        }
+
+        public double NetworkDownloadMbps
+        {
+            get => _networkDownloadMbps;
+            set { _networkDownloadMbps = value; OnPropertyChanged(); }
+        }
+
+        public double? NetworkLatencyMs
+        {
+            get => _networkLatencyMs;
+            set { _networkLatencyMs = value; OnPropertyChanged(); }
+        }
+
+        public double? PacketLossPercent
+        {
+            get => _packetLossPercent;
+            set { _packetLossPercent = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? LastMetricTimestamp
+        {
+            get => _lastMetricTimestamp;
+            set { _lastMetricTimestamp = value; OnPropertyChanged(); }
         }
 
         public string? SnapshotImageBase64
@@ -534,10 +782,37 @@ namespace IRIS.UI.ViewModels
             set { _topAlertMessage = value; OnPropertyChanged(); }
         }
 
+        public int AlertCount
+        {
+            get => _alertCount;
+            set { _alertCount = value; OnPropertyChanged(); }
+        }
+
         public bool IsSelected
         {
             get => _isSelected;
             set { _isSelected = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFlipped
+        {
+            get => _isFlipped;
+            set { _isFlipped = value; OnPropertyChanged(); }
+        }
+
+        public string SensorDiagnostics => $"CPU: {CpuTempSource} • GPU: {GpuTempSource}";
+
+        public string SensorHealth
+        {
+            get
+            {
+                if (CpuTemperatureValue.HasValue || GpuTemperatureValue.HasValue)
+                {
+                    return "Available";
+                }
+
+                return "Unavailable";
+            }
         }
 
         // Legacy property aliases for backward compatibility

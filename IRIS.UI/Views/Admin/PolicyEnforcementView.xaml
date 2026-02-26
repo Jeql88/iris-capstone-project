@@ -136,7 +136,9 @@
                     </StackPanel>
 
                     <!-- Policy Controls -->
-                    <StackPanel Grid.Row="1" Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding HasSelectedRoom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
                         
                         <!-- Wallpaper Reset Policy -->
                         <ui:Card Margin="0,0,0,15">
@@ -222,7 +224,82 @@
                                 </StackPanel>
                             </Grid>
                         </ui:Card>
+
+                        <!-- Monitoring Threshold Profile -->
+                        <ui:Card Margin="0,15,0,0">
+                            <StackPanel Margin="15">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <ui:SymbolIcon Symbol="Gauge24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Monitoring Threshold Profile" FontWeight="Bold" FontSize="16"
+                                               Foreground="{DynamicResource IRISPrimaryBrush}"/>
+                                </StackPanel>
+                                <TextBlock Text="Set warning and critical limits used by live alerts for this laboratory."
+                                           FontSize="13" Foreground="#666666" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="CPU Usage (%)" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding CpuWarningThreshold}" Minimum="1" Maximum="100" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding CpuCriticalThreshold}" Minimum="1" Maximum="100" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="RAM Usage (%)" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding RamWarningThreshold}" Minimum="1" Maximum="100" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding RamCriticalThreshold}" Minimum="1" Maximum="100" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="Disk Usage (%)" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding DiskWarningThreshold}" Minimum="1" Maximum="100" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding DiskCriticalThreshold}" Minimum="1" Maximum="100" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="CPU Temp (°C)" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding CpuTempWarningThreshold}" Minimum="20" Maximum="120" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding CpuTempCriticalThreshold}" Minimum="20" Maximum="120" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="GPU Temp (°C)" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding GpuTempWarningThreshold}" Minimum="20" Maximum="120" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding GpuTempCriticalThreshold}" Minimum="20" Maximum="120" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="Latency (ms)" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding LatencyWarningThreshold}" Minimum="1" Maximum="5000" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding LatencyCriticalThreshold}" Minimum="1" Maximum="5000" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="Packet Loss (%)" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <ui:NumberBox Grid.Column="0" Value="{Binding PacketLossWarningThreshold}" Minimum="0" Maximum="100" PlaceholderText="Warning" Margin="0,0,4,0"/>
+                                            <ui:NumberBox Grid.Column="1" Value="{Binding PacketLossCriticalThreshold}" Minimum="0" Maximum="100" PlaceholderText="Critical" Margin="4,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </ui:Card>
                     </StackPanel>
+                    </ScrollViewer>
 
                     <!-- No Room Selected Message -->
                     <Border Grid.Row="1" Padding="40" 

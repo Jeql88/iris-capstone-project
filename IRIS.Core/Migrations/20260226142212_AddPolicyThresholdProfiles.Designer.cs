@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260226142212_AddPolicyThresholdProfiles")]
+    partial class AddPolicyThresholdProfiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -83,9 +86,6 @@ namespace IRIS.Core.Migrations
                     b.Property<double?>("CpuTemperature")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("CpuTemperatureSource")
-                        .HasColumnType("text");
-
                     b.Property<double?>("CpuUsage")
                         .HasColumnType("double precision");
 
@@ -112,9 +112,6 @@ namespace IRIS.Core.Migrations
 
                     b.Property<double?>("GpuTemperature")
                         .HasColumnType("double precision");
-
-                    b.Property<string>("GpuTemperatureSource")
-                        .HasColumnType("text");
 
                     b.Property<double?>("GpuUsage")
                         .HasColumnType("double precision");

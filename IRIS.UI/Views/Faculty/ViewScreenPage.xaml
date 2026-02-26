@@ -197,6 +197,8 @@
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="IP Address:" FontSize="13" 
@@ -265,6 +267,16 @@
                                                             Foreground="{DynamicResource IRISAccentBrush}"/>
                                                 <TextBlock Text="{Binding DiskUsage, StringFormat={}{0:F0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                             </StackPanel>
+
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="CPU Temp:" FontSize="13"
+                                                       Foreground="#666666" Margin="0,8,0,0"/>
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CPUTemp}" FontSize="12"
+                                                       Foreground="#1a1a1a" Margin="0,8,0,0"/>
+
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="GPU Temp:" FontSize="13"
+                                                       Foreground="#666666" Margin="0,4,0,0"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding GPUTemp}" FontSize="12"
+                                                       Foreground="#1a1a1a" Margin="0,4,0,0"/>
                                         </Grid>
                                     </StackPanel>
                                 </ui:Card>

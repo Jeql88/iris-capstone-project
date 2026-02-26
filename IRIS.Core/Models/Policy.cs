@@ -26,6 +26,22 @@ namespace IRIS.Core.Models
 
         public int? AutoShutdownIdleMinutes { get; set; } = 30;
 
+        // Monitoring thresholds (warning / critical)
+        public double CpuUsageWarningThreshold { get; set; } = 85;
+        public double CpuUsageCriticalThreshold { get; set; } = 95;
+        public double RamUsageWarningThreshold { get; set; } = 85;
+        public double RamUsageCriticalThreshold { get; set; } = 95;
+        public double DiskUsageWarningThreshold { get; set; } = 90;
+        public double DiskUsageCriticalThreshold { get; set; } = 98;
+        public double CpuTemperatureWarningThreshold { get; set; } = 80;
+        public double CpuTemperatureCriticalThreshold { get; set; } = 90;
+        public double GpuTemperatureWarningThreshold { get; set; } = 80;
+        public double GpuTemperatureCriticalThreshold { get; set; } = 90;
+        public double LatencyWarningThreshold { get; set; } = 150;
+        public double LatencyCriticalThreshold { get; set; } = 300;
+        public double PacketLossWarningThreshold { get; set; } = 3;
+        public double PacketLossCriticalThreshold { get; set; } = 10;
+
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
