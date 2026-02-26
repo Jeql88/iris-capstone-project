@@ -14,7 +14,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace IRIS.UI.ViewModels
 {
-    public class ViewScreenViewModel : INotifyPropertyChanged
+    public class ViewScreenViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
@@ -287,6 +287,11 @@ namespace IRIS.UI.ViewModels
         {
             _isActive = false;
             _screenRefreshTimer.Stop();
+        }
+
+        public void OnNavigatedFrom()
+        {
+            OnDeactivated();
         }
 
         private static BitmapImage? CreateImage(string base64)

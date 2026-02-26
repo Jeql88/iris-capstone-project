@@ -2,10 +2,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Linq;
 using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using IRIS.UI.Services;
 
 namespace IRIS.UI.ViewModels
 {
@@ -28,10 +30,13 @@ namespace IRIS.UI.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class LabsViewModel : INotifyPropertyChanged
+    public class LabsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IRoomService _roomService;
         private readonly IPCAdminService _pcAdminService;
+        private readonly SemaphoreSlim _loadRoomsSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _loadUnassignedSemaphore = new(1, 1);
+        private bool _isViewActive = true;
 
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<SelectablePC> UnassignedPCs { get; } = new();
@@ -111,12 +116,34 @@ namespace IRIS.UI.ViewModels
             DeleteCommand = new RelayCommand(async () => await DeleteAsync(), () => SelectedRoom != null);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
 
-            _ = LoadRoomsAsync();
-            _ = LoadUnassignedAsync();
+            _ = InitializeAsync();
+        }
+
+        private async Task InitializeAsync()
+        {
+            await LoadRoomsAsync();
+            await LoadUnassignedAsync();
         }
 
         private async Task LoadRoomsAsync(int? selectedRoomId = null)
         {
+            if (!_isViewActive)
+            {
+                return;
+            }
+
+            if (!await _loadRoomsSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_isViewActive)
+                {
+                    return;
+                }
+
             var rooms = await _roomService.GetRoomsAsync();
             Rooms.Clear();
             foreach (var room in rooms)
@@ -127,10 +154,32 @@ namespace IRIS.UI.ViewModels
             {
                 SelectedRoom = Rooms.FirstOrDefault(r => r.Id == targetId.Value);
             }
+            }
+            finally
+            {
+                _loadRoomsSemaphore.Release();
+            }
         }
 
         private async Task LoadUnassignedAsync()
         {
+            if (!_isViewActive)
+            {
+                return;
+            }
+
+            if (!await _loadUnassignedSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_isViewActive)
+                {
+                    return;
+                }
+
             var pcs = await _pcAdminService.GetUnassignedPCsAsync();
             UnassignedPCs.Clear();
             foreach (var pc in pcs)
@@ -143,6 +192,11 @@ namespace IRIS.UI.ViewModels
                     Room = pc.RoomId.ToString(),
                     IsSelected = false
                 });
+            }
+            }
+            finally
+            {
+                _loadUnassignedSemaphore.Release();
             }
         }
 
@@ -289,6 +343,11 @@ namespace IRIS.UI.ViewModels
         {
             StatusMessage = message;
             IsStatusError = isError;
+        }
+
+        public void OnNavigatedFrom()
+        {
+            _isViewActive = false;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

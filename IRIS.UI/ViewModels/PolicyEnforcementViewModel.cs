@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
+using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
@@ -12,7 +13,7 @@ using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
 {
-    public class PolicyEnforcementViewModel : INotifyPropertyChanged
+    public class PolicyEnforcementViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IMonitoringService _monitoringService;
         private readonly IPolicyService _policyService;
@@ -27,6 +28,8 @@ namespace IRIS.UI.ViewModels
         private string _lastAppliedText = "Never applied";
         private string _statusMessage = string.Empty;
         private string _statusMessageColor = "#10B981";
+        private readonly SemaphoreSlim _loadRoomDataSemaphore = new(1, 1);
+        private bool _isActive = true;
         
         // Original values for change tracking
         private bool _originalWallpaperResetEnabled;
@@ -167,8 +170,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadRoomDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadRoomDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var rooms = await _dbContext.Rooms
                     .Include(r => r.PCs)
                     .Include(r => r.Policies)
@@ -215,6 +233,10 @@ namespace IRIS.UI.ViewModels
             {
                 LoadMockRoomData();
                 SelectionStatusText = "Error loading rooms: " + ex.Message;
+            }
+            finally
+            {
+                _loadRoomDataSemaphore.Release();
             }
         }
 
@@ -506,6 +528,13 @@ namespace IRIS.UI.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+            _refreshTimer.Stop();
+            _messageTimer.Stop();
+        }
     }
 
     public class RoomItem : INotifyPropertyChanged
@@ -644,5 +673,6 @@ namespace IRIS.UI.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
     }
 }

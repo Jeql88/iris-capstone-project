@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -55,8 +56,8 @@ namespace IRIS.UI.Services
 
             try
             {
-                // Dispose previous scope and create a new one for scoped services
-                _currentScope?.Dispose();
+                NotifyCurrentViewNavigatedFrom();
+                DisposeCurrentScopeSafe();
                 _currentScope = _serviceProvider.CreateScope();
                 
                 var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
@@ -100,8 +101,8 @@ namespace IRIS.UI.Services
 
             try
             {
-                // Dispose previous scope and create a new one for scoped services
-                _currentScope?.Dispose();
+                NotifyCurrentViewNavigatedFrom();
+                DisposeCurrentScopeSafe();
                 _currentScope = _serviceProvider.CreateScope();
                 
                 var view = _currentScope.ServiceProvider.GetRequiredService(viewType);
@@ -120,6 +121,52 @@ namespace IRIS.UI.Services
                                $"  StackTrace:\n{ex.StackTrace}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
                 _logger?.LogError(ex, "Navigation error (back) to '{ViewKey}'", viewKey);
+            }
+        }
+
+        private void NotifyCurrentViewNavigatedFrom()
+        {
+            if (_navigationFrame?.Content is not FrameworkElement currentView)
+            {
+                return;
+            }
+
+            try
+            {
+                if (currentView.DataContext is INavigationAware navigationAware)
+                {
+                    navigationAware.OnNavigatedFrom();
+                }
+
+                if (currentView is INavigationAware viewNavigationAware)
+                {
+                    viewNavigationAware.OnNavigatedFrom();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while notifying current view of navigation away.");
+            }
+        }
+
+        private void DisposeCurrentScopeSafe()
+        {
+            if (_currentScope == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _currentScope.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error disposing previous navigation scope; continuing navigation.");
+            }
+            finally
+            {
+                _currentScope = null;
             }
         }
     }

@@ -4,22 +4,26 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Threading;
 using System.Collections.Generic;
 using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
+using IRIS.UI.Services;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 
 namespace IRIS.UI.ViewModels
 {
-    public class DashboardViewModel : INotifyPropertyChanged
+    public class DashboardViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IMonitoringService _monitoringService;
         private readonly DispatcherTimer _refreshTimer;
         private int? _selectedRoomId = null; // null means all rooms
+        private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
+        private bool _isActive = true;
 
         public DashboardViewModel(IMonitoringService monitoringService)
         {
@@ -100,8 +104,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var summary = await _monitoringService.GetDashboardSummaryAsync(_selectedRoomId);
                 AverageLatency = summary.AverageLatency;
                 CurrentBandwidth = summary.CurrentBandwidth;
@@ -146,6 +165,10 @@ namespace IRIS.UI.ViewModels
 
             }
             catch { }
+            finally
+            {
+                _loadDataSemaphore.Release();
+            }
         }
 
         private async Task RefreshDataAsync() => await LoadDataAsync();
@@ -223,6 +246,12 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+            _refreshTimer.Stop();
+        }
     }
 
     public class DataPoint

@@ -4,12 +4,17 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using IRIS.UI.Services;
+using System.Threading;
 
 namespace IRIS.UI.ViewModels
 {
-    public class UsageMetricsViewModel : INotifyPropertyChanged
+    public class UsageMetricsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IUsageMetricsService _usageMetricsService;
+        private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _appPageSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _webPageSemaphore = new(1, 1);
         private DateTime _startDate = DateTime.UtcNow.Date.AddDays(-7);
         private DateTime _endDate = DateTime.UtcNow.Date;
         private int _totalApplications;
@@ -25,6 +30,7 @@ namespace IRIS.UI.ViewModels
         private int _webTotalPages = 1;
         private int _webTotalCount = 0;
         private int _pageSize = 10;
+        private bool _isActive = true;
         public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 
         public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
@@ -146,9 +152,24 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             IsLoading = true;
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
                 var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
@@ -174,13 +195,29 @@ namespace IRIS.UI.ViewModels
             finally
             {
                 IsLoading = false;
+                _loadDataSemaphore.Release();
             }
         }
 
         private async Task LoadAppPageAsync(int pageNumber)
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _appPageSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
                 var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
@@ -206,6 +243,10 @@ namespace IRIS.UI.ViewModels
                 AppTotalCount = result.TotalCount;
             }
             catch { }
+            finally
+            {
+                _appPageSemaphore.Release();
+            }
         }
 
         private async Task AppPreviousPageAsync()
@@ -226,8 +267,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadWebPageAsync(int pageNumber)
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _webPageSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
                 var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
@@ -253,6 +309,15 @@ namespace IRIS.UI.ViewModels
                 WebTotalCount = result.TotalCount;
             }
             catch { }
+            finally
+            {
+                _webPageSemaphore.Release();
+            }
+        }
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
         }
 
         private async Task WebPreviousPageAsync()

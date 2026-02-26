@@ -6,12 +6,15 @@ using System.Windows.Input;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using IRIS.UI.Services;
+using System.Threading;
 
 namespace IRIS.UI.ViewModels
 {
-    public class AccessLogsViewModel : INotifyPropertyChanged
+    public class AccessLogsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IAccessLogsService _accessLogsService;
+        private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
         private string _selectedAction = "All Actions";
         private string _selectedRole = "All Roles";
@@ -19,6 +22,7 @@ namespace IRIS.UI.ViewModels
         private int _pageSize = 10;
         private int _totalPages = 1;
         private int _totalCount = 0;
+        private bool _isActive = true;
 
         public AccessLogsViewModel(IAccessLogsService accessLogsService)
         {
@@ -85,8 +89,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadLogsAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadLogsSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 UserRole? roleFilter = null;
                 if (SelectedRole != "All Roles")
                 {
@@ -128,6 +147,10 @@ namespace IRIS.UI.ViewModels
             {
                 MessageBox.Show($"Failed to load access logs: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                _loadLogsSemaphore.Release();
+            }
         }
 
         private async Task PreviousPageAsync()
@@ -151,6 +174,11 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+        }
     }
 
     public class AccessLogDisplayModel : INotifyPropertyChanged

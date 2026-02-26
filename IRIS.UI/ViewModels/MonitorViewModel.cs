@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace IRIS.UI.ViewModels
 {
-    public class MonitorViewModel : INotifyPropertyChanged
+    public class MonitorViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
@@ -34,6 +35,9 @@ namespace IRIS.UI.ViewModels
         private int _highAlertCount;
         private string _topAlertMessage = "No active alerts";
         private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
+        private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
+        private bool _isInitialized;
+        private bool _isActive = true;
 
         public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService, IConfiguration configuration)
         {
@@ -47,13 +51,10 @@ namespace IRIS.UI.ViewModels
             RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
             ShutdownPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
 
-            _ = LoadRoomsAsync();
-
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
-            _refreshTimer.Start();
 
-            _ = LoadPCDataAsync();
+            _ = InitializeAsync();
         }
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
@@ -80,7 +81,10 @@ namespace IRIS.UI.ViewModels
                 _selectedRoom = value;
                 _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
                 OnPropertyChanged();
-                _ = LoadPCDataAsync();
+                if (_isInitialized)
+                {
+                    _ = LoadPCDataAsync();
+                }
             }
         }
 
@@ -159,10 +163,33 @@ namespace IRIS.UI.ViewModels
         public ICommand RestartPCCommand { get; }
         public ICommand ShutdownPCCommand { get; }
 
+        private async Task InitializeAsync()
+        {
+            await LoadRoomsAsync();
+            _isInitialized = true;
+            await LoadPCDataAsync();
+            _refreshTimer.Start();
+        }
+
         private async Task LoadPCDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadPcDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
                 var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
                 
@@ -210,6 +237,16 @@ namespace IRIS.UI.ViewModels
             {
                 // Fallback to empty if error
             }
+            finally
+            {
+                _loadPcDataSemaphore.Release();
+            }
+        }
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+            _refreshTimer.Stop();
         }
 
         private async Task LoadRoomsAsync()
