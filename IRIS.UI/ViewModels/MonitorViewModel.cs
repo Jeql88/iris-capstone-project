@@ -238,10 +238,8 @@ namespace IRIS.UI.ViewModels
                         OS = pc.OperatingSystem,
                         CPU = $"{pc.CpuUsage:F0}%",
                         CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
-                        CpuTempSource = string.IsNullOrWhiteSpace(pc.CpuTemperatureSource) ? "Unavailable" : pc.CpuTemperatureSource,
                         GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
                         GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
-                        GpuTempSource = string.IsNullOrWhiteSpace(pc.GpuTemperatureSource) ? "Unavailable" : pc.GpuTemperatureSource,
                         Network = $"{pc.NetworkUsage:F1} Mbps",
                         NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
                         NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
@@ -527,8 +525,6 @@ namespace IRIS.UI.ViewModels
         private string _cpuTemperature = "N/A";
         private string _gpu = "N/A";
         private string _gpuTemperature = "N/A";
-        private string _cpuTempSource = "Unavailable";
-        private string _gpuTempSource = "Unavailable";
         private string _network = string.Empty;
         private string _networkUpload = "0 Mbps";
         private string _networkDownload = "0 Mbps";
@@ -610,30 +606,6 @@ namespace IRIS.UI.ViewModels
             set { _gpuTemperature = value; OnPropertyChanged(); }
         }
 
-        public string CpuTempSource
-        {
-            get => _cpuTempSource;
-            set
-            {
-                _cpuTempSource = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(SensorDiagnostics));
-                OnPropertyChanged(nameof(SensorHealth));
-            }
-        }
-
-        public string GpuTempSource
-        {
-            get => _gpuTempSource;
-            set
-            {
-                _gpuTempSource = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(SensorDiagnostics));
-                OnPropertyChanged(nameof(SensorHealth));
-            }
-        }
-
         public string Network
         {
             get => _network;
@@ -701,7 +673,6 @@ namespace IRIS.UI.ViewModels
             {
                 _cpuTemperatureValue = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(SensorHealth));
             }
         }
 
@@ -718,7 +689,6 @@ namespace IRIS.UI.ViewModels
             {
                 _gpuTemperatureValue = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(SensorHealth));
             }
         }
 
@@ -798,21 +768,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _isFlipped;
             set { _isFlipped = value; OnPropertyChanged(); }
-        }
-
-        public string SensorDiagnostics => $"CPU: {CpuTempSource} • GPU: {GpuTempSource}";
-
-        public string SensorHealth
-        {
-            get
-            {
-                if (CpuTemperatureValue.HasValue || GpuTemperatureValue.HasValue)
-                {
-                    return "Available";
-                }
-
-                return "Unavailable";
-            }
         }
 
         // Legacy property aliases for backward compatibility

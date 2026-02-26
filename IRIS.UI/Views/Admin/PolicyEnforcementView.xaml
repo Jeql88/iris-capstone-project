@@ -236,6 +236,30 @@
                                 <TextBlock Text="Set warning and critical limits used by live alerts for this laboratory."
                                            FontSize="13" Foreground="#666666" Margin="0,0,0,12" TextWrapping="Wrap"/>
 
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Warning" FontSize="12" FontWeight="SemiBold" Foreground="#D97706" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="Critical" FontSize="12" FontWeight="SemiBold" Foreground="#DC2626" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Column="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Warning" FontSize="12" FontWeight="SemiBold" Foreground="#D97706" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="Critical" FontSize="12" FontWeight="SemiBold" Foreground="#DC2626" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -296,6 +320,31 @@
                                         </Grid>
                                     </StackPanel>
                                 </Grid>
+
+                                <Border Margin="0,10,0,0" Padding="10" CornerRadius="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Alert Sustain Duration" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Alert triggers only when the threshold is continuously exceeded for this duration."
+                                                   FontSize="12" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Warning (seconds)" FontSize="12" Margin="0,0,0,4"/>
+                                                <ui:NumberBox Value="{Binding WarningSustainSeconds}" Minimum="0" Maximum="3600" PlaceholderText="e.g. 30"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Critical (seconds)" FontSize="12" Margin="0,0,0,4"/>
+                                                <ui:NumberBox Value="{Binding CriticalSustainSeconds}" Minimum="0" Maximum="3600" PlaceholderText="e.g. 20"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ui:Card>
                     </StackPanel>

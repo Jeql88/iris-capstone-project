@@ -37,6 +37,8 @@ namespace IRIS.UI.ViewModels
         private double _latencyCriticalThreshold = 300;
         private double _packetLossWarningThreshold = 3;
         private double _packetLossCriticalThreshold = 10;
+        private int _warningSustainSeconds = 30;
+        private int _criticalSustainSeconds = 20;
         private string _selectedWallpaperPath = "No wallpaper selected";
         private string _selectionStatusText = "No rooms selected";
         private string _lastAppliedText = "Never applied";
@@ -64,6 +66,8 @@ namespace IRIS.UI.ViewModels
         private double _originalLatencyCriticalThreshold = 300;
         private double _originalPacketLossWarningThreshold = 3;
         private double _originalPacketLossCriticalThreshold = 10;
+        private int _originalWarningSustainSeconds = 30;
+        private int _originalCriticalSustainSeconds = 20;
 
         public ObservableCollection<RoomItem> Rooms { get; set; }
         public ObservableCollection<RoomPolicyDisplay> SelectedRoomPolicies { get; set; }
@@ -183,6 +187,18 @@ namespace IRIS.UI.ViewModels
         {
             get => _packetLossCriticalThreshold;
             set { _packetLossCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public int WarningSustainSeconds
+        {
+            get => _warningSustainSeconds;
+            set { _warningSustainSeconds = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public int CriticalSustainSeconds
+        {
+            get => _criticalSustainSeconds;
+            set { _criticalSustainSeconds = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
         }
 
         public string SelectedWallpaperPath
@@ -395,7 +411,9 @@ namespace IRIS.UI.ViewModels
                     LatencyWarningThreshold,
                     LatencyCriticalThreshold,
                     PacketLossWarningThreshold,
-                    PacketLossCriticalThreshold
+                    PacketLossCriticalThreshold,
+                    WarningSustainSeconds,
+                    CriticalSustainSeconds
                 );
 
                 StatusMessage = $"Policies successfully deployed to {selectedRoom.RoomNumber}";
@@ -425,6 +443,8 @@ namespace IRIS.UI.ViewModels
                 _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
                 _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             catch (Exception ex)
             {
@@ -494,7 +514,9 @@ namespace IRIS.UI.ViewModels
                    LatencyWarningThreshold != _originalLatencyWarningThreshold ||
                    LatencyCriticalThreshold != _originalLatencyCriticalThreshold ||
                    PacketLossWarningThreshold != _originalPacketLossWarningThreshold ||
-                   PacketLossCriticalThreshold != _originalPacketLossCriticalThreshold;
+                   PacketLossCriticalThreshold != _originalPacketLossCriticalThreshold ||
+                   WarningSustainSeconds != _originalWarningSustainSeconds ||
+                   CriticalSustainSeconds != _originalCriticalSustainSeconds;
         }
         
         private bool ValidatePolicySettings()
@@ -515,6 +537,14 @@ namespace IRIS.UI.ViewModels
                 !ValidateThresholdPair(LatencyWarningThreshold, LatencyCriticalThreshold, "Latency") ||
                 !ValidateThresholdPair(PacketLossWarningThreshold, PacketLossCriticalThreshold, "Packet loss"))
             {
+                return false;
+            }
+
+            if (WarningSustainSeconds < 0 || CriticalSustainSeconds < 0)
+            {
+                StatusMessage = "Sustain duration values must be non-negative.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
                 return false;
             }
             
@@ -591,6 +621,8 @@ namespace IRIS.UI.ViewModels
                 LatencyCriticalThreshold = activePolicy.LatencyCriticalThreshold;
                 PacketLossWarningThreshold = activePolicy.PacketLossWarningThreshold;
                 PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
+                WarningSustainSeconds = activePolicy.WarningSustainSeconds;
+                CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
                 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
@@ -611,6 +643,8 @@ namespace IRIS.UI.ViewModels
                 _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
                 _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             else
             {
@@ -638,6 +672,8 @@ namespace IRIS.UI.ViewModels
                 LatencyCriticalThreshold = 300;
                 PacketLossWarningThreshold = 3;
                 PacketLossCriticalThreshold = 10;
+                WarningSustainSeconds = 30;
+                CriticalSustainSeconds = 20;
                 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
@@ -658,6 +694,8 @@ namespace IRIS.UI.ViewModels
                 _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
                 _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             
             OnPropertyChanged(nameof(CurrentWallpaperStatus));
@@ -761,6 +799,8 @@ namespace IRIS.UI.ViewModels
                     LatencyCriticalThreshold = activePolicy.LatencyCriticalThreshold;
                     PacketLossWarningThreshold = activePolicy.PacketLossWarningThreshold;
                     PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
+                    WarningSustainSeconds = activePolicy.WarningSustainSeconds;
+                    CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
                     
                     if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
                     {
@@ -787,6 +827,8 @@ namespace IRIS.UI.ViewModels
                     LatencyCriticalThreshold = 300;
                     PacketLossWarningThreshold = 3;
                     PacketLossCriticalThreshold = 10;
+                    WarningSustainSeconds = 30;
+                    CriticalSustainSeconds = 20;
                 }
             }
             catch (Exception)

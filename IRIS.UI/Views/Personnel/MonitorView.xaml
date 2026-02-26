@@ -9,14 +9,14 @@
         <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter"/>
     </UserControl.Resources>
 
-    <Grid Margin="10,4,10,4">
+    <Grid Margin="10,6,10,6">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,4">
+        <Grid Grid.Row="0" Margin="0,0,0,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -50,7 +50,7 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="0,0,0,4">
+        <Grid Grid.Row="1" Margin="0,0,0,2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="8"/>
@@ -61,54 +61,66 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <ui:Card Grid.Column="0" Padding="10">
+            <ui:Card Grid.Column="0" Padding="10" MinHeight="72">
                 <StackPanel>
                     <TextBlock Text="Total" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Text="{Binding TotalPCCount}" FontSize="24" FontWeight="Bold"/>
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Grid.Column="2" Padding="10">
+            <ui:Card Grid.Column="2" Padding="10" MinHeight="72">
                 <StackPanel>
                     <TextBlock Text="Online" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Text="{Binding OnlinePCCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource OnlineStatusBrush}"/>
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Grid.Column="4" Padding="10">
+            <ui:Card Grid.Column="4" Padding="10" MinHeight="72">
                 <StackPanel>
                     <TextBlock Text="Offline" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Text="{Binding OfflinePCCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource OfflineStatusBrush}"/>
                 </StackPanel>
             </ui:Card>
 
-            <Border Grid.Column="6" Padding="10" CornerRadius="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+            <ui:Card Grid.Column="6" Padding="10" MinHeight="72">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:SymbolIcon Symbol="Alert24" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="{Binding AlertHeaderText}" FontWeight="SemiBold" Margin="0,0,12,0"/>
-                        <TextBlock Text="{Binding TopAlertMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="Active Alerts" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding AlertHeaderText}" FontWeight="SemiBold"/>
                     </StackPanel>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="0,6,0,0"
+                               Text="{Binding TopAlertMessage}"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                 </Grid>
-            </Border>
+            </ui:Card>
         </Grid>
 
-        <ui:Card Grid.Row="2" Padding="6">
+        <ui:Card Grid.Row="2" Padding="4" Margin="0">
             <Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding FilteredPCs}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel ItemWidth="228"/>
+                                <WrapPanel ItemWidth="232"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="220" Margin="0,0,8,8" CornerRadius="10" Cursor="Hand" MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
+                                <Border Width="224" Margin="0,0,10,10" CornerRadius="12" Cursor="Hand" MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
                                     <Border.ToolTip>
                                         <ToolTip>
                                             <StackPanel>
@@ -125,6 +137,9 @@
                                             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
                                             <Setter Property="BorderThickness" Value="1"/>
                                             <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
+                                                </Trigger>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                     <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
                                                     <Setter Property="BorderThickness" Value="2"/>
@@ -153,8 +168,8 @@
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
-                                            <Grid Grid.Row="0" Margin="0,0,0,8">
-                                                <Border Width="190" Height="102" CornerRadius="8"
+                                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                                <Border Width="194" Height="106" CornerRadius="8"
                                                         Background="{DynamicResource ControlFillColorTertiaryBrush}"
                                                         HorizontalAlignment="Center"
                                                         ClipToBounds="True">
@@ -212,14 +227,30 @@
                                             </Grid>
 
                                             <TextBlock Grid.Row="1" Text="{Binding PCName}"
-                                                       FontWeight="SemiBold" FontSize="13" HorizontalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" Foreground="#1a1a1a"/>
+                                                       FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
-                                                <TextBlock Text="{Binding CPU, StringFormat=CPU {0}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,6,0"/>
-                                                <TextBlock Text="{Binding RAM, StringFormat=RAM {0}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,6,0"/>
-                                                <TextBlock Text="{Binding Network, StringFormat=NET {0}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                            </StackPanel>
+                                            <Grid Grid.Row="2" Margin="0,8,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="4"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="4"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <Border Grid.Column="0" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{Binding CPU, StringFormat=CPU {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </Border>
+
+                                                <Border Grid.Column="2" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{Binding RAM, StringFormat=RAM {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </Border>
+
+                                                <Border Grid.Column="4" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{Binding Network, StringFormat=NET {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </Border>
+                                            </Grid>
 
                                             <ui:Badge Grid.Row="3" Margin="0,8,0,0" HorizontalAlignment="Center">
                                                 <ui:Badge.Style>
@@ -242,7 +273,7 @@
 
                                         </Grid>
 
-                                        <Border CornerRadius="8" Padding="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                        <Border CornerRadius="8" Padding="10" Background="{DynamicResource ControlFillColorSecondaryBrush}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -266,12 +297,12 @@
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
 
-                                                <TextBlock Grid.Row="0" Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13" Foreground="#1a1a1a"/>
-                                                <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding CPUTemperature, StringFormat=CPU Temp: {0}}" FontSize="11" Foreground="#1a1a1a"/>
-                                                <TextBlock Grid.Row="2" Margin="0,2,0,0" Text="{Binding GPUTemperature, StringFormat=GPU Temp: {0}}" FontSize="11" Foreground="#1a1a1a"/>
-                                                <TextBlock Grid.Row="3" Margin="0,2,0,0" Text="{Binding NetworkDownload, StringFormat=Down: {0}}" FontSize="11" Foreground="#1a1a1a"/>
-                                                <TextBlock Grid.Row="4" Margin="0,2,0,0" Text="{Binding NetworkUpload, StringFormat=Up: {0}}" FontSize="11" Foreground="#1a1a1a"/>
-                                                <TextBlock Grid.Row="5" Margin="0,2,0,0" Text="{Binding NetworkLatency, StringFormat=Latency: {0}}" FontSize="11" Foreground="#1a1a1a"/>
+                                                <TextBlock Grid.Row="0" Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding CPUTemperature, StringFormat=CPU Temp: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Grid.Row="2" Margin="0,2,0,0" Text="{Binding GPUTemperature, StringFormat=GPU Temp: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Grid.Row="3" Margin="0,2,0,0" Text="{Binding NetworkDownload, StringFormat=Down: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Grid.Row="4" Margin="0,2,0,0" Text="{Binding NetworkUpload, StringFormat=Up: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Grid.Row="5" Margin="0,2,0,0" Text="{Binding NetworkLatency, StringFormat=Latency: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                 <TextBlock Grid.Row="6" Margin="0,2,0,0" Text="{Binding PacketLoss, StringFormat=Loss: {0}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
 
                                                 <StackPanel Grid.Row="7" Margin="0,8,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -320,7 +351,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding SelectedPcAlertsTitle}" FontSize="14" FontWeight="SemiBold"/>
-                                <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Subtle" Command="{Binding ClosePcAlertsPanelCommand}"/>
+                                <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary" Command="{Binding ClosePcAlertsPanelCommand}"/>
                             </Grid>
 
                             <ScrollViewer Grid.Row="1" MaxHeight="360">

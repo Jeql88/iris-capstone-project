@@ -41,6 +41,8 @@ namespace IRIS.Core.Models
         public double LatencyCriticalThreshold { get; set; } = 300;
         public double PacketLossWarningThreshold { get; set; } = 3;
         public double PacketLossCriticalThreshold { get; set; } = 10;
+        public int WarningSustainSeconds { get; set; } = 30;
+        public int CriticalSustainSeconds { get; set; } = 20;
 
         public bool IsActive { get; set; } = true;
 

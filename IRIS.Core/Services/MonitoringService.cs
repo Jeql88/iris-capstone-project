@@ -243,10 +243,8 @@ namespace IRIS.Core.Services
                     Status = pc.Status.ToString(),
                     CpuUsage = latestMetric?.CpuUsage ?? 0,
                     CpuTemperature = latestMetric?.CpuTemperature,
-                    CpuTemperatureSource = latestMetric?.CpuTemperatureSource,
                     GpuUsage = latestMetric?.GpuUsage,
                     GpuTemperature = latestMetric?.GpuTemperature,
-                    GpuTemperatureSource = latestMetric?.GpuTemperatureSource,
                     RamUsage = latestMetric?.MemoryUsage ?? 0,
                     DiskUsage = latestMetric?.DiskUsage ?? 0,
                     NetworkUsage = networkUsage,
@@ -298,6 +296,13 @@ namespace IRIS.Core.Services
                 var activePolicy = pc.Room?.Policies?.FirstOrDefault(p => p.IsActive);
                 var latestHardware = pc.HardwareMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
                 var latestNetwork = pc.NetworkMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                var cpuHistory = pc.HardwareMetrics.Where(m => m.CpuUsage.HasValue).Select(m => (m.Timestamp, m.CpuUsage!.Value));
+                var ramHistory = pc.HardwareMetrics.Where(m => m.MemoryUsage.HasValue).Select(m => (m.Timestamp, m.MemoryUsage!.Value));
+                var diskHistory = pc.HardwareMetrics.Where(m => m.DiskUsage.HasValue).Select(m => (m.Timestamp, m.DiskUsage!.Value));
+                var cpuTempHistory = pc.HardwareMetrics.Where(m => m.CpuTemperature.HasValue).Select(m => (m.Timestamp, m.CpuTemperature!.Value));
+                var gpuTempHistory = pc.HardwareMetrics.Where(m => m.GpuTemperature.HasValue).Select(m => (m.Timestamp, m.GpuTemperature!.Value));
+                var packetLossHistory = pc.NetworkMetrics.Where(m => m.PacketLoss.HasValue).Select(m => (m.Timestamp, m.PacketLoss!.Value));
+                var latencyHistory = pc.NetworkMetrics.Where(m => m.Latency.HasValue).Select(m => (m.Timestamp, m.Latency!.Value));
 
                 if (pc.Status == Models.PCStatus.Offline || pc.LastSeen < lookback)
                 {
@@ -307,41 +312,62 @@ namespace IRIS.Core.Services
                 if (latestHardware != null)
                 {
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "CPU", latestHardware.CpuUsage,
+                        cpuHistory,
                         activePolicy?.CpuUsageWarningThreshold ?? 85,
                         activePolicy?.CpuUsageCriticalThreshold ?? 95,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestHardware.Timestamp, "%");
 
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "RAM", latestHardware.MemoryUsage,
+                        ramHistory,
                         activePolicy?.RamUsageWarningThreshold ?? 85,
                         activePolicy?.RamUsageCriticalThreshold ?? 95,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestHardware.Timestamp, "%");
 
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Hardware", "Disk", latestHardware.DiskUsage,
+                        diskHistory,
                         activePolicy?.DiskUsageWarningThreshold ?? 90,
                         activePolicy?.DiskUsageCriticalThreshold ?? 98,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestHardware.Timestamp, "%");
 
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Thermal", "CPU temperature", latestHardware.CpuTemperature,
+                        cpuTempHistory,
                         activePolicy?.CpuTemperatureWarningThreshold ?? 80,
                         activePolicy?.CpuTemperatureCriticalThreshold ?? 90,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestHardware.Timestamp, " °C");
 
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Thermal", "GPU temperature", latestHardware.GpuTemperature,
+                        gpuTempHistory,
                         activePolicy?.GpuTemperatureWarningThreshold ?? 80,
                         activePolicy?.GpuTemperatureCriticalThreshold ?? 90,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestHardware.Timestamp, " °C");
                 }
 
                 if (latestNetwork != null)
                 {
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Packet loss", latestNetwork.PacketLoss,
+                        packetLossHistory,
                         activePolicy?.PacketLossWarningThreshold ?? 3,
                         activePolicy?.PacketLossCriticalThreshold ?? 10,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestNetwork.Timestamp, "%");
 
                     AddThresholdAlert(alerts, pc.Id, pcName, roomName, "Network", "Latency", latestNetwork.Latency,
+                        latencyHistory,
                         activePolicy?.LatencyWarningThreshold ?? 150,
                         activePolicy?.LatencyCriticalThreshold ?? 300,
+                        activePolicy?.WarningSustainSeconds ?? 30,
+                        activePolicy?.CriticalSustainSeconds ?? 20,
                         latestNetwork.Timestamp, " ms");
                 }
             }
@@ -384,8 +410,11 @@ namespace IRIS.Core.Services
             string type,
             string metricName,
             double? value,
+            IEnumerable<(DateTime Timestamp, double Value)> metricHistory,
             double warningThreshold,
             double criticalThreshold,
+            int warningSustainSeconds,
+            int criticalSustainSeconds,
             DateTime timestamp,
             string unit)
         {
@@ -394,16 +423,47 @@ namespace IRIS.Core.Services
                 return;
             }
 
-            if (value.Value >= criticalThreshold)
+            if (value.Value >= criticalThreshold && IsSustained(metricHistory, criticalThreshold, criticalSustainSeconds, timestamp))
             {
-                alerts.Add(CreateAlert(pcId, pcName, roomName, "Critical", type, $"{metricName} is critical ({value.Value:F1}{unit})", timestamp));
+                alerts.Add(CreateAlert(pcId, pcName, roomName, "Critical", type, $"{metricName} is critical ({value.Value:F1}{unit}) for {criticalSustainSeconds}s", timestamp));
                 return;
             }
 
-            if (value.Value >= warningThreshold)
+            if (value.Value >= warningThreshold && IsSustained(metricHistory, warningThreshold, warningSustainSeconds, timestamp))
             {
-                alerts.Add(CreateAlert(pcId, pcName, roomName, "High", type, $"{metricName} is high ({value.Value:F1}{unit})", timestamp));
+                alerts.Add(CreateAlert(pcId, pcName, roomName, "High", type, $"{metricName} is high ({value.Value:F1}{unit}) for {warningSustainSeconds}s", timestamp));
             }
+        }
+
+        private static bool IsSustained(
+            IEnumerable<(DateTime Timestamp, double Value)> history,
+            double threshold,
+            int sustainSeconds,
+            DateTime referenceTimestamp)
+        {
+            if (sustainSeconds <= 0)
+            {
+                return true;
+            }
+
+            var windowStart = referenceTimestamp.AddSeconds(-sustainSeconds);
+            var inWindow = history
+                .Where(x => x.Timestamp >= windowStart && x.Timestamp <= referenceTimestamp)
+                .OrderBy(x => x.Timestamp)
+                .ToList();
+
+            if (!inWindow.Any())
+            {
+                return false;
+            }
+
+            if (inWindow.Any(x => x.Value < threshold))
+            {
+                return false;
+            }
+
+            var earliest = inWindow.First().Timestamp;
+            return earliest <= windowStart || (referenceTimestamp - earliest).TotalSeconds >= sustainSeconds * 0.8;
         }
 
         private static LiveAlertItem CreateAlert(

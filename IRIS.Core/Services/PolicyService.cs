@@ -82,7 +82,9 @@ namespace IRIS.Core.Services
             double? latencyWarningThreshold = null,
             double? latencyCriticalThreshold = null,
             double? packetLossWarningThreshold = null,
-            double? packetLossCriticalThreshold = null)
+            double? packetLossCriticalThreshold = null,
+            int? warningSustainSeconds = null,
+            int? criticalSustainSeconds = null)
         {
             var existingPolicy = await _context.Policies
                 .FirstOrDefaultAsync(p => p.RoomId == roomId);
@@ -113,6 +115,8 @@ namespace IRIS.Core.Services
                 existingPolicy.LatencyCriticalThreshold = latencyCriticalThreshold ?? existingPolicy.LatencyCriticalThreshold;
                 existingPolicy.PacketLossWarningThreshold = packetLossWarningThreshold ?? existingPolicy.PacketLossWarningThreshold;
                 existingPolicy.PacketLossCriticalThreshold = packetLossCriticalThreshold ?? existingPolicy.PacketLossCriticalThreshold;
+                existingPolicy.WarningSustainSeconds = warningSustainSeconds ?? existingPolicy.WarningSustainSeconds;
+                existingPolicy.CriticalSustainSeconds = criticalSustainSeconds ?? existingPolicy.CriticalSustainSeconds;
                 
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
@@ -146,6 +150,8 @@ namespace IRIS.Core.Services
                     LatencyCriticalThreshold = latencyCriticalThreshold ?? 300,
                     PacketLossWarningThreshold = packetLossWarningThreshold ?? 3,
                     PacketLossCriticalThreshold = packetLossCriticalThreshold ?? 10,
+                    WarningSustainSeconds = warningSustainSeconds ?? 30,
+                    CriticalSustainSeconds = criticalSustainSeconds ?? 20,
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };

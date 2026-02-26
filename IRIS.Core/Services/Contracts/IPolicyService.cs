@@ -28,7 +28,9 @@ namespace IRIS.Core.Services.Contracts
             double? latencyWarningThreshold = null,
             double? latencyCriticalThreshold = null,
             double? packetLossWarningThreshold = null,
-            double? packetLossCriticalThreshold = null);
+            double? packetLossCriticalThreshold = null,
+            int? warningSustainSeconds = null,
+            int? criticalSustainSeconds = null);
         Task<bool> UpdateWallpaperPolicyAsync(int roomId, string wallpaperPath);
     }
 }

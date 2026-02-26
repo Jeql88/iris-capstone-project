@@ -103,7 +103,7 @@ namespace IRIS.Agent.Logic
                 var diskUsage = GetDiskUsage();
 
                 // Capture temperature and GPU load
-                var (cpuTemperature, cpuTempSource, gpuTemperature, gpuTempSource, gpuUsage) = GetTemperatureAndGpuMetrics();
+                var (cpuTemperature, gpuTemperature, gpuUsage) = GetTemperatureAndGpuMetrics();
 
                 var metric = new HardwareMetric
                 {
@@ -112,9 +112,7 @@ namespace IRIS.Agent.Logic
                     MemoryUsage = ramUsage,
                     DiskUsage = diskUsage,
                     CpuTemperature = cpuTemperature,
-                    CpuTemperatureSource = cpuTempSource,
                     GpuTemperature = gpuTemperature,
-                    GpuTemperatureSource = gpuTempSource,
                     GpuUsage = gpuUsage,
                     Timestamp = DateTime.UtcNow
                 };
@@ -123,15 +121,13 @@ namespace IRIS.Agent.Logic
                 await _context.SaveChangesAsync();
 
                 Log.Information(
-                    "Hardware metrics captured for PC {MacAddress}: CPU={Cpu:F1}%, RAM={Ram:F1}%, Disk={Disk:F1}%, CPU Temp={CpuTemp} ({CpuSource}), GPU Temp={GpuTemp} ({GpuSource}), GPU={Gpu:F1}%",
+                    "Hardware metrics captured for PC {MacAddress}: CPU={Cpu:F1}%, RAM={Ram:F1}%, Disk={Disk:F1}%, CPU Temp={CpuTemp}, GPU Temp={GpuTemp}, GPU={Gpu:F1}%",
                     _macAddress,
                     cpuUsage,
                     ramUsage,
                     diskUsage,
                     cpuTemperature?.ToString("F1") ?? "N/A",
-                    cpuTempSource ?? "Unavailable",
                     gpuTemperature?.ToString("F1") ?? "N/A",
-                    gpuTempSource ?? "Unavailable",
                     gpuUsage ?? 0);
             }
             catch (Exception ex)
@@ -306,20 +302,18 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        private (double? cpuTemperature, string? cpuSource, double? gpuTemperature, string? gpuSource, double? gpuUsage) GetTemperatureAndGpuMetrics()
+        private (double? cpuTemperature, double? gpuTemperature, double? gpuUsage) GetTemperatureAndGpuMetrics()
         {
             if (_hardwareComputer == null)
             {
                 var wmiTemp = TryGetWmiCpuTemperature();
-                return (wmiTemp, wmiTemp.HasValue ? "WMI" : "Unavailable", null, "Unavailable", null);
+                return (wmiTemp, null, null);
             }
 
             try
             {
                 double? cpuTemperature = null;
-                string? cpuSource = null;
                 double? gpuTemperature = null;
-                string? gpuSource = null;
                 double? gpuUsage = null;
 
                 foreach (var hardware in _hardwareComputer.Hardware)
@@ -332,7 +326,6 @@ namespace IRIS.Agent.Logic
                         if (temp.HasValue)
                         {
                             cpuTemperature = temp;
-                            cpuSource = "LibreHardwareMonitor";
                         }
                         continue;
                     }
@@ -344,10 +337,6 @@ namespace IRIS.Agent.Logic
                         gpuTemperature = GetSensorValue(hardware, SensorType.Temperature, "Core")
                             ?? GetFirstSensorValue(hardware, SensorType.Temperature)
                             ?? gpuTemperature;
-                        if (gpuTemperature.HasValue)
-                        {
-                            gpuSource = "LibreHardwareMonitor";
-                        }
 
                         gpuUsage = GetSensorValue(hardware, SensorType.Load, "Core")
                             ?? GetSensorValue(hardware, SensorType.Load, "D3D")
@@ -359,20 +348,14 @@ namespace IRIS.Agent.Logic
                 if (!cpuTemperature.HasValue)
                 {
                     cpuTemperature = TryGetWmiCpuTemperature();
-                    if (cpuTemperature.HasValue)
-                    {
-                        cpuSource = "WMI";
-                    }
                 }
 
-                cpuSource ??= "Unavailable";
-                gpuSource ??= "Unavailable";
-                return (cpuTemperature, cpuSource, gpuTemperature, gpuSource, gpuUsage);
+                return (cpuTemperature, gpuTemperature, gpuUsage);
             }
             catch
             {
                 var wmiTemp = TryGetWmiCpuTemperature();
-                return (wmiTemp, wmiTemp.HasValue ? "WMI" : "Unavailable", null, "Unavailable", null);
+                return (wmiTemp, null, null);
             }
         }
 

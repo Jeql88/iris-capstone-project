@@ -64,10 +64,8 @@ namespace IRIS.Core.Services.ServiceModels
         public string Status { get; set; } = string.Empty;
         public double CpuUsage { get; set; }
         public double? CpuTemperature { get; set; }
-        public string? CpuTemperatureSource { get; set; }
         public double? GpuUsage { get; set; }
         public double? GpuTemperature { get; set; }
-        public string? GpuTemperatureSource { get; set; }
         public double RamUsage { get; set; }
         public double DiskUsage { get; set; }
         public double NetworkUsage { get; set; }
