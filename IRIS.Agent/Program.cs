@@ -48,8 +48,10 @@ namespace IRIS.Agent
             // Initialize monitoring components
             var pingHost = configuration["AgentSettings:PingHost"] ?? "8.8.8.8";
             var pingTimeout = int.TryParse(configuration["AgentSettings:PingTimeoutMs"], out var pto) ? pto : 1000;
+            var commandServerHost = configuration["AgentSettings:CommandServerHost"] ?? "127.0.0.1";
+            var commandServerPort = int.TryParse(configuration["AgentSettings:CommandServerPort"], out var csp) ? csp : 5091;
 
-            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout);
+            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout, commandServerHost, commandServerPort);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
             var screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
             var streamToken = configuration["AgentSettings:ScreenStreamToken"];

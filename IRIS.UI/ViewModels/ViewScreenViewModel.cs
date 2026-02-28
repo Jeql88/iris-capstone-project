@@ -18,6 +18,7 @@ namespace IRIS.UI.ViewModels
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
+        private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _screenRefreshTimer;
@@ -52,17 +53,22 @@ namespace IRIS.UI.ViewModels
         private bool _isDisconnected;
         private ImageSource? _screenImage;
 
-        public ViewScreenViewModel(INavigationService navigationService, IMonitoringService monitoringService, IConfiguration configuration)
+        public ViewScreenViewModel(
+            INavigationService navigationService,
+            IMonitoringService monitoringService,
+            IPowerCommandQueueService powerCommandQueueService,
+            IConfiguration configuration)
         {
             _navigationService = navigationService;
             _monitoringService = monitoringService;
+            _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ToggleDetailsCommand = new RelayCommand(async () => await ToggleDetailsAsync(), () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => true);
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
-            RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
+            RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             FullscreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
@@ -223,11 +229,11 @@ namespace IRIS.UI.ViewModels
                 var config = await _monitoringService.GetPCHardwareConfigAsync(_pcId);
                 if (config != null)
                 {
-                    CPUModel = $"CPU: {config.Processor ?? "Unknown"}";
-                    GPUModel = $"GPU: {config.GraphicsCard ?? "Unknown"}";
-                    Motherboard = $"Motherboard: {config.Motherboard ?? "Unknown"}";
-                    RAMModel = $"RAM: {FormatBytes(config.RamCapacity ?? 0)}";
-                    StoragePrimary = $"Storage: {FormatBytes(config.StorageCapacity ?? 0)} ({config.StorageType ?? "Unknown"})";
+                    CPUModel = config.Processor ?? "Unknown";
+                    GPUModel = config.GraphicsCard ?? "Unknown";
+                    Motherboard = config.Motherboard ?? "Unknown";
+                    RAMModel = FormatBytes(config.RamCapacity ?? 0);
+                    StoragePrimary = $"{FormatBytes(config.StorageCapacity ?? 0)} ({config.StorageType ?? "Unknown"})";
                     StorageSecondary = "";
                 }
             }
@@ -256,8 +262,60 @@ namespace IRIS.UI.ViewModels
 
         private async Task ShutDownAsync()
         {
-            await Task.CompletedTask;
-            MessageBox.Show("Shut Down functionality will be implemented.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (string.IsNullOrWhiteSpace(MacAddress))
+            {
+                MessageBox.Show("Cannot send shutdown command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirmation = MessageBox.Show(
+                $"Are you sure you want to shutdown {PCName}?",
+                "Confirm Shutdown",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Shutdown");
+            if (queued)
+            {
+                MessageBox.Show($"Shutdown command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            MessageBox.Show("Failed to queue shutdown command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private async Task RestartPCAsync()
+        {
+            if (string.IsNullOrWhiteSpace(MacAddress))
+            {
+                MessageBox.Show("Cannot send restart command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirmation = MessageBox.Show(
+                $"Are you sure you want to restart {PCName}?",
+                "Confirm Restart",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Restart");
+            if (queued)
+            {
+                MessageBox.Show($"Restart command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            MessageBox.Show("Failed to queue restart command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private async Task RemoteDesktopAsync()

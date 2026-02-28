@@ -42,7 +42,10 @@ namespace IRIS.UI.ViewModels
         private bool _isInitialized;
         private bool _isActive = true;
 
-        public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService, IConfiguration configuration)
+        public MonitorViewModel(
+            INavigationService navigationService,
+            IMonitoringService monitoringService,
+            IConfiguration configuration)
         {
             _navigationService = navigationService;
             _monitoringService = monitoringService;
@@ -55,8 +58,6 @@ namespace IRIS.UI.ViewModels
             ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
-            RestartPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
-            ShutdownPCCommand = new RelayCommand(async () => await Task.CompletedTask, () => SelectedPC != null);
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
@@ -73,10 +74,10 @@ namespace IRIS.UI.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set 
-            { 
-                _searchText = value; 
-                OnPropertyChanged(); 
+            set
+            {
+                _searchText = value;
+                OnPropertyChanged();
                 ApplyFilter();
             }
         }
@@ -178,8 +179,6 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(HasSelectedPC));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (RestartPCCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (ShutdownPCCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -190,8 +189,6 @@ namespace IRIS.UI.ViewModels
         public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand LockScreenCommand { get; }
         public ICommand RefreshCommand { get; }
-        public ICommand RestartPCCommand { get; }
-        public ICommand ShutdownPCCommand { get; }
 
         private async Task InitializeAsync()
         {
@@ -222,9 +219,9 @@ namespace IRIS.UI.ViewModels
 
                 var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
                 var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
-                
+
                 PCs.Clear();
-                
+
                 foreach (var pc in pcs)
                 {
                     PCs.Add(new PCDisplayModel
@@ -263,7 +260,7 @@ namespace IRIS.UI.ViewModels
                         LastMetricTimestamp = pc.LastMetricTimestamp
                     });
                 }
-                
+
                 OnlinePCCount = counts.OnlineCount;
                 OfflinePCCount = counts.OfflineCount;
                 IdlePCCount = counts.WarningCount;
@@ -275,7 +272,7 @@ namespace IRIS.UI.ViewModels
                 }
 
                 await LoadSnapshotsAsync();
-                
+
                 ApplyFilter();
             }
             catch
@@ -320,7 +317,7 @@ namespace IRIS.UI.ViewModels
         private void ApplyFilter()
         {
             FilteredPCs.Clear();
-            
+
             foreach (var pc in PCs)
             {
                 bool matchesSearch = string.IsNullOrEmpty(SearchText) ||
@@ -332,7 +329,7 @@ namespace IRIS.UI.ViewModels
                     FilteredPCs.Add(pc);
                 }
             }
-            
+
             HasNoPCs = FilteredPCs.Count == 0;
         }
 

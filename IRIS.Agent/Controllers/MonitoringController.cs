@@ -15,7 +15,9 @@ namespace IRIS.Agent.Controllers
         private bool _isMonitoring;
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _metricsIntervalSeconds;
+        private readonly int _commandPollIntervalSeconds;
         private DateTime _lastMetricsRunUtc = DateTime.MinValue;
+        private DateTime _lastCommandPollRunUtc = DateTime.MinValue;
         private int _isCycleRunning = 0;
 
         public MonitoringController(IMonitoringService monitoringLogic, IConfiguration configuration)
@@ -24,6 +26,7 @@ namespace IRIS.Agent.Controllers
             _configuration = configuration;
             _heartbeatIntervalSeconds = int.Parse(_configuration["AgentSettings:HeartbeatIntervalSeconds"] ?? "30");
             _metricsIntervalSeconds = int.Parse(_configuration["AgentSettings:MetricsIntervalSeconds"] ?? "30");
+            _commandPollIntervalSeconds = int.Parse(_configuration["AgentSettings:CommandPollIntervalSeconds"] ?? "5");
         }
 
         public Task StartMonitoringAsync()
@@ -38,9 +41,11 @@ namespace IRIS.Agent.Controllers
             Log.Information("Starting monitoring loop with heartbeat interval {Heartbeat}s and metrics interval {Metrics}s",
                 _heartbeatIntervalSeconds, _metricsIntervalSeconds);
 
+            var loopIntervalSeconds = Math.Min(Math.Min(_heartbeatIntervalSeconds, _metricsIntervalSeconds), _commandPollIntervalSeconds);
+
             // Start periodic tasks
             _timer = new System.Threading.Timer(async _ => await PerformMonitoringAsync(), null, TimeSpan.Zero,
-                TimeSpan.FromSeconds(Math.Min(_heartbeatIntervalSeconds, _metricsIntervalSeconds)));
+                TimeSpan.FromSeconds(loopIntervalSeconds));
 
             return Task.CompletedTask;
         }
@@ -81,6 +86,12 @@ namespace IRIS.Agent.Controllers
                     await _monitoringLogic.CaptureHardwareMetricsAsync();
                     await _monitoringLogic.CaptureNetworkMetricsAsync();
                     _lastMetricsRunUtc = now;
+                }
+
+                if ((now - _lastCommandPollRunUtc).TotalSeconds >= _commandPollIntervalSeconds)
+                {
+                    await _monitoringLogic.ProcessPendingPowerCommandAsync();
+                    _lastCommandPollRunUtc = now;
                 }
             }
             catch (Exception ex)

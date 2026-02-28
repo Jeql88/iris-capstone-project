@@ -232,6 +232,9 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="100"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="40"/>
+                                                <ColumnDefinition Width="95"/>
+                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
@@ -268,15 +271,15 @@
                                                 <TextBlock Text="{Binding DiskUsage, StringFormat={}{0:F0}%}" FontSize="12" Margin="8,0,0,0" Foreground="#1a1a1a"/>
                                             </StackPanel>
 
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="CPU Temp:" FontSize="13"
-                                                       Foreground="#666666" Margin="0,8,0,0"/>
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CPUTemp}" FontSize="12"
-                                                       Foreground="#1a1a1a" Margin="0,8,0,0"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="3" Text="CPU Temp:" FontSize="13"
+                                                       Foreground="#666666" Margin="0,0,0,8"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="4" Text="{Binding CPUTemp}" FontSize="12"
+                                                       Foreground="#1a1a1a" Margin="0,0,0,8"/>
 
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="GPU Temp:" FontSize="13"
-                                                       Foreground="#666666" Margin="0,4,0,0"/>
-                                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding GPUTemp}" FontSize="12"
-                                                       Foreground="#1a1a1a" Margin="0,4,0,0"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="3" Text="GPU Temp:" FontSize="13"
+                                                       Foreground="#666666" Margin="0,0,0,8"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding GPUTemp}" FontSize="12"
+                                                       Foreground="#1a1a1a" Margin="0,0,0,8"/>
                                         </Grid>
                                     </StackPanel>
                                 </ui:Card>

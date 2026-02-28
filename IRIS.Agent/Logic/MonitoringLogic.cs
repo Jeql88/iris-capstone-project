@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,8 @@ namespace IRIS.Agent.Logic
         private readonly string _macAddress;
         private readonly string _pingHost;
         private readonly int _pingTimeoutMs;
+        private readonly string _commandServerHost;
+        private readonly int _commandServerPort;
         private readonly SemaphoreSlim _contextLock = new(1, 1);
 
         private long _lastBytesSent = -1;
@@ -30,12 +34,16 @@ namespace IRIS.Agent.Logic
             IRISDbContext context,
             string macAddress,
             string pingHost,
-            int pingTimeoutMs)
+            int pingTimeoutMs,
+            string commandServerHost,
+            int commandServerPort)
         {
             _context = context;
             _macAddress = macAddress;
             _pingHost = pingHost;
             _pingTimeoutMs = pingTimeoutMs;
+            _commandServerHost = commandServerHost;
+            _commandServerPort = commandServerPort;
 
             try
             {
@@ -226,6 +234,54 @@ namespace IRIS.Agent.Logic
             finally
             {
                 _contextLock.Release();
+            }
+        }
+
+        public async Task ProcessPendingPowerCommandAsync()
+        {
+            try
+            {
+                using var client = new TcpClient();
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+                await client.ConnectAsync(_commandServerHost, _commandServerPort, timeout.Token);
+
+                using var stream = client.GetStream();
+                using var writer = new StreamWriter(stream) { AutoFlush = true };
+                using var reader = new StreamReader(stream);
+
+                await writer.WriteLineAsync(_macAddress);
+                var response = await reader.ReadLineAsync();
+
+                if (string.IsNullOrWhiteSpace(response) || response.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                if (response.Equals("Shutdown", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("Executing immediate shutdown from server command for PC {MacAddress}", _macAddress);
+                    Process.Start("shutdown", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
+                    return;
+                }
+
+                if (response.Equals("Restart", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("Executing immediate restart from server command for PC {MacAddress}", _macAddress);
+                    Process.Start("shutdown", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Server timeout/unreachable; retry on next poll
+            }
+            catch (SocketException)
+            {
+                // Server unavailable; retry on next poll
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to process pending power command for PC {MacAddress}", _macAddress);
             }
         }
 
