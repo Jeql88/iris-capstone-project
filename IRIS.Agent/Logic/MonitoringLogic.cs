@@ -269,6 +269,15 @@ namespace IRIS.Agent.Logic
                 {
                     Log.Warning("Executing immediate restart from server command for PC {MacAddress}", _macAddress);
                     Process.Start("shutdown", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                    return;
+                }
+
+                if (response.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("Executing immediate metrics refresh from server command for PC {MacAddress}", _macAddress);
+                    await SendHeartbeatAsync();
+                    await CaptureHardwareMetricsAsync();
+                    await CaptureNetworkMetricsAsync();
                 }
             }
             catch (OperationCanceledException)

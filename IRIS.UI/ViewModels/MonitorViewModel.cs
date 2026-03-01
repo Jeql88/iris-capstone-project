@@ -19,6 +19,7 @@ namespace IRIS.UI.ViewModels
     {
         private readonly INavigationService _navigationService;
         private readonly IMonitoringService _monitoringService;
+        private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _refreshTimer;
@@ -38,6 +39,7 @@ namespace IRIS.UI.ViewModels
         private bool _isPcAlertsPanelOpen;
         private string _selectedPcAlertsTitle = "Device Alerts";
         private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
+        private DateTime _lastAgentRefreshRequestUtc = DateTime.MinValue;
         private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
         private bool _isInitialized;
         private bool _isActive = true;
@@ -45,10 +47,12 @@ namespace IRIS.UI.ViewModels
         public MonitorViewModel(
             INavigationService navigationService,
             IMonitoringService monitoringService,
+            IPowerCommandQueueService powerCommandQueueService,
             IConfiguration configuration)
         {
             _navigationService = navigationService;
             _monitoringService = monitoringService;
+            _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ViewScreenCommand = new RelayCommand(async () => await ViewScreenAsync(), () => SelectedPC != null);
@@ -219,6 +223,8 @@ namespace IRIS.UI.ViewModels
 
                 var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
                 var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
+
+                await RequestImmediateAgentRefreshAsync(pcs);
 
                 PCs.Clear();
 
@@ -419,6 +425,28 @@ namespace IRIS.UI.ViewModels
             });
 
             await Task.WhenAll(tasks);
+        }
+
+        private async Task RequestImmediateAgentRefreshAsync(IEnumerable<PCMonitorInfo> pcs)
+        {
+            var nowUtc = DateTime.UtcNow;
+            if ((nowUtc - _lastAgentRefreshRequestUtc).TotalSeconds < 12)
+            {
+                return;
+            }
+
+            _lastAgentRefreshRequestUtc = nowUtc;
+
+            var uniqueMacs = pcs
+                .Select(pc => pc.MacAddress?.Trim())
+                .Where(mac => !string.IsNullOrWhiteSpace(mac))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var mac in uniqueMacs)
+            {
+                await _powerCommandQueueService.QueueCommandAsync(mac!, "RefreshMetrics");
+            }
         }
 
         private async Task<string?> GetSnapshotBase64Async(string ipAddress)

@@ -9,6 +9,7 @@ namespace IRIS.Core.Services
     public class MonitoringService : IMonitoringService
     {
         private readonly IRISDbContext _context;
+        private static readonly TimeSpan MonitorHeartbeatGrace = TimeSpan.FromSeconds(90);
 
         public MonitoringService(IRISDbContext context)
         {
@@ -153,6 +154,8 @@ namespace IRIS.Core.Services
 
         public async Task<Dictionary<string, int>> GetActiveLabPCsAsync()
         {
+            var nowUtc = DateTime.UtcNow;
+
             // Get all PCs with their room information
             var allPCs = await _context.PCs
                 .Include(p => p.Room)
@@ -160,7 +163,7 @@ namespace IRIS.Core.Services
 
             // Get online PCs grouped by room number
             var onlinePCsByRoom = allPCs
-                .Where(p => p.Status == Models.PCStatus.Online)
+                .Where(p => IsPcOnlineForMonitor(p, nowUtc))
                 .GroupBy(p => p.Room?.RoomNumber ?? "Unassigned")
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -204,6 +207,8 @@ namespace IRIS.Core.Services
 
         public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)
         {
+            var nowUtc = DateTime.UtcNow;
+
             var query = _context.PCs
                 .Include(p => p.HardwareMetrics)
                 .Include(p => p.NetworkMetrics)
@@ -218,6 +223,8 @@ namespace IRIS.Core.Services
 
             return pcs.Select(pc =>
             {
+                var isOnline = IsPcOnlineForMonitor(pc, nowUtc);
+
                 var latestMetric = pc.HardwareMetrics
                     .OrderByDescending(m => m.Timestamp)
                     .FirstOrDefault();
@@ -230,7 +237,9 @@ namespace IRIS.Core.Services
                     .OrderByDescending(n => n.Timestamp)
                     .FirstOrDefault();
 
-                var networkUsage = (latestNetwork?.DownloadSpeed ?? 0) + (latestNetwork?.UploadSpeed ?? 0);
+                var networkUsage = isOnline
+                    ? (latestNetwork?.DownloadSpeed ?? 0) + (latestNetwork?.UploadSpeed ?? 0)
+                    : 0;
 
                 return new PCMonitorInfo
                 {
@@ -240,18 +249,18 @@ namespace IRIS.Core.Services
                     MacAddress = pc.MacAddress ?? "",
                     RoomName = pc.Room?.RoomNumber ?? "Unassigned",
                     OperatingSystem = pc.OperatingSystem ?? "Unknown",
-                    Status = pc.Status.ToString(),
-                    CpuUsage = latestMetric?.CpuUsage ?? 0,
-                    CpuTemperature = latestMetric?.CpuTemperature,
-                    GpuUsage = latestMetric?.GpuUsage,
-                    GpuTemperature = latestMetric?.GpuTemperature,
-                    RamUsage = latestMetric?.MemoryUsage ?? 0,
-                    DiskUsage = latestMetric?.DiskUsage ?? 0,
+                    Status = isOnline ? Models.PCStatus.Online.ToString() : Models.PCStatus.Offline.ToString(),
+                    CpuUsage = isOnline ? latestMetric?.CpuUsage ?? 0 : 0,
+                    CpuTemperature = isOnline ? latestMetric?.CpuTemperature : null,
+                    GpuUsage = isOnline ? latestMetric?.GpuUsage : null,
+                    GpuTemperature = isOnline ? latestMetric?.GpuTemperature : null,
+                    RamUsage = isOnline ? latestMetric?.MemoryUsage ?? 0 : 0,
+                    DiskUsage = isOnline ? latestMetric?.DiskUsage ?? 0 : 0,
                     NetworkUsage = networkUsage,
-                    NetworkUploadMbps = latestNetwork?.UploadSpeed ?? 0,
-                    NetworkDownloadMbps = latestNetwork?.DownloadSpeed ?? 0,
-                    NetworkLatencyMs = latestNetwork?.Latency,
-                    PacketLossPercent = latestNetwork?.PacketLoss,
+                    NetworkUploadMbps = isOnline ? latestNetwork?.UploadSpeed ?? 0 : 0,
+                    NetworkDownloadMbps = isOnline ? latestNetwork?.DownloadSpeed ?? 0 : 0,
+                    NetworkLatencyMs = isOnline ? latestNetwork?.Latency : null,
+                    PacketLossPercent = isOnline ? latestNetwork?.PacketLoss : null,
                     LastMetricTimestamp = latestMetric?.Timestamp ?? latestNetwork?.Timestamp,
                     User = latestUser?.User?.Username ?? ""
                 };
@@ -260,22 +269,26 @@ namespace IRIS.Core.Services
 
         public async Task<PCStatusCounts> GetPCStatusCountsAsync(int? roomId = null)
         {
+            var nowUtc = DateTime.UtcNow;
+
             var query = _context.PCs.AsQueryable();
             if (roomId.HasValue)
                 query = query.Where(p => p.RoomId == roomId.Value);
 
+            var pcs = await query.ToListAsync();
+            var onlineCount = pcs.Count(pc => IsPcOnlineForMonitor(pc, nowUtc));
+            var offlineCount = pcs.Count - onlineCount;
+
             return new PCStatusCounts
             {
-                OnlineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Online),
-                OfflineCount = await query.CountAsync(p => p.Status == Models.PCStatus.Offline),
-                WarningCount = await query.CountAsync(p => p.Status == Models.PCStatus.Warning)
+                OnlineCount = onlineCount,
+                OfflineCount = offlineCount,
+                WarningCount = 0
             };
         }
 
         public async Task<List<LiveAlertItem>> GetLiveAlertsAsync(int? roomId = null, int maxItems = 50)
         {
-            var lookback = DateTime.UtcNow.AddMinutes(-5);
-
             var query = _context.PCs
                 .Include(p => p.Room)
                 .ThenInclude(r => r.Policies)
@@ -293,6 +306,13 @@ namespace IRIS.Core.Services
             {
                 var pcName = pc.Hostname ?? $"PC-{pc.Id}";
                 var roomName = pc.Room?.RoomNumber ?? "Unassigned";
+                var isOnline = IsPcOnlineForMonitor(pc, DateTime.UtcNow);
+
+                if (!isOnline)
+                {
+                    continue;
+                }
+
                 var activePolicy = pc.Room?.Policies?.FirstOrDefault(p => p.IsActive);
                 var latestHardware = pc.HardwareMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
                 var latestNetwork = pc.NetworkMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
@@ -303,11 +323,6 @@ namespace IRIS.Core.Services
                 var gpuTempHistory = pc.HardwareMetrics.Where(m => m.GpuTemperature.HasValue).Select(m => (m.Timestamp, m.GpuTemperature!.Value));
                 var packetLossHistory = pc.NetworkMetrics.Where(m => m.PacketLoss.HasValue).Select(m => (m.Timestamp, m.PacketLoss!.Value));
                 var latencyHistory = pc.NetworkMetrics.Where(m => m.Latency.HasValue).Select(m => (m.Timestamp, m.Latency!.Value));
-
-                if (pc.Status == Models.PCStatus.Offline || pc.LastSeen < lookback)
-                {
-                    alerts.Add(CreateAlert(pc.Id, pcName, roomName, "Critical", "System", "PC is offline or heartbeat is stale", pc.LastSeen));
-                }
 
                 if (latestHardware != null)
                 {
@@ -492,6 +507,12 @@ namespace IRIS.Core.Services
                     _ => 1
                 }
             };
+        }
+
+        private static bool IsPcOnlineForMonitor(Models.PC pc, DateTime nowUtc)
+        {
+            return pc.Status == Models.PCStatus.Online &&
+                   pc.LastSeen >= nowUtc.Subtract(MonitorHeartbeatGrace);
         }
     }
 }

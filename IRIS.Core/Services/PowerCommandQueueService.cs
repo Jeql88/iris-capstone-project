@@ -19,7 +19,8 @@ namespace IRIS.Core.Services
 
             var normalizedCommand = commandType.Trim();
             if (!normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) &&
-                !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase))
+                !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase) &&
+                !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(false);
             }
@@ -27,8 +28,14 @@ namespace IRIS.Core.Services
             var normalizedMacAddress = macAddress.Trim();
             CleanupExpiredCommand(normalizedMacAddress);
 
+            var finalCommand = normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase)
+                ? "Shutdown"
+                : normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase)
+                    ? "Restart"
+                    : "RefreshMetrics";
+
             _pendingCommands[normalizedMacAddress] = new PendingCommandEntry(
-                normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) ? "Shutdown" : "Restart",
+                finalCommand,
                 DateTime.UtcNow);
 
             return Task.FromResult(true);

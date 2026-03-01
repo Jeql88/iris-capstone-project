@@ -48,11 +48,15 @@ namespace IRIS.UI
             loginWindow.Show();
         }
 
-        protected override async void OnExit(ExitEventArgs e)
+        protected override void OnExit(ExitEventArgs e)
         {
-            if (_powerCommandPollingServer != null)
+            try
             {
-                await _powerCommandPollingServer.StopAsync();
+                _powerCommandPollingServer?.StopAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Ignore shutdown errors from background command polling server.
             }
 
             base.OnExit(e);
@@ -69,7 +73,7 @@ namespace IRIS.UI
                             $"  StackTrace:\n{e.Exception.StackTrace}\n" +
                             $"  InnerStackTrace:\n{e.Exception.InnerException?.StackTrace}\n\n";
             System.IO.File.AppendAllText(logPath, errorText);
-            MessageBox.Show($"An unexpected error occurred:\n\n{e.Exception.Message}\n\nInner: {e.Exception.InnerException?.Message}\n\nLogged to: {logPath}",
+            MessageBox.Show($"An unexpected error occurred:\n\n{e.Exception.Message}\n\nInner: {e.Exception.InnerException?.Message}\n\nLogged to: {logPath}", 
                 "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         }
@@ -78,7 +82,7 @@ namespace IRIS.UI
         {
             if (e.ExceptionObject is Exception ex)
             {
-                MessageBox.Show($"A critical error occurred:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                MessageBox.Show($"A critical error occurred:\n\n{ex.Message}\n\n{ex.StackTrace}", 
                     "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -128,24 +132,24 @@ namespace IRIS.UI
             // Views - Shared
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainWindow>();
-
+            
             // Views - Common
             services.AddTransient<DashboardView>();
             services.AddTransient(sp => new AccessLogsView(sp.GetRequiredService<AccessLogsViewModel>()));
             services.AddTransient(sp => new UsageMetricsView(sp.GetRequiredService<UsageMetricsViewModel>()));
             services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>(), sp.GetRequiredService<INavigationService>()));
-
+            
             // Views - Admin
             services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));
             services.AddTransient(sp => new PolicyEnforcementView(sp.GetRequiredService<PolicyEnforcementViewModel>()));
             services.AddTransient(sp => new LabsView(sp.GetRequiredService<LabsViewModel>()));
-
+            
             // Views - Personnel
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
             services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
             services.AddTransient<PersonnelDashboardView>();
             services.AddTransient<PersonnelMainWindow>();
-
+            
             // Views - Faculty
             services.AddTransient(sp => new ViewScreenPage(sp.GetRequiredService<ViewScreenViewModel>()));
             services.AddTransient<FacultyDashboardView>();
