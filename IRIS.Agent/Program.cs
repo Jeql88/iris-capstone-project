@@ -54,6 +54,10 @@ namespace IRIS.Agent
             var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout, commandServerHost, commandServerPort);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
             var screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
+            var snapshotMaxWidth = int.TryParse(configuration["AgentSettings:SnapshotMaxWidth"], out var smw) ? smw : 1280;
+            snapshotMaxWidth = Math.Clamp(snapshotMaxWidth, 640, 1920);
+            var snapshotJpegQuality = int.TryParse(configuration["AgentSettings:SnapshotJpegQuality"], out var sjq) ? sjq : 75;
+            snapshotJpegQuality = Math.Clamp(snapshotJpegQuality, 30, 90);
             var streamToken = configuration["AgentSettings:ScreenStreamToken"];
             var allowedSourceIpEntries = (configuration["AgentSettings:AllowedSnapshotSourceIps"] ?? string.Empty)
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -81,8 +85,8 @@ namespace IRIS.Agent
 
             using var snapshotServer = new ScreenSnapshotServer(
                 screenStreamPort,
-                640,
-                55,
+                snapshotMaxWidth,
+                snapshotJpegQuality,
                 streamToken,
                 allowedSourceIps,
                 autoAllowLocalSubnet,

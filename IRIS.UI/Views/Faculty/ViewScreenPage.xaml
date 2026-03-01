@@ -134,10 +134,6 @@
 
                     <!-- Control Buttons -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <ui:Button Icon="{ui:SymbolIcon FullScreenMaximize24}" 
-                                   ToolTip="Fullscreen"
-                                   Command="{Binding FullscreenCommand}"
-                                   Appearance="Secondary" Margin="0,0,8,0"/>
                         <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" 
                                    ToolTip="Refresh"
                                    Command="{Binding RefreshScreenCommand}"
