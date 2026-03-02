@@ -268,6 +268,12 @@ namespace IRIS.UI.ViewModels
             if (dialog.ShowDialog() == true)
             {
                 SelectedMsiLocalPath = dialog.FileName;
+                SelectedMsiUncPath = ToUncPath(dialog.FileName);
+
+                if (!SelectedMsiUncPath.StartsWith("\\\\", StringComparison.Ordinal))
+                {
+                    StatusMessage = "Selected MSI is local. Enter a server UNC path (e.g. \\\\SERVER\\Share\\app.msi) if targets cannot access this machine.";
+                }
             }
         }
 
@@ -290,9 +296,15 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            if (!File.Exists(_psExecPath) && !string.Equals(_psExecPath, "psexec.exe", StringComparison.OrdinalIgnoreCase))
+            var psexecExe = ResolvePsExecExecutable();
+            if (string.IsNullOrWhiteSpace(psexecExe))
             {
-                MessageBox.Show($"PsExec path not found: {_psExecPath}", "Deployment", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    $"PsExec not found.\n\nConfigured value: {_psExecPath}\n\n" +
+                    "Set DeploymentSettings:PsExecPath to a valid executable path or install PsExec and add it to PATH.",
+                    "Deployment",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 return;
             }
 
@@ -301,7 +313,7 @@ namespace IRIS.UI.ViewModels
 
             var msiFileName = Path.GetFileName(SelectedMsiUncPath);
 
-            var tasks = selectedPcs.Select(pc => DeployToPcAsync(pc, msiFileName));
+            var tasks = selectedPcs.Select(pc => DeployToPcAsync(pc, msiFileName, psexecExe));
             await Task.WhenAll(tasks);
 
             IsDeploying = false;
@@ -309,7 +321,7 @@ namespace IRIS.UI.ViewModels
             await LoadLogsAsync();
         }
 
-        private async Task DeployToPcAsync(PCModel pc, string msiFileName)
+        private async Task DeployToPcAsync(PCModel pc, string msiFileName, string psexecExe)
         {
             try
             {
@@ -327,7 +339,6 @@ namespace IRIS.UI.ViewModels
                 pc.DeploymentProgress = 40;
                 pc.DeploymentStatus = "Running PsExec";
 
-                var psexecExe = _psExecPath;
                 var args = BuildPsExecInstallArguments(pc.IPAddress, _remoteUsername, _remotePassword, installPath);
                 var result = await RunProcessAsync(psexecExe, args, _installTimeoutSeconds);
 
@@ -364,6 +375,68 @@ namespace IRIS.UI.ViewModels
         {
             // psexec \\<IP> -u <USERNAME> -p <PASSWORD> msiexec /i "<path>" /quiet /norestart
             return $"\\\\{ip} -u \"{username}\" -p \"{password}\" msiexec /i \"{installerPath}\" /quiet /norestart";
+        }
+
+        private static string ToUncPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            if (path.StartsWith("\\\\", StringComparison.Ordinal))
+            {
+                return path;
+            }
+
+            // Convert local path like C:\folder\app.msi -> \\MACHINE\C$\folder\app.msi
+            if (Path.IsPathRooted(path) && path.Length >= 3 && path[1] == ':' && path[2] == '\\')
+            {
+                var drive = char.ToUpperInvariant(path[0]);
+                var tail = path[3..].Replace('\\', '\\');
+                return $"\\\\{Environment.MachineName}\\{drive}$\\{tail}";
+            }
+
+            return path;
+        }
+
+        private string? ResolvePsExecExecutable()
+        {
+            // 1) Configured absolute/relative path
+            if (!string.IsNullOrWhiteSpace(_psExecPath) &&
+                !string.Equals(_psExecPath, "psexec.exe", StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(_psExecPath))
+            {
+                return _psExecPath;
+            }
+
+            // 2) PATH lookup
+            var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                try
+                {
+                    var candidate = Path.Combine(dir, "psexec.exe");
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                catch
+                {
+                    // ignore malformed PATH entries
+                }
+            }
+
+            // 3) Common fallback locations
+            var commonCandidates = new[]
+            {
+                @"C:\Tools\PsExec\psexec.exe",
+                @"C:\Sysinternals\psexec.exe",
+                @"C:\Program Files\PsExec\psexec.exe"
+            };
+
+            return commonCandidates.FirstOrDefault(File.Exists);
         }
 
         private static string BuildErrorMessage(ProcessResult result)
