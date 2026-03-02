@@ -38,6 +38,7 @@ namespace IRIS.Core.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
+        public DbSet<DeploymentLog> DeploymentLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -58,6 +59,7 @@ namespace IRIS.Core.Data
             ConfigureAlert(modelBuilder);
             ConfigurePolicy(modelBuilder);
             ConfigurePCHardwareConfig(modelBuilder);
+            ConfigureDeploymentLog(modelBuilder);
 
             // Seed test users with BCrypt hashed passwords (password: "admin")
             modelBuilder.Entity<User>().HasData(
@@ -330,6 +332,21 @@ namespace IRIS.Core.Data
                 .WithMany(p => p.HardwareConfigs)
                 .HasForeignKey(phc => phc.PCId)
                 .OnDelete(DeleteBehavior.Cascade);
+        }
+
+        private void ConfigureDeploymentLog(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<DeploymentLog>()
+                .HasOne(dl => dl.PC)
+                .WithMany()
+                .HasForeignKey(dl => dl.PCId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DeploymentLog>()
+                .HasIndex(dl => new { dl.PCId, dl.Timestamp });
+
+            modelBuilder.Entity<DeploymentLog>()
+                .HasIndex(dl => dl.Timestamp);
         }
 
     }

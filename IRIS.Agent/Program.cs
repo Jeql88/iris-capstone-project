@@ -92,6 +92,11 @@ namespace IRIS.Agent
                 autoAllowLocalSubnet,
                 controllerDiscoveryMode);
 
+            var fileApiPort = int.TryParse(configuration["AgentSettings:FileApiPort"], out var fap) ? fap : 5065;
+            var fileApiToken = configuration["AgentSettings:FileApiToken"] ?? string.Empty;
+            var managedRootPath = configuration["AgentSettings:ManagedRootPath"] ?? @"C:\IRIS\Managed";
+            using var fileManagementServer = new AgentFileManagementServer(fileApiPort, managedRootPath, fileApiToken);
+
             // Execute startup logic: Register PC
             await pcController.RegisterPCAsync();
 
@@ -145,6 +150,15 @@ namespace IRIS.Agent
                 Log.Error(ex, "Screen snapshot server failed to start. Agent will continue without snapshot streaming.");
             }
 
+            try
+            {
+                await fileManagementServer.StartAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "File management API failed to start. Agent will continue without file API.");
+            }
+
             // Start policy enforcement
             var policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
@@ -156,6 +170,7 @@ namespace IRIS.Agent
             {
                 Log.Information("Shutdown detected. Handling final update...");
                 await websiteUsageLogic.StopMonitoringAsync();
+                await fileManagementServer.StopAsync();
                 await shutdownLogic.HandleShutdownAsync();
                 websiteUsageLogic.Dispose();
                 websiteUsageContext.Dispose();
@@ -168,6 +183,7 @@ namespace IRIS.Agent
                 Log.Information("Ctrl+C detected. Handling shutdown...");
                 await monitoringController.StopMonitoringAsync();
                 await snapshotServer.StopAsync();
+                await fileManagementServer.StopAsync();
                 await appUsageLogic.StopMonitoringAsync();
                 await websiteUsageLogic.StopMonitoringAsync();
                 await shutdownLogic.HandleShutdownAsync();
