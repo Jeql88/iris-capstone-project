@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Threading;
+using System.Collections.Specialized;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.Core.Services.Contracts;
@@ -30,19 +31,21 @@ namespace IRIS.UI.ViewModels
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
-        private int _idlePCCount;
         private bool _hasNoPCs = true;
         private int _criticalAlertCount;
         private int _highAlertCount;
         private string _topAlertMessage = "No active alerts";
         private string _alertHeaderText = "All clear";
         private bool _isPcAlertsPanelOpen;
+        private bool _isTimelinePanelOpen;
         private string _selectedPcAlertsTitle = "Device Alerts";
+        private string _selectedPcTimelineTitle = "PC Health Timeline";
         private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
         private DateTime _lastAgentRefreshRequestUtc = DateTime.MinValue;
         private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
         private bool _isInitialized;
         private bool _isActive = true;
+        private bool _isTimelineLoading;
 
         public MonitorViewModel(
             INavigationService navigationService,
@@ -60,8 +63,13 @@ namespace IRIS.UI.ViewModels
             ToggleCardDetailsCommand = new RelayCommand<PCDisplayModel>(pc => ToggleCardDetails(pc));
             OpenPcAlertsForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenAlertsForPC(pc));
             ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
+            ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
+            CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
+            RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
+
+            SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
@@ -74,6 +82,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<LiveAlertDisplayModel> ActiveAlerts { get; } = new();
         public ObservableCollection<LiveAlertDisplayModel> SelectedPcAlerts { get; } = new();
+        public ObservableCollection<PCHealthTimelineDisplayModel> SelectedPcTimeline { get; } = new();
 
         public string SearchText
         {
@@ -119,12 +128,6 @@ namespace IRIS.UI.ViewModels
             set { _offlinePCCount = value; OnPropertyChanged(); }
         }
 
-        public int IdlePCCount
-        {
-            get => _idlePCCount;
-            set { _idlePCCount = value; OnPropertyChanged(); }
-        }
-
         public bool HasNoPCs
         {
             get => _hasNoPCs;
@@ -161,13 +164,35 @@ namespace IRIS.UI.ViewModels
             set { _isPcAlertsPanelOpen = value; OnPropertyChanged(); }
         }
 
+        public bool IsTimelinePanelOpen
+        {
+            get => _isTimelinePanelOpen;
+            set { _isTimelinePanelOpen = value; OnPropertyChanged(); }
+        }
+
         public string SelectedPcAlertsTitle
         {
             get => _selectedPcAlertsTitle;
             set { _selectedPcAlertsTitle = value; OnPropertyChanged(); }
         }
 
+        public string SelectedPcTimelineTitle
+        {
+            get => _selectedPcTimelineTitle;
+            set { _selectedPcTimelineTitle = value; OnPropertyChanged(); }
+        }
+
+        public bool IsTimelineLoading
+        {
+            get => _isTimelineLoading;
+            set { _isTimelineLoading = value; OnPropertyChanged(); }
+        }
+
         public bool HasSelectedPC => SelectedPC != null;
+        public bool HasTimelineEvents => SelectedPcTimeline.Count > 0;
+        public string TimelineEmptyMessage => HasSelectedPC
+            ? "No timeline events for the selected period"
+            : "Select a PC to view health timeline";
 
         private PCDisplayModel? _selectedPC;
         public PCDisplayModel? SelectedPC
@@ -181,8 +206,11 @@ namespace IRIS.UI.ViewModels
                 if (_selectedPC != null) _selectedPC.IsSelected = true;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(HasSelectedPC));
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -191,8 +219,11 @@ namespace IRIS.UI.ViewModels
         public ICommand ToggleCardDetailsCommand { get; }
         public ICommand OpenPcAlertsForPCCommand { get; }
         public ICommand ClosePcAlertsPanelCommand { get; }
+        public ICommand ShowTimelineForPCCommand { get; }
+        public ICommand CloseTimelinePanelCommand { get; }
         public ICommand LockScreenCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand RefreshSelectedPcTimelineCommand { get; }
 
         private async Task InitializeAsync()
         {
@@ -220,6 +251,9 @@ namespace IRIS.UI.ViewModels
                 {
                     return;
                 }
+
+                var previousSelectionId = SelectedPC?.Id;
+                var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
                 var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
                 var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
@@ -269,17 +303,40 @@ namespace IRIS.UI.ViewModels
 
                 OnlinePCCount = counts.OnlineCount;
                 OfflinePCCount = counts.OfflineCount;
-                IdlePCCount = counts.WarningCount;
-                TotalPCCount = OnlinePCCount + OfflinePCCount + IdlePCCount;
+                TotalPCCount = OnlinePCCount + OfflinePCCount;
 
-                if ((DateTime.UtcNow - _lastAlertRefreshUtc).TotalSeconds >= 10)
-                {
-                    await LoadLiveAlertsAsync();
-                }
-
-                await LoadSnapshotsAsync();
-
+                // Always apply filter first so PCs are visible even if alerts/snapshots fail
                 ApplyFilter();
+
+                try
+                {
+                    if ((DateTime.UtcNow - _lastAlertRefreshUtc).TotalSeconds >= 10)
+                    {
+                        await LoadLiveAlertsAsync();
+                    }
+                }
+                catch { /* Alert loading failure must not block PC display */ }
+
+                try
+                {
+                    await LoadSnapshotsAsync();
+                }
+                catch { /* Snapshot loading failure must not block PC display */ }
+
+                if (previousSelectionId.HasValue)
+                {
+                    var matchedSelection = PCs.FirstOrDefault(p => p.Id == previousSelectionId.Value);
+                    if (matchedSelection != null)
+                    {
+                        matchedSelection.IsFlipped = previousFlipState;
+                    }
+
+                    SelectedPC = matchedSelection;
+                }
+                else
+                {
+                    SelectedPC = null;
+                }
             }
             catch
             {
@@ -401,13 +458,12 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadSnapshotsAsync()
         {
-            var connectedPcs = PCs
-                .Where(p => !p.Status.Equals("Offline", StringComparison.OrdinalIgnoreCase))
+            var reachablePcs = PCs
                 .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
                 .ToList();
 
             var semaphore = new SemaphoreSlim(4);
-            var tasks = connectedPcs.Select(async pc =>
+            var tasks = reachablePcs.Select(async pc =>
             {
                 await semaphore.WaitAsync();
                 try
@@ -519,6 +575,14 @@ namespace IRIS.UI.ViewModels
             IsPcAlertsPanelOpen = true;
         }
 
+        private void OpenTimelineForPC(PCDisplayModel? pc)
+        {
+            if (pc == null) return;
+            SelectedPC = pc;
+            IsTimelinePanelOpen = true;
+            _ = LoadSelectedPcTimelineAsync(pc.Id);
+        }
+
         private void PopulateSelectedPcAlerts(int pcId)
         {
             SelectedPcAlerts.Clear();
@@ -526,6 +590,90 @@ namespace IRIS.UI.ViewModels
             {
                 SelectedPcAlerts.Add(alert);
             }
+        }
+
+        private async Task RefreshSelectedPcTimelineAsync()
+        {
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            await LoadSelectedPcTimelineAsync(SelectedPC.Id);
+        }
+
+        private async Task LoadSelectedPcTimelineAsync(int pcId)
+        {
+            if (pcId <= 0)
+            {
+                SelectedPcTimeline.Clear();
+                return;
+            }
+
+            try
+            {
+                IsTimelineLoading = true;
+
+                var events = await _monitoringService.GetPcHealthTimelineAsync(pcId, 24, 100);
+
+                SelectedPcTimeline.Clear();
+                foreach (var timelineEvent in events.OrderByDescending(e => e.Timestamp))
+                {
+                    SelectedPcTimeline.Add(new PCHealthTimelineDisplayModel
+                    {
+                        Timestamp = timelineEvent.Timestamp,
+                        RelativeTime = ToRelativeTime(timelineEvent.Timestamp),
+                        Severity = string.IsNullOrWhiteSpace(timelineEvent.Severity) ? "Info" : timelineEvent.Severity,
+                        Category = string.IsNullOrWhiteSpace(timelineEvent.Category) ? "System" : timelineEvent.Category,
+                        Title = timelineEvent.Title,
+                        Message = timelineEvent.Message
+                    });
+                }
+
+                SelectedPcTimelineTitle = SelectedPC != null
+                    ? $"PC Health Timeline • {SelectedPC.PCName}"
+                    : "PC Health Timeline";
+
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
+            }
+            catch
+            {
+                SelectedPcTimeline.Clear();
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
+            }
+            finally
+            {
+                IsTimelineLoading = false;
+            }
+        }
+
+        private static string ToRelativeTime(DateTime timestamp)
+        {
+            var delta = DateTime.UtcNow - timestamp;
+            if (delta.TotalSeconds < 60)
+            {
+                return $"{Math.Max(0, (int)delta.TotalSeconds)}s ago";
+            }
+
+            if (delta.TotalMinutes < 60)
+            {
+                return $"{(int)delta.TotalMinutes}m ago";
+            }
+
+            if (delta.TotalHours < 24)
+            {
+                return $"{(int)delta.TotalHours}h ago";
+            }
+
+            return $"{(int)delta.TotalDays}d ago";
+        }
+
+        private void OnSelectedPcTimelineCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(HasTimelineEvents));
+            OnPropertyChanged(nameof(TimelineEmptyMessage));
         }
 
         private async Task LockScreenAsync()
@@ -801,8 +949,7 @@ namespace IRIS.UI.ViewModels
         public SolidColorBrush StatusColor
         {
             get => Status == "Online" ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) :
-                   Status == "Offline" ? new SolidColorBrush(Color.FromRgb(239, 68, 68)) :
-                   new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                   new SolidColorBrush(Color.FromRgb(239, 68, 68));
             set { } // ignore sets
         }
 
@@ -820,5 +967,15 @@ namespace IRIS.UI.ViewModels
         public string Type { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
+    }
+
+    public class PCHealthTimelineDisplayModel
+    {
+        public DateTime Timestamp { get; set; }
+        public string RelativeTime { get; set; } = string.Empty;
+        public string Severity { get; set; } = "Info";
+        public string Category { get; set; } = "System";
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

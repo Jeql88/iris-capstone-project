@@ -301,13 +301,14 @@ namespace IRIS.Core.Data
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Alert>()
-                .Property(a => a.Severity)
-                .HasConversion<string>();
+            // Severity and Type stored as integer (enum default) — no HasConversion<string>()
+            // to match actual PostgreSQL column types.
 
             modelBuilder.Entity<Alert>()
-                .Property(a => a.Type)
-                .HasConversion<string>();
+                .HasIndex(a => new { a.PCId, a.AlertKey, a.IsResolved });
+
+            modelBuilder.Entity<Alert>()
+                .HasIndex(a => new { a.IsResolved, a.CreatedAt });
         }
 
         private void ConfigurePolicy(ModelBuilder modelBuilder)

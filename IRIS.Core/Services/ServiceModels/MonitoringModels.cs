@@ -81,11 +81,11 @@ namespace IRIS.Core.Services.ServiceModels
     {
         public int OnlineCount { get; set; }
         public int OfflineCount { get; set; }
-        public int WarningCount { get; set; }
     }
 
     public class LiveAlertItem
     {
+        public string AlertKey { get; set; } = string.Empty;
         public int PCId { get; set; }
         public string PCName { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;
@@ -94,5 +94,32 @@ namespace IRIS.Core.Services.ServiceModels
         public string Message { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public int SeverityRank { get; set; }
+    }
+
+    public class PersistedAlertItem
+    {
+        public int AlertId { get; set; }
+        public string AlertKey { get; set; } = string.Empty;
+        public int PCId { get; set; }
+        public string PCName { get; set; } = string.Empty;
+        public string RoomName { get; set; } = string.Empty;
+        public string Severity { get; set; } = "Medium";
+        public string Type { get; set; } = "System";
+        public string Message { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public bool IsAcknowledged { get; set; }
+        public DateTime? AcknowledgedAt { get; set; }
+        public bool IsResolved { get; set; }
+        public DateTime? ResolvedAt { get; set; }
+    }
+
+    public class PcHealthTimelineEvent
+    {
+        public int PCId { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Severity { get; set; } = "Info";
+        public string Category { get; set; } = "System";
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

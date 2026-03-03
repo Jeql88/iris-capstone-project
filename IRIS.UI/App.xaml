@@ -33,7 +33,6 @@
             <SolidColorBrush x:Key="OnlineStatusBrush" Color="#10B981" />
             <SolidColorBrush x:Key="OfflineStatusBrush" Color="#EF4444" />
             <SolidColorBrush x:Key="WarningStatusBrush" Color="#F59E0B" />
-            <SolidColorBrush x:Key="IdleStatusBrush" Color="#F59E0B" />
             
             <!-- Removed custom global styles (TextBlock/TextBox/PasswordBox/ComboBoxItem) to avoid setter init errors. -->
 
