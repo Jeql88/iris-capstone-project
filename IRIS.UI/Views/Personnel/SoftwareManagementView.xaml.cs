@@ -12,16 +12,26 @@ namespace IRIS.UI.Views.Personnel
             DataContext = viewModel;
         }
 
-        private void FileDropZone_Drop(object sender, DragEventArgs e)
+        private async void FileDropZone_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 if (DataContext is DeploymentViewModel vm)
                 {
-                    vm.AddPendingUploadFiles(files);
+                    await vm.UploadDroppedFilesAsync(files);
                 }
             }
+        }
+
+        private async void RemoteFilesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (DataContext is not DeploymentViewModel vm)
+            {
+                return;
+            }
+
+            await vm.OpenRemoteItemAsync(vm.SelectedRemoteFile);
         }
 
         private void FileDropZone_DragOver(object sender, DragEventArgs e)

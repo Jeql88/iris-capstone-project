@@ -94,7 +94,17 @@ namespace IRIS.Agent
 
             var fileApiPort = int.TryParse(configuration["AgentSettings:FileApiPort"], out var fap) ? fap : 5065;
             var fileApiToken = configuration["AgentSettings:FileApiToken"] ?? string.Empty;
-            var managedRootPath = configuration["AgentSettings:ManagedRootPath"] ?? @"C:\IRIS\Managed";
+            var configuredManagedRootPath = configuration["AgentSettings:ManagedRootPath"];
+            var managedRootPath = string.IsNullOrWhiteSpace(configuredManagedRootPath)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)
+                : Environment.ExpandEnvironmentVariables(configuredManagedRootPath);
+
+            if (string.IsNullOrWhiteSpace(managedRootPath))
+            {
+                managedRootPath = @"C:\IRIS\Managed";
+            }
+
+            Log.Information("File management root path: {ManagedRootPath}", managedRootPath);
             using var fileManagementServer = new AgentFileManagementServer(fileApiPort, managedRootPath, fileApiToken);
 
             // Execute startup logic: Register PC

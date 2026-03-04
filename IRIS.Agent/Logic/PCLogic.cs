@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -347,30 +349,80 @@ namespace IRIS.Agent.Logic
 
         public static NetworkInfoDto GetNetworkInfo()
         {
-            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus == OperationalStatus.Up &&
-                    (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet ||
-                     ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+            var candidates = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(ni => ni.OperationalStatus == OperationalStatus.Up)
+                .Where(ni => ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet || ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
+                .Select(ni =>
                 {
                     var ipProps = ni.GetIPProperties();
                     var ipv4 = ipProps.UnicastAddresses
-                        .FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+                        .FirstOrDefault(a => a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address));
 
-                    if (ipv4 != null)
+                    if (ipv4 == null)
                     {
-                        var ipAddress = ipv4.Address.ToString();
-                        var macAddress = ni.GetPhysicalAddress().ToString();
-                        var subnetMask = ipv4.IPv4Mask.ToString();
-                        var defaultGateway = ipProps.GatewayAddresses
-                            .FirstOrDefault(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)?.Address.ToString() ?? "N/A";
-
-                        return new NetworkInfoDto(ipAddress, macAddress, subnetMask, defaultGateway);
+                        return null;
                     }
-                }
+
+                    var gateway = ipProps.GatewayAddresses
+                        .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.Any.Equals(g.Address))
+                        ?.Address;
+
+                    var ip = ipv4.Address;
+                    var score = 0;
+
+                    // Strongly prefer adapters with a valid IPv4 default gateway.
+                    if (gateway != null)
+                    {
+                        score += 100;
+                    }
+
+                    // Prefer private LAN ranges commonly used in labs.
+                    if (IsPrivateIPv4(ip))
+                    {
+                        score += 20;
+                    }
+
+                    // De-prioritize APIPA/self-assigned addresses.
+                    if (ip.ToString().StartsWith("169.254.", StringComparison.Ordinal))
+                    {
+                        score -= 100;
+                    }
+
+                    return new
+                    {
+                        Interface = ni,
+                        IPv4 = ipv4,
+                        Gateway = gateway,
+                        Score = score
+                    };
+                })
+                .Where(x => x != null)
+                .OrderByDescending(x => x!.Score)
+                .ToList();
+
+            var selected = candidates.FirstOrDefault();
+            if (selected != null)
+            {
+                var ipAddress = selected.IPv4.Address.ToString();
+                var macAddress = selected.Interface.GetPhysicalAddress().ToString();
+                var subnetMask = selected.IPv4.IPv4Mask?.ToString() ?? "255.255.255.0";
+                var defaultGateway = selected.Gateway?.ToString() ?? "N/A";
+
+                Log.Information("Selected network adapter for registration: {Adapter} | IP={IpAddress} | Gateway={Gateway}", selected.Interface.Name, ipAddress, defaultGateway);
+
+                return new NetworkInfoDto(ipAddress, macAddress, subnetMask, defaultGateway);
             }
 
             throw new Exception("No active network interface found for IP and MAC detection.");
+        }
+
+        private static bool IsPrivateIPv4(IPAddress ip)
+        {
+            var bytes = ip.GetAddressBytes();
+            return bytes.Length == 4 && (
+                bytes[0] == 10 ||
+                (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
+                (bytes[0] == 192 && bytes[1] == 168));
         }
 
         private static string GetOperatingSystem()

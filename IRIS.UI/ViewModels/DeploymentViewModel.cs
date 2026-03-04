@@ -28,6 +28,8 @@ namespace IRIS.UI.ViewModels
         private string _selectedMsiLocalPath = string.Empty;
         private string _selectedMsiUncPath = string.Empty;
         private string _currentRemotePath = ".";
+        private string _remoteSearchText = string.Empty;
+        private string? _remoteParentPath;
         private string _statusMessage = "Ready";
         private RoomDto? _selectedRoom;
         private PCModel? _selectedFileManagementPC;
@@ -68,6 +70,11 @@ namespace IRIS.UI.ViewModels
             BrowseUploadFilesCommand = new RelayCommand(BrowseUploadFiles, () => true);
             UploadFilesCommand = new RelayCommand(async () => await UploadFilesAsync(), CanUploadFiles);
             LoadRemoteFilesCommand = new RelayCommand(async () => await LoadRemoteFilesAsync(), () => SelectedFileManagementPC != null);
+            NavigateUpRemotePathCommand = new RelayCommand(async () => await NavigateUpRemotePathAsync(), () => SelectedFileManagementPC != null && CanNavigateUp);
+            SearchRemoteFilesCommand = new RelayCommand(async () => await LoadRemoteFilesAsync(), () => SelectedFileManagementPC != null);
+            ClearRemoteSearchCommand = new RelayCommand(async () => await ClearRemoteSearchAsync(), () => SelectedFileManagementPC != null);
+            OpenRemoteFolderCommand = new RelayCommand<RemoteFileItemModel>(item => _ = OpenRemoteItemAsync(item));
+            DownloadRemoteFileCommand = new RelayCommand<RemoteFileItemModel>(item => _ = DownloadRemoteItemAsync(item));
             DeleteRemoteFileCommand = new RelayCommand<RemoteFileItemModel>(item => _ = DeleteRemoteFileAsync(item));
             RemovePendingUploadCommand = new RelayCommand<string>(RemovePendingUploadFile);
 
@@ -99,6 +106,10 @@ namespace IRIS.UI.ViewModels
                 _selectedFileManagementPC = value;
                 OnPropertyChanged();
                 (LoadRemoteFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SearchRemoteFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ClearRemoteSearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 _ = LoadRemoteFilesAsync();
             }
         }
@@ -145,6 +156,18 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public string RemoteSearchText
+        {
+            get => _remoteSearchText;
+            set
+            {
+                _remoteSearchText = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanNavigateUp => !string.IsNullOrWhiteSpace(_remoteParentPath);
+
         public string StatusMessage
         {
             get => _statusMessage;
@@ -180,6 +203,11 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseUploadFilesCommand { get; }
         public ICommand UploadFilesCommand { get; }
         public ICommand LoadRemoteFilesCommand { get; }
+        public ICommand NavigateUpRemotePathCommand { get; }
+        public ICommand SearchRemoteFilesCommand { get; }
+        public ICommand ClearRemoteSearchCommand { get; }
+        public ICommand OpenRemoteFolderCommand { get; }
+        public ICommand DownloadRemoteFileCommand { get; }
         public ICommand DeleteRemoteFileCommand { get; }
         public ICommand RemovePendingUploadCommand { get; }
 
@@ -578,6 +606,50 @@ namespace IRIS.UI.ViewModels
             (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
+        public async Task UploadDroppedFilesAsync(IEnumerable<string> files)
+        {
+            AddPendingUploadFiles(files);
+
+            if (CanUploadFiles())
+            {
+                await UploadFilesAsync();
+                return;
+            }
+
+            if (!PCs.Any(p => p.IsSelected))
+            {
+                StatusMessage = "Select at least one PC before dropping files to upload.";
+            }
+        }
+
+        public async Task OpenRemoteItemAsync(RemoteFileItemModel? item)
+        {
+            if (item == null || !item.IsDirectory)
+            {
+                return;
+            }
+
+            CurrentRemotePath = item.FullPath;
+            await LoadRemoteFilesAsync();
+        }
+
+        private async Task NavigateUpRemotePathAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_remoteParentPath))
+            {
+                return;
+            }
+
+            CurrentRemotePath = _remoteParentPath;
+            await LoadRemoteFilesAsync();
+        }
+
+        private async Task ClearRemoteSearchAsync()
+        {
+            RemoteSearchText = string.Empty;
+            await LoadRemoteFilesAsync();
+        }
+
         private void BrowseUploadFiles()
         {
             var dialog = new OpenFileDialog
@@ -594,12 +666,27 @@ namespace IRIS.UI.ViewModels
 
         private bool CanUploadFiles()
         {
-            return PendingUploadFiles.Count > 0 && PCs.Any(p => p.IsSelected);
+            if (PendingUploadFiles.Count == 0)
+            {
+                return false;
+            }
+
+            var hasBatchSelection = PCs.Any(p => p.IsSelected);
+            var hasSingleTarget = SelectedFileManagementPC != null &&
+                                  !string.IsNullOrWhiteSpace(SelectedFileManagementPC.IPAddress) &&
+                                  SelectedFileManagementPC.IPAddress != "N/A";
+
+            return hasBatchSelection || hasSingleTarget;
         }
 
         private async Task UploadFilesAsync()
         {
             var selectedPcs = PCs.Where(p => p.IsSelected).ToList();
+            if (!selectedPcs.Any() && SelectedFileManagementPC != null)
+            {
+                selectedPcs.Add(SelectedFileManagementPC);
+            }
+
             if (!selectedPcs.Any() || PendingUploadFiles.Count == 0)
             {
                 return;
@@ -652,10 +739,15 @@ namespace IRIS.UI.ViewModels
 
                 if (SelectedFileManagementPC == null || string.IsNullOrWhiteSpace(SelectedFileManagementPC.IPAddress) || SelectedFileManagementPC.IPAddress == "N/A")
                 {
+                    _remoteParentPath = null;
+                    OnPropertyChanged(nameof(CanNavigateUp));
+                    (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     return;
                 }
 
-                var requestUri = BuildAgentUri(SelectedFileManagementPC.IPAddress, $"/files?path={Uri.EscapeDataString(CurrentRemotePath)}");
+                var requestUri = BuildAgentUri(
+                    SelectedFileManagementPC.IPAddress,
+                    $"/files/browse?path={Uri.EscapeDataString(CurrentRemotePath)}&search={Uri.EscapeDataString(RemoteSearchText ?? string.Empty)}");
                 using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
                 AttachAuthHeader(request);
 
@@ -667,7 +759,12 @@ namespace IRIS.UI.ViewModels
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-                var files = JsonSerializer.Deserialize<List<AgentFileEntry>>(json, JsonOptions()) ?? [];
+                var browse = JsonSerializer.Deserialize<AgentBrowseResponse>(json, JsonOptions());
+                var files = browse?.Entries ?? [];
+                CurrentRemotePath = string.IsNullOrWhiteSpace(browse?.CurrentPath) ? "." : browse.CurrentPath;
+                _remoteParentPath = browse?.ParentPath;
+                OnPropertyChanged(nameof(CanNavigateUp));
+                (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
                 foreach (var file in files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name))
                 {
@@ -680,6 +777,8 @@ namespace IRIS.UI.ViewModels
                         LastWriteTimeUtc = file.LastWriteTimeUtc
                     });
                 }
+
+                StatusMessage = $"Showing {RemoteFiles.Count} item(s) at '{CurrentRemotePath}'.";
             }
             catch (Exception ex)
             {
@@ -718,6 +817,52 @@ namespace IRIS.UI.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"Delete failed: {ex.Message}";
+            }
+        }
+
+        private async Task DownloadRemoteItemAsync(RemoteFileItemModel? item)
+        {
+            if (item == null || SelectedFileManagementPC == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var defaultFileName = item.IsDirectory ? $"{item.Name}.zip" : item.Name;
+                var dialog = new SaveFileDialog
+                {
+                    FileName = defaultFileName,
+                    Filter = item.IsDirectory ? "Zip files (*.zip)|*.zip|All files (*.*)|*.*" : "All files (*.*)|*.*",
+                    AddExtension = true,
+                    OverwritePrompt = true
+                };
+
+                if (dialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                var requestUri = BuildAgentUri(SelectedFileManagementPC.IPAddress, $"/files/download?path={Uri.EscapeDataString(item.FullPath)}");
+                using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                AttachAuthHeader(request);
+
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode)
+                {
+                    StatusMessage = $"Download failed: {response.StatusCode}";
+                    return;
+                }
+
+                await using var remoteStream = await response.Content.ReadAsStreamAsync();
+                await using var localFile = File.Create(dialog.FileName);
+                await remoteStream.CopyToAsync(localFile);
+
+                StatusMessage = $"Downloaded '{item.Name}' to '{dialog.FileName}'.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Download failed: {ex.Message}";
             }
         }
 
@@ -770,6 +915,13 @@ namespace IRIS.UI.ViewModels
         {
             public string LocalPath { get; set; } = string.Empty;
             public bool AlreadyExists { get; set; }
+        }
+
+        private sealed class AgentBrowseResponse
+        {
+            public string? CurrentPath { get; set; }
+            public string? ParentPath { get; set; }
+            public List<AgentFileEntry> Entries { get; set; } = [];
         }
 
         private sealed class AgentFileEntry

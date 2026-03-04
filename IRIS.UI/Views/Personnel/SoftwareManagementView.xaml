@@ -138,17 +138,31 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal">
-                        <ComboBox Width="300" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedFileManagementPC}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Hostname}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                        <ui:TextBox Width="360" Margin="10,0,0,0" Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Remote path (relative to agent root)"/>
-                        <ui:Button Margin="10,0,0,0" Content="Load" Command="{Binding LoadRemoteFilesCommand}" Appearance="Secondary"/>
-                    </StackPanel>
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                            <ComboBox Width="260" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedFileManagementPC}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Hostname}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <ui:TextBox Width="360" Margin="10,0,0,0" Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Remote path (relative to agent root)"/>
+                            <ui:Button Margin="10,0,0,0" Content="Load" Command="{Binding LoadRemoteFilesCommand}" Appearance="Secondary"/>
+                            <ui:Button Margin="10,0,0,0" Content="Up" Command="{Binding NavigateUpRemotePathCommand}" Appearance="Secondary" IsEnabled="{Binding CanNavigateUp}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                            <ui:TextBox Width="360" Text="{Binding RemoteSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search current folder..."/>
+                            <ui:Button Margin="10,0,0,0" Content="Search" Command="{Binding SearchRemoteFilesCommand}" Appearance="Secondary"/>
+                            <ui:Button Margin="10,0,0,0" Content="Clear Search" Appearance="Secondary" Command="{Binding ClearRemoteSearchCommand}"/>
+                        </StackPanel>
+                    </Grid>
 
                     <Grid Grid.Row="1" Margin="0,12,0,12">
                         <Grid.ColumnDefinitions>
@@ -182,18 +196,23 @@
                         </StackPanel>
                     </Grid>
 
-                    <DataGrid Grid.Row="2" ItemsSource="{Binding RemoteFiles}" SelectedItem="{Binding SelectedRemoteFile}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                    <DataGrid x:Name="RemoteFilesGrid" Grid.Row="2" ItemsSource="{Binding RemoteFiles}" SelectedItem="{Binding SelectedRemoteFile}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" MouseDoubleClick="RemoteFilesGrid_MouseDoubleClick">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
                             <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="90"/>
                             <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="100"/>
                             <DataGridTextColumn Header="Last Modified (UTC)" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
-                            <DataGridTemplateColumn Header="Actions" Width="120">
+                            <DataGridTemplateColumn Header="Actions" Width="220">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <ui:Button Content="Delete" Appearance="Danger"
-                                                   Command="{Binding DataContext.DeleteRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                   CommandParameter="{Binding}"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:Button Content="Download" Appearance="Secondary" Margin="0,0,8,0"
+                                                       Command="{Binding DataContext.DownloadRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}"/>
+                                            <ui:Button Content="Delete" Appearance="Danger"
+                                                       Command="{Binding DataContext.DeleteRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
