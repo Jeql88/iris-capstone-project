@@ -11,7 +11,7 @@ namespace IRIS.Core.Services
     public class MonitoringService : IMonitoringService
     {
         private readonly IRISDbContext _context;
-        private static readonly TimeSpan MonitorHeartbeatGrace = TimeSpan.FromSeconds(90);
+        private static readonly TimeSpan MonitorHeartbeatGrace = TimeSpan.FromMinutes(3);
 
         public MonitoringService(IRISDbContext context)
         {

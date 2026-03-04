@@ -13,13 +13,15 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.Core.DTOs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IRIS.UI.ViewModels
 {
     public class MonitorViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly INavigationService _navigationService;
-        private readonly IMonitoringService _monitoringService;
+        private readonly IPCDataCacheService _cache;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
         private readonly string? _screenStreamToken;
@@ -49,12 +51,14 @@ namespace IRIS.UI.ViewModels
 
         public MonitorViewModel(
             INavigationService navigationService,
-            IMonitoringService monitoringService,
+            IPCDataCacheService cache,
+            IServiceScopeFactory scopeFactory,
             IPowerCommandQueueService powerCommandQueueService,
             IConfiguration configuration)
         {
             _navigationService = navigationService;
-            _monitoringService = monitoringService;
+            _cache = cache;
+            _scopeFactory = scopeFactory;
             _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
@@ -229,6 +233,13 @@ namespace IRIS.UI.ViewModels
         {
             await LoadRoomsAsync();
             _isInitialized = true;
+
+            // If cache already has data (e.g. navigating back from Dashboard), show it immediately
+            if (_cache.HasData)
+            {
+                ApplyCachedPCData();
+            }
+
             await LoadPCDataAsync();
             _refreshTimer.Start();
         }
@@ -255,55 +266,16 @@ namespace IRIS.UI.ViewModels
                 var previousSelectionId = SelectedPC?.Id;
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
-                var pcs = await _monitoringService.GetPCsForMonitorAsync(_selectedRoomId);
-                var counts = await _monitoringService.GetPCStatusCountsAsync(_selectedRoomId);
+                // Refresh via shared cache (uses its own DI scope — safe from navigation disposal)
+                _cache.CurrentRoomFilter = _selectedRoomId;
+                await _cache.RefreshPCDataAsync();
+
+                var pcs = _cache.CachedPCs;
+                var counts = _cache.CachedStatusCounts;
 
                 await RequestImmediateAgentRefreshAsync(pcs);
 
-                PCs.Clear();
-
-                foreach (var pc in pcs)
-                {
-                    PCs.Add(new PCDisplayModel
-                    {
-                        Id = pc.Id,
-                        PCName = pc.Name,
-                        IPAddress = pc.IpAddress,
-                        MacAddress = pc.MacAddress,
-                        RoomName = pc.RoomName,
-                        Status = pc.Status,
-                        OS = pc.OperatingSystem,
-                        CPU = $"{pc.CpuUsage:F0}%",
-                        CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
-                        GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
-                        GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
-                        Network = $"{pc.NetworkUsage:F1} Mbps",
-                        NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
-                        NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
-                        NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A",
-                        PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A",
-                        RAM = $"{pc.RamUsage:F0}%",
-                        CpuUsagePercent = pc.CpuUsage,
-                        CpuTemperatureValue = pc.CpuTemperature,
-                        GpuUsagePercent = pc.GpuUsage,
-                        GpuTemperatureValue = pc.GpuTemperature,
-                        RamUsagePercent = pc.RamUsage,
-                        DiskUsagePercent = pc.DiskUsage,
-                        NetworkUploadMbps = pc.NetworkUploadMbps,
-                        NetworkDownloadMbps = pc.NetworkDownloadMbps,
-                        NetworkLatencyMs = pc.NetworkLatencyMs,
-                        PacketLossPercent = pc.PacketLossPercent,
-                        User = pc.User,
-                        SnapshotImageBase64 = null,
-                        TopAlertSeverity = "None",
-                        TopAlertMessage = "No active alerts",
-                        LastMetricTimestamp = pc.LastMetricTimestamp
-                    });
-                }
-
-                OnlinePCCount = counts.OnlineCount;
-                OfflinePCCount = counts.OfflineCount;
-                TotalPCCount = OnlinePCCount + OfflinePCCount;
+                ApplyCachedPCData();
 
                 // Always apply filter first so PCs are visible even if alerts/snapshots fail
                 ApplyFilter();
@@ -317,6 +289,7 @@ namespace IRIS.UI.ViewModels
                 }
                 catch { /* Alert loading failure must not block PC display */ }
 
+                // Screenshots only load on Monitor page (not from cache) — reduces overhead
                 try
                 {
                     await LoadSnapshotsAsync();
@@ -354,11 +327,128 @@ namespace IRIS.UI.ViewModels
             _refreshTimer.Stop();
         }
 
+        /// <summary>
+        /// Updates PCs collection in-place from the shared cache.
+        /// Existing items are updated without removing them (no visual flash).
+        /// New PCs are added; stale PCs are removed.
+        /// </summary>
+        private void ApplyCachedPCData()
+        {
+            var pcs = _cache.CachedPCs;
+            var counts = _cache.CachedStatusCounts;
+
+            var existingById = PCs.ToDictionary(p => p.Id);
+            var incomingIds = new HashSet<int>();
+
+            foreach (var pc in pcs)
+            {
+                incomingIds.Add(pc.Id);
+
+                if (existingById.TryGetValue(pc.Id, out var existing))
+                {
+                    // Update in-place — each setter fires PropertyChanged, UI updates smoothly
+                    UpdateDisplayModel(existing, pc);
+                }
+                else
+                {
+                    // Brand-new PC — add it
+                    var display = CreateDisplayModel(pc);
+                    PCs.Add(display);
+                }
+            }
+
+            // Remove PCs that are no longer in the cache
+            for (int i = PCs.Count - 1; i >= 0; i--)
+            {
+                if (!incomingIds.Contains(PCs[i].Id))
+                {
+                    PCs.RemoveAt(i);
+                }
+            }
+
+            OnlinePCCount = counts.OnlineCount;
+            OfflinePCCount = counts.OfflineCount;
+            TotalPCCount = OnlinePCCount + OfflinePCCount;
+        }
+
+        private static PCDisplayModel CreateDisplayModel(PCMonitorInfo pc)
+        {
+            return new PCDisplayModel
+            {
+                Id = pc.Id,
+                PCName = pc.Name,
+                IPAddress = pc.IpAddress,
+                MacAddress = pc.MacAddress,
+                RoomName = pc.RoomName,
+                Status = pc.Status,
+                OS = pc.OperatingSystem,
+                CPU = $"{pc.CpuUsage:F0}%",
+                CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
+                GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
+                GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
+                Network = $"{pc.NetworkUsage:F1} Mbps",
+                NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
+                NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
+                NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A",
+                PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A",
+                RAM = $"{pc.RamUsage:F0}%",
+                CpuUsagePercent = pc.CpuUsage,
+                CpuTemperatureValue = pc.CpuTemperature,
+                GpuUsagePercent = pc.GpuUsage,
+                GpuTemperatureValue = pc.GpuTemperature,
+                RamUsagePercent = pc.RamUsage,
+                DiskUsagePercent = pc.DiskUsage,
+                NetworkUploadMbps = pc.NetworkUploadMbps,
+                NetworkDownloadMbps = pc.NetworkDownloadMbps,
+                NetworkLatencyMs = pc.NetworkLatencyMs,
+                PacketLossPercent = pc.PacketLossPercent,
+                User = pc.User,
+                SnapshotImageBase64 = null,
+                TopAlertSeverity = "None",
+                TopAlertMessage = "No active alerts",
+                LastMetricTimestamp = pc.LastMetricTimestamp
+            };
+        }
+
+        private static void UpdateDisplayModel(PCDisplayModel display, PCMonitorInfo pc)
+        {
+            display.PCName = pc.Name;
+            display.IPAddress = pc.IpAddress;
+            display.MacAddress = pc.MacAddress;
+            display.RoomName = pc.RoomName;
+            display.Status = pc.Status;
+            display.OS = pc.OperatingSystem;
+            display.CPU = $"{pc.CpuUsage:F0}%";
+            display.CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A";
+            display.GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A";
+            display.GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A";
+            display.Network = $"{pc.NetworkUsage:F1} Mbps";
+            display.NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps";
+            display.NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps";
+            display.NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A";
+            display.PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A";
+            display.RAM = $"{pc.RamUsage:F0}%";
+            display.CpuUsagePercent = pc.CpuUsage;
+            display.CpuTemperatureValue = pc.CpuTemperature;
+            display.GpuUsagePercent = pc.GpuUsage;
+            display.GpuTemperatureValue = pc.GpuTemperature;
+            display.RamUsagePercent = pc.RamUsage;
+            display.DiskUsagePercent = pc.DiskUsage;
+            display.NetworkUploadMbps = pc.NetworkUploadMbps;
+            display.NetworkDownloadMbps = pc.NetworkDownloadMbps;
+            display.NetworkLatencyMs = pc.NetworkLatencyMs;
+            display.PacketLossPercent = pc.PacketLossPercent;
+            display.User = pc.User;
+            display.LastMetricTimestamp = pc.LastMetricTimestamp;
+            // SnapshotImageBase64 and alert fields are NOT overwritten — they're loaded separately
+        }
+
         private async Task LoadRoomsAsync()
         {
             try
             {
-                var rooms = await _monitoringService.GetRoomsAsync();
+                await _cache.RefreshRoomsAsync();
+                var rooms = _cache.CachedRooms;
                 Rooms.Clear();
                 Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
                 foreach (var room in rooms)
@@ -379,8 +469,7 @@ namespace IRIS.UI.ViewModels
 
         private void ApplyFilter()
         {
-            FilteredPCs.Clear();
-
+            var desired = new List<PCDisplayModel>();
             foreach (var pc in PCs)
             {
                 bool matchesSearch = string.IsNullOrEmpty(SearchText) ||
@@ -388,6 +477,28 @@ namespace IRIS.UI.ViewModels
                     pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
 
                 if (matchesSearch)
+                {
+                    desired.Add(pc);
+                }
+            }
+
+            // Build a set of desired IDs for quick removal lookup
+            var desiredIds = new HashSet<int>(desired.Select(p => p.Id));
+
+            // Remove items that should no longer be visible
+            for (int i = FilteredPCs.Count - 1; i >= 0; i--)
+            {
+                if (!desiredIds.Contains(FilteredPCs[i].Id))
+                {
+                    FilteredPCs.RemoveAt(i);
+                }
+            }
+
+            // Add items that are missing
+            var existingIds = new HashSet<int>(FilteredPCs.Select(p => p.Id));
+            foreach (var pc in desired)
+            {
+                if (!existingIds.Contains(pc.Id))
                 {
                     FilteredPCs.Add(pc);
                 }
@@ -398,7 +509,8 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadLiveAlertsAsync()
         {
-            var alerts = await _monitoringService.GetLiveAlertsAsync(_selectedRoomId, 30);
+            await _cache.RefreshLiveAlertsAsync();
+            var alerts = _cache.CachedLiveAlerts;
             ActiveAlerts.Clear();
 
             foreach (var alert in alerts)
@@ -614,7 +726,9 @@ namespace IRIS.UI.ViewModels
             {
                 IsTimelineLoading = true;
 
-                var events = await _monitoringService.GetPcHealthTimelineAsync(pcId, 24, 100);
+                using var scope = _scopeFactory.CreateScope();
+                var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var events = await monitoringService.GetPcHealthTimelineAsync(pcId, 24, 100);
 
                 SelectedPcTimeline.Clear();
                 foreach (var timelineEvent in events.OrderByDescending(e => e.Timestamp))
