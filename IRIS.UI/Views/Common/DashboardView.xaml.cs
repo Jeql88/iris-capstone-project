@@ -37,6 +37,7 @@ namespace IRIS.UI.Views.Common
         public void SetNavigationService(INavigationService navigationService)
         {
             _navigationService = navigationService;
+            UserHeader.SetNavigationService(navigationService);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -53,7 +54,7 @@ namespace IRIS.UI.Views.Common
             {
                 DashboardBtn, MonitorBtn, SoftwareManagementBtn,
                 PolicyBtn, LabsBtn, AccessLogsBtn, UserManagementBtn,
-                UsageMetricsBtn, AlertsBtn, SettingsBtn
+                UsageMetricsBtn, AlertsBtn
             };
 
             foreach (var btn in allButtons)
@@ -64,6 +65,28 @@ namespace IRIS.UI.Views.Common
 
             activeButton.Background = ActiveBrush;
             activeButton.Foreground = ActiveForeground;
+        }
+
+        private void ClearActiveButton()
+        {
+            var allButtons = new[]
+            {
+                DashboardBtn, MonitorBtn, SoftwareManagementBtn,
+                PolicyBtn, LabsBtn, AccessLogsBtn, UserManagementBtn,
+                UsageMetricsBtn, AlertsBtn
+            };
+
+            foreach (var btn in allButtons)
+            {
+                btn.Background = Brushes.Transparent;
+                btn.Foreground = DefaultForeground;
+            }
+        }
+
+        public void ClearButtonsAndPanel()
+        {
+            ClearActiveButton();
+            CollapseRightPanel();
         }
 
         private void CollapseRightPanel()
@@ -84,6 +107,7 @@ namespace IRIS.UI.Views.Common
 
         private void DashboardBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
             SetActiveButton(DashboardBtn);
             ShowRightPanel();
             MainContent.Content = dashboardContent;
@@ -91,6 +115,8 @@ namespace IRIS.UI.Views.Common
 
         private void MonitorBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(MonitorBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("Monitor");
@@ -98,6 +124,8 @@ namespace IRIS.UI.Views.Common
 
         private void PolicyBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(PolicyBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("PolicyEnforcement");
@@ -105,6 +133,8 @@ namespace IRIS.UI.Views.Common
 
         private void LabsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(LabsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("Labs");
@@ -112,6 +142,8 @@ namespace IRIS.UI.Views.Common
 
         private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(SoftwareManagementBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("SoftwareManagement");
@@ -119,6 +151,8 @@ namespace IRIS.UI.Views.Common
 
         private void UserManagementBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(UserManagementBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("UserManagement");
@@ -126,6 +160,8 @@ namespace IRIS.UI.Views.Common
 
         private void UsageMetricsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(UsageMetricsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("UsageMetrics");
@@ -133,6 +169,8 @@ namespace IRIS.UI.Views.Common
 
         private void AccessLogsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(AccessLogsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("AccessLogs");
@@ -140,16 +178,11 @@ namespace IRIS.UI.Views.Common
 
         private void AlertsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(AlertsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("Alerts");
-        }
-
-        private void SettingsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            SetActiveButton(SettingsBtn);
-            CollapseRightPanel();
-            _navigationService?.NavigateTo("Settings");
         }
 
         private async void LogoutBtn_Click(object sender, RoutedEventArgs e)
@@ -169,7 +202,6 @@ namespace IRIS.UI.Views.Common
                 Window.GetWindow(this)?.Close();
             }
         }
-
         private static void OpenPlotInWindow(string title, PlotModel? model)
         {
             if (model == null)
