@@ -254,6 +254,13 @@ namespace IRIS.Agent
             }
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern int MessageBox(IntPtr hWnd, string lpText, string lpCaption, uint uType);
+
+        private const uint MB_YESNO = 4;
+        private const uint MB_ICONWARNING = 0x30;
+        private const int IDYES = 6;
+
         private static Task CheckIdleShutdownAsync(int idleMinutes)
         {
             var idleTime = GetIdleTime();
@@ -261,8 +268,12 @@ namespace IRIS.Agent
 
             if (idleTime.TotalMinutes >= idleMinutes)
             {
-                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
-                Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
+                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Showing shutdown warning...");
+                var result = MessageBox(IntPtr.Zero, "You're about to be signed out\n\nAuto-shutdown due to idle time policy", "Auto-Shutdown Warning", MB_YESNO | MB_ICONWARNING);
+                if (result == IDYES)
+                {
+                    Process.Start("shutdown", "/s /t 0");
+                }
             }
             return Task.CompletedTask;
         }
