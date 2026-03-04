@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302162457_AddDeploymentLogs")]
+    partial class AddDeploymentLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,18 +36,10 @@ namespace IRIS.Core.Migrations
                     b.Property<DateTime?>("AcknowledgedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("AlertKey")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsAcknowledged")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsResolved")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Message")
@@ -55,30 +50,27 @@ namespace IRIS.Core.Migrations
                     b.Property<int>("PCId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Severity")
-                        .HasColumnType("integer");
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PCId");
+
                     b.HasIndex("UserId");
-
-                    b.HasIndex("IsResolved", "CreatedAt");
-
-                    b.HasIndex("PCId", "AlertKey", "IsResolved");
 
                     b.ToTable("Alerts");
                 });

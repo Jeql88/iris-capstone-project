@@ -2,319 +2,207 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             xmlns:vm="clr-namespace:IRIS.UI.ViewModels"
-             xmlns:converters="clr-namespace:IRIS.UI.Converters">
-    
-    <UserControl.Resources>
-        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-    </UserControl.Resources>
+             xmlns:input="clr-namespace:System.Windows.Input;assembly=PresentationCore">
 
-    <Grid Margin="25,20">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header Section -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
-            <ui:SymbolIcon Symbol="AppsAddIn24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-            <TextBlock Text="Software &amp; File Management" FontSize="32" FontWeight="Bold" 
-                       Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Software Deployment &amp; File Management" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}"/>
+            <TextBlock Text="Deploy MSI packages with PsExec, track per-PC progress, and manage remote files through agents."
+                       Margin="0,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
 
-        <!-- Main Content -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="15"/>
-                <ColumnDefinition Width="1.2*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Left Section: Deploy/Uninstall -->
-            <ui:Card Grid.Column="0">
-                <Grid Margin="15">
+        <TabControl Grid.Row="1">
+            <TabItem Header="Software Deployment">
+                <Grid Margin="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="280"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Mode Toggle Buttons -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
-                        <ui:Button x:Name="DeployModeBtn" 
-                                   Content="Deploy Software"
-                                   Icon="{ui:SymbolIcon ArrowUpload24}"
-                                   Click="DeployModeButton_Click"
-                                   Appearance="Primary"
-                                   Margin="0,0,10,0"/>
-                        <ui:Button x:Name="UninstallModeBtn" 
-                                   Content="Uninstall Software"
-                                   Icon="{ui:SymbolIcon Delete24}"
-                                   Click="UninstallModeButton_Click"
-                                   Appearance="Secondary"/>
-                    </StackPanel>
+                    <ui:Card Grid.Row="0" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                    <!-- Deploy Mode Content -->
-                    <StackPanel Grid.Row="1" x:Name="DeployModePanel">
-                        <!-- Destination Path -->
-                        <StackPanel Margin="0,0,0,20">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <ui:SymbolIcon Symbol="Folder24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Destination Path" FontWeight="Bold" FontSize="14" 
-                                           Foreground="{DynamicResource IRISPrimaryBrush}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <ComboBox Width="220" Margin="0,0,10,0" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding RoomNumber}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ui:Button Content="Refresh PCs" Icon="{ui:SymbolIcon ArrowClockwise24}" Appearance="Secondary" Command="{Binding RefreshPCsCommand}"/>
                             </StackPanel>
-                            <Grid>
+
+                            <Grid Grid.Row="1" Margin="0,12,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:TextBox Grid.Column="0" Text="{Binding DestinationPath}" 
-                                           PlaceholderText="Select installation directory...">
-                                    <ui:TextBox.Icon>
-                                        <ui:SymbolIcon Symbol="FolderOpen24"/>
-                                    </ui:TextBox.Icon>
-                                </ui:TextBox>
-                                <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon FolderOpen24}"
-                                           Command="{Binding BrowseDestinationCommand}"
-                                           Appearance="Secondary" Margin="10,0,0,0"/>
+                                <ui:TextBox Grid.Column="0" Text="{Binding SelectedMsiUncPath, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="\\SERVER\Share\app.msi"/>
+                                <ui:Button Grid.Column="1" Margin="10,0,0,0" Content="Browse .msi" Icon="{ui:SymbolIcon Document24}" Command="{Binding BrowseMsiCommand}" Appearance="Secondary"/>
                             </Grid>
-                        </StackPanel>
 
-                        <!-- File Upload Area -->
-                        <Border Height="250" CornerRadius="12" Margin="0,0,0,15"
-                                Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource IRISPrimaryBrush}"
-                                BorderThickness="2" 
-                                AllowDrop="True"
-                                Drop="FileDropZone_Drop"
-                                DragOver="FileDropZone_DragOver">
-                            <Grid>
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <Border Width="80" Height="80" CornerRadius="40" 
-                                            Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,0,15"
-                                            HorizontalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="ArrowUpload24" FontSize="36" Foreground="White"/>
-                                    </Border>
-                                    <TextBlock Text="Drag &amp; Drop files here" FontSize="16" FontWeight="SemiBold" 
-                                               HorizontalAlignment="Center" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                                    <TextBlock Text="or" FontSize="14" 
-                                               Foreground="#666666" 
-                                               HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                    <ui:Button Content="Browse Files" 
-                                               Icon="{ui:SymbolIcon Document24}"
-                                               Command="{Binding BrowseFilesCommand}"
-                                               Appearance="Primary"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+                            <ListView Grid.Row="2" ItemsSource="{Binding PCs}" SelectionMode="Extended" HorizontalContentAlignment="Stretch">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Width="48">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="Host" Width="180" DisplayMemberBinding="{Binding Hostname}"/>
+                                        <GridViewColumn Header="IP" Width="130" DisplayMemberBinding="{Binding IPAddress}"/>
+                                        <GridViewColumn Header="Room" Width="90" DisplayMemberBinding="{Binding RoomNumber}"/>
+                                        <GridViewColumn Header="Agent Status" Width="95" DisplayMemberBinding="{Binding Status}"/>
+                                        <GridViewColumn Header="Deploy Status" Width="140" DisplayMemberBinding="{Binding DeploymentStatus}"/>
+                                        <GridViewColumn Header="Progress" Width="170">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ProgressBar Value="{Binding DeploymentProgress}" Minimum="0" Maximum="100" Height="14"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
 
-                        <!-- Selected Files List -->
-                        <StackPanel Visibility="{Binding HasSelectedFiles, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <ui:SymbolIcon Symbol="DocumentMultiple24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Selected Files" FontWeight="Bold" FontSize="14" Foreground="#1a1a1a"/>
-                                <ui:Badge Appearance="Primary" Margin="10,0,0,0">
-                                    <TextBlock Text="{Binding SelectedFilesCount}" FontSize="11"/>
-                                </ui:Badge>
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                <ui:Button Content="Select All" Command="{Binding SelectAllPCsCommand}" Appearance="Secondary" Margin="0,0,10,0"/>
+                                <ui:Button Content="Clear" Command="{Binding ClearSelectionCommand}" Appearance="Secondary" Margin="0,0,10,0"/>
+                                <ui:Button Content="Deploy MSI" Icon="{ui:SymbolIcon Rocket24}" Command="{Binding DeploySoftwareCommand}" Appearance="Primary"/>
                             </StackPanel>
-                            <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding SelectedFiles}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Margin="0,0,0,5" Padding="10" CornerRadius="8"
-                                                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <ui:SymbolIcon Grid.Column="0" Symbol="Document24" Margin="0,0,10,0" 
-                                                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" 
-                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="#1a1a1a"/>
-                                                    <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss24}"
-                                                               Command="{Binding DataContext.RemoveFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                               CommandParameter="{Binding}"
-                                                               Appearance="Secondary" BorderThickness="0"/>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </StackPanel>
-                    </StackPanel>
+                        </Grid>
+                    </ui:Card>
 
-                    <!-- Uninstall Mode Content -->
-                    <StackPanel Grid.Row="1" x:Name="UninstallModePanel" Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <ui:SymbolIcon Symbol="Apps24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Installed Applications" FontWeight="Bold" FontSize="14" 
-                                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
-                        </StackPanel>
-                        
-                        <ui:TextBox PlaceholderText="Search applications..."
-                                   Text="{Binding ApplicationSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                   Margin="0,0,0,15">
-                            <ui:TextBox.Icon>
-                                <ui:SymbolIcon Symbol="Search24"/>
-                            </ui:TextBox.Icon>
-                        </ui:TextBox>
+                    <ui:Card Grid.Row="2" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-                        <ScrollViewer MaxHeight="350" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding FilteredApplications}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,0,0,8" Padding="12" CornerRadius="8" Cursor="Hand"
-                                                MouseLeftButtonDown="AppItem_Click" Tag="{Binding}">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
-                                                    <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                            <Setter Property="Background" Value="{DynamicResource IRISLightBrush}"/>
-                                                            <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
-                                                            <Setter Property="BorderThickness" Value="2"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="45" Height="45" CornerRadius="8"
-                                                        Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0">
-                                                    <ui:SymbolIcon Symbol="Apps24" FontSize="20" Foreground="White"/>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="#1a1a1a"/>
-                                                    <TextBlock Text="{Binding Version}" FontSize="12" 
-                                                               Foreground="#666666"/>
-                                                </StackPanel>
-                                                <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="Deployment Logs" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                                <ui:Button Margin="12,0,0,0" Content="Refresh" Command="{Binding RefreshLogsCommand}" Appearance="Secondary"/>
+                            </StackPanel>
 
-                    <!-- Action Button -->
-                    <ui:Button Grid.Row="2" x:Name="ActionButton"
-                               Content="Deploy to Selected PCs"
-                               Icon="{ui:SymbolIcon Rocket24}"
-                               Command="{Binding DeploySoftwareCommand}"
-                               Appearance="Primary"
-                               HorizontalAlignment="Right"
-                               Height="45" FontSize="14" FontWeight="SemiBold"
-                               Margin="0,20,0,0"/>
+                            <DataGrid x:Name="DeploymentLogsGrid"
+                                      Grid.Row="1"
+                                      ItemsSource="{Binding DeploymentLogs}"
+                                      IsReadOnly="True"
+                                      AutoGenerateColumns="False"
+                                      HeadersVisibility="Column"
+                                      CanUserAddRows="False"
+                                      SelectionMode="Extended"
+                                      SelectionUnit="CellOrRowHeader"
+                                      ClipboardCopyMode="IncludeHeader">
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Copy Selected" Command="{x:Static input:ApplicationCommands.Copy}" CommandTarget="{Binding ElementName=DeploymentLogsGrid}"/>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Time" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="150"/>
+                                    <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="120"/>
+                                    <DataGridTextColumn Header="IP" Binding="{Binding IPAddress}" Width="105"/>
+                                    <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="130"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
+                                    <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </ui:Card>
                 </Grid>
-            </ui:Card>
+            </TabItem>
 
-            <!-- Right Section: Target PCs -->
-            <ui:Card Grid.Column="2">
-                <Grid Margin="15">
+            <TabItem Header="File Management">
+                <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Header -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                        <ui:SymbolIcon Symbol="Desktop24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Target PCs" FontWeight="Bold" FontSize="16" 
-                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
-                    </StackPanel>
-
-                    <!-- Room Selector -->
-                    <ComboBox Grid.Row="1" ItemsSource="{Binding Rooms}"
-                                SelectedItem="{Binding SelectedRoom}"
-                                Margin="0,0,0,15">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="Building24" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding}" Foreground="#1a1a1a"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-
-                    <!-- PC List -->
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding FilteredPCs}">
-                            <ItemsControl.ItemTemplate>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <ComboBox Width="300" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedFileManagementPC}">
+                            <ComboBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,0,8" Padding="10" CornerRadius="8" Cursor="Hand"
-                                            MouseLeftButtonDown="PCItem_Click" Tag="{Binding}">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
-                                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
-                                                <Setter Property="BorderThickness" Value="1"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource IRISLightBrush}"/>
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
-                                                        <Setter Property="BorderThickness" Value="2"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="Background" Value="{DynamicResource OnlineStatusBrush}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Status}" Value="Offline">
-                                                                <Setter Property="Background" Value="{DynamicResource OfflineStatusBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <ui:SymbolIcon Symbol="Desktop24" FontSize="18" Foreground="White"/>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13" Foreground="#1a1a1a"/>
-                                                <TextBlock Text="{Binding IPAddress}" FontSize="11" 
-                                                           Foreground="#666666"/>
-                                            </StackPanel>
-                                            <CheckBox Grid.Column="2" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Border>
+                                    <TextBlock Text="{Binding Hostname}"/>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-
-                    <!-- Select All / Clear -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,15,0,0">
-                        <ui:Button Content="Select All" 
-                                   Icon="{ui:SymbolIcon CheckboxChecked24}"
-                                   Command="{Binding SelectAllPCsCommand}"
-                                   Appearance="Secondary" Margin="0,0,10,0"/>
-                        <ui:Button Content="Clear" 
-                                   Icon="{ui:SymbolIcon CheckboxUnchecked24}"
-                                   Command="{Binding ClearSelectionCommand}"
-                                   Appearance="Secondary"/>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ui:TextBox Width="360" Margin="10,0,0,0" Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Remote path (relative to agent root)"/>
+                        <ui:Button Margin="10,0,0,0" Content="Load" Command="{Binding LoadRemoteFilesCommand}" Appearance="Secondary"/>
                     </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,12,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" CornerRadius="8" BorderThickness="2" BorderBrush="{DynamicResource IRISPrimaryBrush}"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                AllowDrop="True" Drop="FileDropZone_Drop" DragOver="FileDropZone_DragOver" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="Drag and drop local files here for upload" FontWeight="SemiBold"/>
+                                <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding PendingUploadFiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="0,2,0,2">
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding}" TextTrimming="CharacterEllipsis" Width="460"/>
+                                                <ui:Button DockPanel.Dock="Right" Content="Remove" Appearance="Secondary"
+                                                           Command="{Binding DataContext.RemovePendingUploadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           CommandParameter="{Binding}"/>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <ui:Button Content="Browse Local Files" Command="{Binding BrowseUploadFilesCommand}" Appearance="Secondary" Margin="0,0,0,8"/>
+                            <ui:Button Content="Upload to Selected PCs" Command="{Binding UploadFilesCommand}" Appearance="Primary"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding RemoteFiles}" SelectedItem="{Binding SelectedRemoteFile}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="90"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="100"/>
+                            <DataGridTextColumn Header="Last Modified (UTC)" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
+                            <DataGridTemplateColumn Header="Actions" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ui:Button Content="Delete" Appearance="Danger"
+                                                   Command="{Binding DataContext.DeleteRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
-            </ui:Card>
-        </Grid>
+            </TabItem>
+        </TabControl>
+
+        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,10,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
     </Grid>
 </UserControl>

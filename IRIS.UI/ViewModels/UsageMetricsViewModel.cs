@@ -43,7 +43,7 @@ namespace IRIS.UI.ViewModels
         {
             _usageMetricsService = usageMetricsService;
 
-            _applyFilterRelayCommand = new RelayCommand(async () => await LoadDataAsync(), () => !IsLoading);
+            _applyFilterRelayCommand = new RelayCommand(async () => await ApplyFilterAsync(), () => !IsLoading);
             _exportAppUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
             _exportWebUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
 
@@ -167,6 +167,21 @@ namespace IRIS.UI.ViewModels
         public ICommand AppNextPageCommand { get; }
         public ICommand WebPreviousPageCommand { get; }
         public ICommand WebNextPageCommand { get; }
+
+        private async Task ApplyFilterAsync()
+        {
+            if (EndDate.Date < StartDate.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            await LoadDataAsync();
+        }
 
         private async Task LoadDataAsync()
         {

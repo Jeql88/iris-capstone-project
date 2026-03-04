@@ -112,6 +112,7 @@ namespace IRIS.UI
             services.AddScoped<IPolicyService, PolicyService>();
             services.AddScoped<IUsageMetricsService, UsageMetricsService>();
             services.AddScoped<IApplicationUsageService, ApplicationUsageService>();
+            services.AddScoped<IDeploymentDataService, DeploymentDataService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
             services.AddSingleton<IPowerCommandPollingServer, PowerCommandPollingServer>();
             services.AddSingleton<INavigationService, NavigationService>();
@@ -121,7 +122,7 @@ namespace IRIS.UI
             services.AddTransient<DashboardViewModel>();
             services.AddTransient<MonitorViewModel>();
             services.AddTransient<ViewScreenViewModel>();
-            services.AddTransient<SoftwareManagementViewModel>();
+            services.AddTransient<DeploymentViewModel>();
             services.AddTransient<PolicyEnforcementViewModel>();
             services.AddTransient<LabsViewModel>();
             services.AddTransient<UsageMetricsViewModel>();
@@ -148,7 +149,7 @@ namespace IRIS.UI
             
             // Views - Personnel
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
-            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<SoftwareManagementViewModel>()));
+            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<DeploymentViewModel>()));
             services.AddTransient<PersonnelDashboardView>();
             services.AddTransient<PersonnelMainWindow>();
             

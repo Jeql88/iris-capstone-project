@@ -160,7 +160,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<LabViewModel> Labs { get; } = new();
         public ObservableCollection<PCViewModel> PCs { get; } = new();
         public ObservableCollection<SoftwareItemViewModel> SoftwareInventory { get; } = new();
-        public ObservableCollection<DeploymentViewModel> ActiveDeployments { get; } = new();
+        public ObservableCollection<LegacyDeploymentItemViewModel> ActiveDeployments { get; } = new();
         public ObservableCollection<SoftwareRequestViewModel> SoftwareRequests { get; } = new();
         public ObservableCollection<SoftwareItemViewModel> ApplicationsToUninstall { get; } = new();
 
@@ -199,8 +199,8 @@ namespace IRIS.UI.ViewModels
             ApplicationsToUninstall.Add(new SoftwareItemViewModel { Icon = "Bl", Name = "Blender", Version = "Version 4.0 � 4.1 GB" });
 
             // Initialize Active Deployments
-            ActiveDeployments.Add(new DeploymentViewModel { Name = "Visual Studio Code", Progress = 67, Status = "Installing to 5 PCs � 67% complete" });
-            ActiveDeployments.Add(new DeploymentViewModel { Name = "Figma Desktop", Progress = 100, Status = "Uploaded 20 PCs � Completed 5 min ago" });
+            ActiveDeployments.Add(new LegacyDeploymentItemViewModel { Name = "Visual Studio Code", Progress = 67, Status = "Installing to 5 PCs � 67% complete" });
+            ActiveDeployments.Add(new LegacyDeploymentItemViewModel { Name = "Figma Desktop", Progress = 100, Status = "Uploaded 20 PCs � Completed 5 min ago" });
 
             // Initialize Software Requests
             SoftwareRequests.Add(new SoftwareRequestViewModel { SoftwareName = "Request for Adobe Photoshop", Requester = "Request made by Godwin Monserate" });
@@ -497,7 +497,7 @@ namespace IRIS.UI.ViewModels
         }
     }
 
-    public class DeploymentViewModel : INotifyPropertyChanged
+    public class LegacyDeploymentItemViewModel : INotifyPropertyChanged
     {
         private string _name = string.Empty;
         private int _progress;

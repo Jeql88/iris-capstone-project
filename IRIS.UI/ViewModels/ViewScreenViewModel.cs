@@ -71,7 +71,6 @@ namespace IRIS.UI.ViewModels
             ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
-            FullscreenCommand = new RelayCommand(async () => await Task.CompletedTask, () => true);
             RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
@@ -131,7 +130,6 @@ namespace IRIS.UI.ViewModels
         public ICommand ShutdownPCCommand { get; }
         public ICommand RestartPCCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
-        public ICommand FullscreenCommand { get; }
         public ICommand RefreshScreenCommand { get; }
         public ICommand RetryConnectionCommand { get; }
         public ICommand BackCommand { get; }
