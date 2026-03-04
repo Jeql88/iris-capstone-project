@@ -13,6 +13,7 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.UI.Services;
 using IRIS.UI.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -22,7 +23,8 @@ namespace IRIS.UI.ViewModels
 {
     public class DashboardViewModel : INotifyPropertyChanged, INavigationAware
     {
-        private readonly IMonitoringService _monitoringService;
+        private readonly IPCDataCacheService _cache;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly DispatcherTimer _refreshTimer;
         private int? _selectedRoomId = null; // null means all rooms
         private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
@@ -34,17 +36,17 @@ namespace IRIS.UI.ViewModels
         private bool _useRolling24HourDefault = true;
         private string _selectedRangePreset = "Last 24h";
 
-        public DashboardViewModel(IMonitoringService monitoringService)
+        public DashboardViewModel(IPCDataCacheService cache, IServiceScopeFactory scopeFactory)
         {
-            _monitoringService = monitoringService;
+            _cache = cache;
+            _scopeFactory = scopeFactory;
             ApplyDateFilterCommand = new RelayCommand(async () => await ApplyDateFilterAsync(), () => true);
             ExportNetworkAnalyticsCommand = new RelayCommand(async () => await ExportNetworkAnalyticsAsync(), () => true);
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
             ExportSelectedCommand = new RelayCommand(async () => await ExportSelectedAsync(), () => true);
             
-            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
-            _refreshTimer.Start();
 
             _ = InitializeAsync();
         }
@@ -57,6 +59,7 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedRoom = value;
                 _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
+                _cache.CurrentRoomFilter = _selectedRoomId;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ActiveRoomDescription));
                 _ = LoadDataAsync();
@@ -221,8 +224,16 @@ namespace IRIS.UI.ViewModels
         private async Task InitializeAsync()
         {
             await LoadRoomsAsync();
+
+            // If cache already has data (e.g. navigating back from Monitor), show it immediately
+            if (_cache.HasData)
+            {
+                ApplyCachedSummary();
+            }
+
             await ApplyPresetAsync();
             await LoadDataAsync();
+            _refreshTimer.Start();
         }
 
         private async Task LoadDataAsync()
@@ -244,56 +255,41 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                // Load summary (always last 24h for KPIs)
+                // Refresh summary via shared cache (uses its own scope — safe from navigation disposal)
                 try
                 {
-                    var summary = await _monitoringService.GetDashboardSummaryAsync(_selectedRoomId);
-                    AverageLatency = summary.AverageLatency;
-                    CurrentBandwidth = summary.CurrentBandwidth;
-                    PeakBandwidth = summary.PeakBandwidth;
-                    OnlinePCs = summary.OnlinePCs;
-                    TotalPCs = summary.TotalPCs;
-
-                    LabStatuses.Clear();
-                    foreach (var lab in summary.LabStatuses)
-                        LabStatuses.Add(new LabStatus { Name = lab.Key, ActivePCs = lab.Value });
-                    OnPropertyChanged(nameof(HasLabStatuses));
-
-                    HeavyApplications.Clear();
-                    foreach (var app in summary.HeavyApplications)
-                        HeavyApplications.Add(new HeavyApp
-                        {
-                            Name = app.Name,
-                            Icon = app.Icon,
-                            Instances = app.InstanceCount,
-                            RamUsage = app.AverageRamUsage
-                        });
-                    OnPropertyChanged(nameof(HasHeavyApplications));
+                    _cache.CurrentRoomFilter = _selectedRoomId;
+                    await _cache.RefreshDashboardSummaryAsync();
+                    await _cache.RefreshPCDataAsync();
+                    ApplyCachedSummary();
                 }
                 catch { /* summary non-critical */ }
 
-                // Load chart data with current date range
+                // Load chart data with current date range — own scope for safe DB access
                 try
                 {
                     var (startUtc, endUtc) = GetRangeUtc();
                     var rangeSpan = endUtc - startUtc;
                     var timeFormat = rangeSpan.TotalHours <= 48 ? "HH:mm" : "MM/dd HH:mm";
 
-                    var latency = await _monitoringService.GetLatencyHistoryAsync(startUtc, endUtc, _selectedRoomId);
+                    using var scope = _scopeFactory.CreateScope();
+                    var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+
+                    var latency = await monitoringService.GetLatencyHistoryAsync(startUtc, endUtc, _selectedRoomId);
                     LatencyData.Clear();
                     foreach (var point in latency)
                         LatencyData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
                     LatencyPlot = BuildLinePlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F0} ms");
                     OnPropertyChanged(nameof(LatencyPlot));
 
-                    var bandwidth = await _monitoringService.GetBandwidthHistoryAsync(startUtc, endUtc, _selectedRoomId);
+                    var bandwidth = await monitoringService.GetBandwidthHistoryAsync(startUtc, endUtc, _selectedRoomId);
                     BandwidthData.Clear();
                     foreach (var point in bandwidth)
                         BandwidthData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
                     BandwidthPlot = BuildLinePlot("Bandwidth (Mbps)", bandwidth.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps");
                     OnPropertyChanged(nameof(BandwidthPlot));
 
-                    var packetLoss = await _monitoringService.GetPacketLossHistoryAsync(startUtc, endUtc, _selectedRoomId);
+                    var packetLoss = await monitoringService.GetPacketLossHistoryAsync(startUtc, endUtc, _selectedRoomId);
                     PacketLossData.Clear();
                     foreach (var point in packetLoss)
                         PacketLossData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
@@ -320,6 +316,34 @@ namespace IRIS.UI.ViewModels
             SelectedRangePreset = "Custom";
             _useRolling24HourDefault = false;
             await LoadDataAsync();
+        }
+
+        private void ApplyCachedSummary()
+        {
+            var summary = _cache.CachedDashboardSummary;
+            if (summary == null) return;
+
+            AverageLatency = summary.AverageLatency;
+            CurrentBandwidth = summary.CurrentBandwidth;
+            PeakBandwidth = summary.PeakBandwidth;
+            OnlinePCs = summary.OnlinePCs;
+            TotalPCs = summary.TotalPCs;
+
+            LabStatuses.Clear();
+            foreach (var lab in summary.LabStatuses)
+                LabStatuses.Add(new LabStatus { Name = lab.Key, ActivePCs = lab.Value });
+            OnPropertyChanged(nameof(HasLabStatuses));
+
+            HeavyApplications.Clear();
+            foreach (var app in summary.HeavyApplications)
+                HeavyApplications.Add(new HeavyApp
+                {
+                    Name = app.Name,
+                    Icon = app.Icon,
+                    Instances = app.InstanceCount,
+                    RamUsage = app.AverageRamUsage
+                });
+            OnPropertyChanged(nameof(HasHeavyApplications));
         }
 
         private async Task ApplyPresetAsync()
@@ -360,7 +384,9 @@ namespace IRIS.UI.ViewModels
         private async Task ExportNetworkAnalyticsAsync()
         {
             var (startUtc, endUtc) = GetRangeUtc();
-            var bytes = await _monitoringService.ExportNetworkAnalyticsCsvAsync(startUtc, endUtc, _selectedRoomId);
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            var bytes = await monitoringService.ExportNetworkAnalyticsCsvAsync(startUtc, endUtc, _selectedRoomId);
 
             var saveFileDialog = new SaveFileDialog
             {
@@ -378,7 +404,9 @@ namespace IRIS.UI.ViewModels
         private async Task ExportHardwareAnalyticsAsync()
         {
             var (startUtc, endUtc) = GetRangeUtc();
-            var bytes = await _monitoringService.ExportHardwareAnalyticsCsvAsync(startUtc, endUtc, _selectedRoomId);
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            var bytes = await monitoringService.ExportHardwareAnalyticsCsvAsync(startUtc, endUtc, _selectedRoomId);
 
             var saveFileDialog = new SaveFileDialog
             {
@@ -405,7 +433,8 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var rooms = await _monitoringService.GetRoomsAsync();
+                await _cache.RefreshRoomsAsync();
+                var rooms = _cache.CachedRooms;
                 Rooms.Clear();
 
                 // All Labs option represented by null room id

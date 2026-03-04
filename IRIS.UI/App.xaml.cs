@@ -116,6 +116,7 @@ namespace IRIS.UI
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
             services.AddSingleton<IPowerCommandPollingServer, PowerCommandPollingServer>();
             services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();
