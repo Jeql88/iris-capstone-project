@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -95,14 +96,7 @@ namespace IRIS.Agent
             var fileApiPort = int.TryParse(configuration["AgentSettings:FileApiPort"], out var fap) ? fap : 5065;
             var fileApiToken = configuration["AgentSettings:FileApiToken"] ?? string.Empty;
             var configuredManagedRootPath = configuration["AgentSettings:ManagedRootPath"];
-            var managedRootPath = string.IsNullOrWhiteSpace(configuredManagedRootPath)
-                ? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)
-                : Environment.ExpandEnvironmentVariables(configuredManagedRootPath);
-
-            if (string.IsNullOrWhiteSpace(managedRootPath))
-            {
-                managedRootPath = @"C:\IRIS\Managed";
-            }
+            var managedRootPath = ResolveManagedRootPath(configuredManagedRootPath);
 
             Log.Information("File management root path: {ManagedRootPath}", managedRootPath);
             using var fileManagementServer = new AgentFileManagementServer(fileApiPort, managedRootPath, fileApiToken);
@@ -312,6 +306,42 @@ namespace IRIS.Agent
             }
 
             return ips;
+        }
+
+        private static string ResolveManagedRootPath(string? configuredManagedRootPath)
+        {
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var fallbackPath = @"C:\IRIS\Managed";
+
+            if (string.IsNullOrWhiteSpace(configuredManagedRootPath))
+            {
+                return string.IsNullOrWhiteSpace(desktopPath) ? fallbackPath : desktopPath;
+            }
+
+            var replacedDesktopToken = configuredManagedRootPath
+                .Replace("%DESKTOP%", desktopPath, StringComparison.OrdinalIgnoreCase)
+                .Replace("{DESKTOP}", desktopPath, StringComparison.OrdinalIgnoreCase);
+
+            var expanded = Environment.ExpandEnvironmentVariables(replacedDesktopToken).Trim();
+            if (string.IsNullOrWhiteSpace(expanded))
+            {
+                return string.IsNullOrWhiteSpace(desktopPath) ? fallbackPath : desktopPath;
+            }
+
+            var fullExpanded = Path.GetFullPath(expanded);
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrWhiteSpace(userProfile) && !string.IsNullOrWhiteSpace(desktopPath))
+            {
+                var profileDesktop = Path.GetFullPath(Path.Combine(userProfile, "Desktop"));
+                if (string.Equals(fullExpanded, profileDesktop, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(fullExpanded, desktopPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("ManagedRootPath resolved to profile Desktop ({ProfileDesktop}) but known Desktop is {KnownDesktop}. Using known Desktop.", profileDesktop, desktopPath);
+                    return desktopPath;
+                }
+            }
+
+            return fullExpanded;
         }
     }
 }
