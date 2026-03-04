@@ -151,11 +151,14 @@ namespace IRIS.Agent
             if (idleTime.TotalMinutes >= idleMinutes)
             {
                 Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Showing shutdown warning...");
-                var result = MessageBoxTimeout(IntPtr.Zero, "You're about to be signed out\n\nAuto-shutdown due to idle time policy\n\nClick Cancel to prevent shutdown", "Auto-Shutdown Warning", MB_OKCANCEL | MB_ICONWARNING, 0, 15000);
-                if (result != IDCANCEL)
+                Task.Run(() =>
                 {
-                    Process.Start("shutdown", "/s /t 0");
-                }
+                    var result = MessageBoxTimeout(IntPtr.Zero, "You're about to be signed out\n\nAuto-shutdown due to idle time policy\n\nClick Cancel to prevent shutdown", "Auto-Shutdown Warning", MB_OKCANCEL | MB_ICONWARNING, 0, 15000);
+                    if (result != IDCANCEL)
+                    {
+                        Process.Start("shutdown", "/s /t 0");
+                    }
+                });
             }
             return Task.CompletedTask;
         }
