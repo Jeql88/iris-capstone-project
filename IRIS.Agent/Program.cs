@@ -136,16 +136,28 @@ namespace IRIS.Agent
             }
         }
 
-        private static async Task CheckIdleShutdownAsync(int idleMinutes)
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern int MessageBoxTimeout(IntPtr hWnd, string lpText, string lpCaption, uint uType, ushort wLanguageId, uint dwMilliseconds);
+
+        private const uint MB_OKCANCEL = 1;
+        private const uint MB_ICONWARNING = 0x30;
+        private const int IDCANCEL = 2;
+
+        private static Task CheckIdleShutdownAsync(int idleMinutes)
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
             
             if (idleTime.TotalMinutes >= idleMinutes)
             {
-                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
-                Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
+                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Showing shutdown warning...");
+                var result = MessageBoxTimeout(IntPtr.Zero, "You're about to be signed out\n\nAuto-shutdown due to idle time policy\n\nClick Cancel to prevent shutdown", "Auto-Shutdown Warning", MB_OKCANCEL | MB_ICONWARNING, 0, 15000);
+                if (result != IDCANCEL)
+                {
+                    Process.Start("shutdown", "/s /t 0");
+                }
             }
+            return Task.CompletedTask;
         }
 
         private static TimeSpan GetIdleTime()
