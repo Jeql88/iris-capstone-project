@@ -134,6 +134,12 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                if (path.Equals("/api/deployment/upload-msi", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    await HandleUploadMsiAsync(context);
+                    return;
+                }
+
                 await WriteJsonAsync(context.Response, 404, new { error = "Not found" });
             }
             catch (Exception ex)
@@ -355,6 +361,38 @@ namespace IRIS.Agent.Logic
             {
                 LocalPath = cacheFilePath,
                 AlreadyExists = alreadyExists
+            });
+        }
+
+        private async Task HandleUploadMsiAsync(HttpListenerContext context)
+        {
+            var requestedName = context.Request.QueryString["fileName"];
+            if (string.IsNullOrWhiteSpace(requestedName))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "fileName is required" });
+                return;
+            }
+
+            var safeFileName = Path.GetFileName(requestedName);
+            if (!safeFileName.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "Only .msi files are allowed" });
+                return;
+            }
+
+            var cacheRelativeDir = "packages";
+            var cacheFilePath = ResolvePath(Path.Combine(cacheRelativeDir, safeFileName));
+            Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
+
+            await using (var file = File.Create(cacheFilePath))
+            {
+                await context.Request.InputStream.CopyToAsync(file);
+            }
+
+            await WriteJsonAsync(context.Response, 200, new
+            {
+                LocalPath = cacheFilePath,
+                AlreadyExists = false
             });
         }
 

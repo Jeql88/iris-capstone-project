@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -521,22 +522,55 @@ namespace IRIS.UI.ViewModels
                 return null;
             }
 
-            var requestBody = JsonSerializer.Serialize(new AgentCacheRequest
+            try
             {
-                SourceUncPath = sourceUncPath,
-                LocalFileName = msiFileName
-            });
+                var requestBody = JsonSerializer.Serialize(new AgentCacheRequest
+                {
+                    SourceUncPath = sourceUncPath,
+                    LocalFileName = msiFileName
+                });
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(pc.IPAddress, "/deployment/cache-msi"))
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    pc,
+                    target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, "/deployment/cache-msi"))
+                    {
+                        Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
+                    });
+
+                using var response = responsePair.Response;
+                if (!response.IsSuccessStatusCode)
+                {
+                    return await UploadMsiDirectlyToAgentAsync(pc, msiFileName);
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                var dto = JsonSerializer.Deserialize<AgentCacheResponse>(json, JsonOptions());
+                return dto?.LocalPath;
+            }
+            catch
             {
-                Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
-            };
+                return await UploadMsiDirectlyToAgentAsync(pc, msiFileName);
+            }
+        }
 
-            AttachAuthHeader(request);
+        private async Task<string?> UploadMsiDirectlyToAgentAsync(PCModel pc, string msiFileName)
+        {
+            if (string.IsNullOrWhiteSpace(SelectedMsiLocalPath) || !File.Exists(SelectedMsiLocalPath))
+            {
+                return null;
+            }
 
             try
             {
-                using var response = await _httpClient.SendAsync(request);
+                var relativePath = $"/deployment/upload-msi?fileName={Uri.EscapeDataString(msiFileName)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    pc,
+                    target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, relativePath))
+                    {
+                        Content = new StreamContent(File.OpenRead(SelectedMsiLocalPath))
+                    });
+
+                using var response = responsePair.Response;
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
@@ -544,6 +578,11 @@ namespace IRIS.UI.ViewModels
 
                 var json = await response.Content.ReadAsStringAsync();
                 var dto = JsonSerializer.Deserialize<AgentCacheResponse>(json, JsonOptions());
+                if (!string.IsNullOrWhiteSpace(dto?.LocalPath))
+                {
+                    StatusMessage = $"Used direct MSI upload to {pc.Hostname} via {responsePair.Target}.";
+                }
+
                 return dto?.LocalPath;
             }
             catch
@@ -712,22 +751,22 @@ namespace IRIS.UI.ViewModels
         private async Task UploadFileToPcAsync(PCModel pc, string localPath)
         {
             var fileName = Path.GetFileName(localPath);
-            var requestUri = BuildAgentUri(
-                pc.IPAddress,
-                $"/files/upload?path={Uri.EscapeDataString(CurrentRemotePath)}&fileName={Uri.EscapeDataString(fileName)}");
+            var relativePath = $"/files/upload?path={Uri.EscapeDataString(CurrentRemotePath)}&fileName={Uri.EscapeDataString(fileName)}";
+            var (response, target) = await SendAgentRequestWithFallbackAsync(
+                pc,
+                target =>
+                {
+                    var request = new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, relativePath))
+                    {
+                        Content = new StreamContent(File.OpenRead(localPath))
+                    };
+                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                    return request;
+                });
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
-            {
-                Content = new StreamContent(File.OpenRead(localPath))
-            };
-
-            request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-            AttachAuthHeader(request);
-
-            var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidOperationException($"Upload failed for {pc.Hostname} ({response.StatusCode})");
+                throw new InvalidOperationException($"Upload failed for {pc.Hostname} via {target} ({response.StatusCode})");
             }
         }
 
@@ -745,13 +784,11 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var requestUri = BuildAgentUri(
-                    SelectedFileManagementPC.IPAddress,
-                    $"/files/browse?path={Uri.EscapeDataString(CurrentRemotePath)}&search={Uri.EscapeDataString(RemoteSearchText ?? string.Empty)}");
-                using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-                AttachAuthHeader(request);
-
-                using var response = await _httpClient.SendAsync(request);
+                var relativePath = $"/files/browse?path={Uri.EscapeDataString(CurrentRemotePath)}&search={Uri.EscapeDataString(RemoteSearchText ?? string.Empty)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    SelectedFileManagementPC,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, relativePath)));
+                using var response = responsePair.Response;
                 if (!response.IsSuccessStatusCode)
                 {
                     StatusMessage = $"Could not read remote files: {response.StatusCode}";
@@ -778,7 +815,7 @@ namespace IRIS.UI.ViewModels
                     });
                 }
 
-                StatusMessage = $"Showing {RemoteFiles.Count} item(s) at '{CurrentRemotePath}'.";
+                StatusMessage = $"Showing {RemoteFiles.Count} item(s) at '{CurrentRemotePath}' from {responsePair.Target}.";
             }
             catch (Exception ex)
             {
@@ -801,14 +838,14 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var requestUri = BuildAgentUri(SelectedFileManagementPC.IPAddress, $"/files?path={Uri.EscapeDataString(item.FullPath)}");
-                using var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
-                AttachAuthHeader(request);
-
-                using var response = await _httpClient.SendAsync(request);
+                var relativePath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    SelectedFileManagementPC,
+                    target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, relativePath)));
+                using var response = responsePair.Response;
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Delete failed: {response.StatusCode}";
+                    StatusMessage = $"Delete failed via {responsePair.Target}: {response.StatusCode}";
                     return;
                 }
 
@@ -843,14 +880,15 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var requestUri = BuildAgentUri(SelectedFileManagementPC.IPAddress, $"/files/download?path={Uri.EscapeDataString(item.FullPath)}");
-                using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-                AttachAuthHeader(request);
-
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                var relativePath = $"/files/download?path={Uri.EscapeDataString(item.FullPath)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    SelectedFileManagementPC,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, relativePath)),
+                    HttpCompletionOption.ResponseHeadersRead);
+                using var response = responsePair.Response;
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Download failed: {response.StatusCode}";
+                    StatusMessage = $"Download failed via {responsePair.Target}: {response.StatusCode}";
                     return;
                 }
 
@@ -858,7 +896,7 @@ namespace IRIS.UI.ViewModels
                 await using var localFile = File.Create(dialog.FileName);
                 await remoteStream.CopyToAsync(localFile);
 
-                StatusMessage = $"Downloaded '{item.Name}' to '{dialog.FileName}'.";
+                StatusMessage = $"Downloaded '{item.Name}' to '{dialog.FileName}' via {responsePair.Target}.";
             }
             catch (Exception ex)
             {
@@ -877,6 +915,75 @@ namespace IRIS.UI.ViewModels
         {
             var path = relativePath.StartsWith('/') ? relativePath : "/" + relativePath;
             return new Uri($"http://{ipAddress}:{_agentFileApiPort}/api{path}");
+        }
+
+        private async Task<(HttpResponseMessage Response, string Target)> SendAgentRequestWithFallbackAsync(
+            PCModel pc,
+            Func<string, HttpRequestMessage> requestFactory,
+            HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead)
+        {
+            Exception? lastException = null;
+
+            foreach (var target in await GetAgentTargetsAsync(pc))
+            {
+                using var request = requestFactory(target);
+                AttachAuthHeader(request);
+
+                try
+                {
+                    var response = await _httpClient.SendAsync(request, completionOption);
+                    return (response, target);
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastException = ex;
+                }
+                catch (TaskCanceledException ex)
+                {
+                    lastException = ex;
+                }
+            }
+
+            throw lastException ?? new HttpRequestException($"Could not reach agent for PC '{pc.Hostname}'.");
+        }
+
+        private async Task<List<string>> GetAgentTargetsAsync(PCModel pc)
+        {
+            var targets = new List<string>();
+
+            void Add(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value)) return;
+                var trimmed = value.Trim();
+                if (trimmed.Equals("N/A", StringComparison.OrdinalIgnoreCase)) return;
+                if (!targets.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                {
+                    targets.Add(trimmed);
+                }
+            }
+
+            Add(pc.IPAddress);
+            Add(pc.Hostname);
+
+            if (!string.IsNullOrWhiteSpace(pc.Hostname))
+            {
+                try
+                {
+                    var resolved = await Dns.GetHostAddressesAsync(pc.Hostname);
+                    foreach (var ip in resolved
+                        .Where(x => x.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        .Where(x => !IPAddress.IsLoopback(x)))
+                    {
+                        Add(ip.ToString());
+                    }
+                }
+                catch
+                {
+                    // best-effort fallback only
+                }
+            }
+
+            return targets;
         }
 
         private void AttachAuthHeader(HttpRequestMessage request)
