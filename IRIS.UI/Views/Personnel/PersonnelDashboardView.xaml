@@ -1,0 +1,257 @@
+<UserControl x:Class="IRIS.UI.Views.Personnel.PersonnelDashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:oxy="http://oxyplot.org/wpf">
+
+    <UserControl.Resources>
+        <Style x:Key="SidebarNavButtonStyle" TargetType="ui:Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid x:Name="MainGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" CornerRadius="0,12,12,0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#8B0000" Offset="0"/>
+                    <GradientStop Color="#620F1E" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0" Margin="20,25,20,30">
+                    <TextBlock Text="IRIS" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Resource Management" FontSize="11" Foreground="#CCAAAAAA" Margin="0,2,0,0"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Row="1" Margin="10,0">
+                    <ui:Button x:Name="DashboardBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="DashboardBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Home24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Dashboard" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                    
+                    <ui:Button x:Name="MonitorBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="MonitorBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Desktop24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Monitor" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                    
+                    <ui:Button x:Name="SoftwareManagementBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="SoftwareManagementBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Apps24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Software Management" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                    
+                    <ui:Button x:Name="PolicyBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="PolicyBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Shield24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Policy Enforcement" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+
+                    <ui:Button x:Name="LabsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LabsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Building24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Labs" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                    
+                    <ui:Button x:Name="UsageMetricsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="UsageMetricsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="DataUsage24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Usage Metrics" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                    
+                    <ui:Button x:Name="SettingsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="SettingsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Settings24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Settings" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                </StackPanel>
+                
+                <StackPanel Grid.Row="2" Margin="10,10,10,20">
+                    <Separator Margin="0,0,0,10" Background="#44FFFFFF"/>
+                    <ui:Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click" Appearance="Danger">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Logout" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ContentControl x:Name="MainContent" Grid.Column="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="25,20">
+                    <Grid Margin="0,0,0,25">
+                        <TextBlock Text="Dashboard" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                        <ComboBox HorizontalAlignment="Right" Width="180" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber" Foreground="#1a1a1a"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Card Grid.Column="0">
+                            <StackPanel Margin="15">
+                                <Grid Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Pulse24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Latency (ms)" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Last 24 hours" FontSize="12" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,20">
+                                    <TextBlock Text="Average Latency (Today)" FontSize="14" Foreground="#666666" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding AverageLatency, StringFormat={}{0:F0}ms}" FontSize="28" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                </Grid>
+                                <Border Height="180" Background="#f0f0f0" CornerRadius="8" Padding="6">
+                                    <oxy:PlotView Model="{Binding LatencyPlot}" />
+                                </Border>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Grid.Column="2">
+                            <StackPanel Margin="15">
+                                <Grid Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Wifi124" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Network Performance" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Last 24 hours" FontSize="12" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="Current Bandwidth Usage" FontSize="14" Foreground="#666666"/>
+                                    <TextBlock Text="{Binding CurrentBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,20">
+                                    <TextBlock Text="Peak Usage (Today)" FontSize="14" Foreground="#666666"/>
+                                    <TextBlock Text="{Binding PeakBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                </Grid>
+                                <Border Height="180" Background="#f0f0f0" CornerRadius="8" Padding="6">
+                                    <oxy:PlotView Model="{Binding BandwidthPlot}" />
+                                </Border>
+                            </StackPanel>
+                        </ui:Card>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.9*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="1.1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Card Grid.Column="0">
+                            <StackPanel Margin="15">
+                                <Grid Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Warning24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Packet Loss %" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Last 24 hours" FontSize="12" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Border Height="220" Background="#f0f0f0" CornerRadius="8" Padding="6">
+                                    <oxy:PlotView Model="{Binding PacketLossPlot}" />
+                                </Border>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Grid.Column="2">
+                            <StackPanel Margin="15">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <ui:SymbolIcon Symbol="AppsList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Heavy Applications Monitor" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding HeavyApplications}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,10" Padding="12" Background="#f0f0f0" CornerRadius="8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="45"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Width="40" Height="40" Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="8">
+                                                        <TextBlock Text="{Binding Icon}" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="#1a1a1a"/>
+                                                        <TextBlock FontSize="12" Foreground="#666666">
+                                                            <Run Text="{Binding Instances}"/>
+                                                            <Run Text="instances •"/>
+                                                            <Run Text="{Binding RamUsage, StringFormat={}{0:F1}}"/>
+                                                            <Run Text="GB RAM avg"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ui:Card>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </ContentControl>
+
+        <Border Grid.Column="2" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" CornerRadius="12,0,0,12" Margin="0,10,0,10">
+            <StackPanel Margin="20">
+                <Grid Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="DesktopPulse24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold" Foreground="#1a1a1a"/>
+                    </StackPanel>
+                    <TextBlock FontSize="13" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Run Text="{Binding OnlinePCs}"/>
+                        <Run Text="/"/>
+                        <Run Text="{Binding TotalPCs}"/>
+                        <Run Text="Online"/>
+                    </TextBlock>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding LabStatuses}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="10" Padding="18,15" Margin="0,0,0,10">
+                                <Grid>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ActivePCs}" FontSize="28" FontWeight="Bold" Foreground="White" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

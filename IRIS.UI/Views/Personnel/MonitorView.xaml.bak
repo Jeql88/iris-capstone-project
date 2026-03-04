@@ -1,0 +1,523 @@
+<UserControl x:Class="IRIS.UI.Views.Personnel.MonitorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
+        <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter"/>
+        <Style x:Key="MonitorToolbarComboStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="10,6,10,6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:SymbolIcon Symbol="Desktop24" FontSize="22" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                <TextBlock Text="PC Monitoring" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource IRISPrimaryBrush}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Lab" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" Width="188" Margin="0,0,8,0" Style="{StaticResource MonitorToolbarComboStyle}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding RoomNumber}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ui:TextBox Width="210"
+                            Height="34"
+                            PlaceholderText="Search PC"
+                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                    <ui:TextBox.Icon>
+                        <ui:SymbolIcon Symbol="Search24"/>
+                    </ui:TextBox.Icon>
+                </ui:TextBox>
+                <ui:Button Margin="8,0,0,0"
+                           Height="34"
+                           MinWidth="90"
+                           Content="Refresh"
+                           Icon="{ui:SymbolIcon ArrowClockwise24}"
+                           Command="{Binding RefreshCommand}"
+                           Appearance="Secondary"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <ui:Card Grid.Column="0" Padding="10" MinHeight="72">
+                <StackPanel>
+                    <TextBlock Text="Total" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{Binding TotalPCCount}" FontSize="24" FontWeight="Bold"/>
+                </StackPanel>
+            </ui:Card>
+
+            <ui:Card Grid.Column="2" Padding="10" MinHeight="72">
+                <StackPanel>
+                    <TextBlock Text="Online" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{Binding OnlinePCCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource OnlineStatusBrush}"/>
+                </StackPanel>
+            </ui:Card>
+
+            <ui:Card Grid.Column="4" Padding="10" MinHeight="72">
+                <StackPanel>
+                    <TextBlock Text="Offline" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{Binding OfflinePCCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource OfflineStatusBrush}"/>
+                </StackPanel>
+            </ui:Card>
+
+            <ui:Card Grid.Column="6" Padding="10" MinHeight="72">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Alert24" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="Active Alerts" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding AlertHeaderText}" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="0,6,0,0"
+                               Text="{Binding TopAlertMessage}"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </Grid>
+            </ui:Card>
+        </Grid>
+
+        <ui:Card Grid.Row="2" Padding="8" Margin="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FilteredPCs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel ItemWidth="232"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="224" Margin="0,0,10,10" CornerRadius="12" Cursor="Hand" MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
+                                        <Border.ToolTip>
+                                            <ToolTip>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding PCName}" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding IPAddress, StringFormat=IP: {0}}"/>
+                                                    <TextBlock Text="{Binding CPUTemperature, StringFormat=CPU Temp: {0}}"/>
+                                                    <TextBlock Text="{Binding GPUTemperature, StringFormat=GPU Temp: {0}}"/>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Border.ToolTip>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
+                                                    </Trigger>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="2"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+
+                                        <Grid Margin="10">
+                                            <Grid>
+                                                <Grid.Style>
+                                                    <Style TargetType="Grid">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFlipped}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Grid.Style>
+
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                                    <Border Width="194" Height="106" CornerRadius="8"
+                                                            Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                                                            HorizontalAlignment="Center"
+                                                            ClipToBounds="True">
+                                                        <Grid>
+                                                            <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            <Image Source="{Binding SnapshotImageBase64, Converter={StaticResource Base64ToImageSourceConverter}}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <Ellipse Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                             Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                                             Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                                                             StrokeThickness="2"/>
+
+                                                    <ui:Button HorizontalAlignment="Right"
+                                                               VerticalAlignment="Bottom"
+                                                               Margin="0,0,2,2"
+                                                               Padding="4,1"
+                                                               Command="{Binding DataContext.OpenPcAlertsForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}"
+                                                               Appearance="Secondary">
+                                                        <ui:Button.Style>
+                                                            <Style TargetType="ui:Button">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding AlertCount}" Value="0">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ui:Button.Style>
+                                                        <TextBlock Text="{Binding AlertCount, StringFormat={}⚠ {0}}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </ui:Button>
+
+                                                    <ui:Badge HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,0,0">
+                                                        <ui:Badge.Style>
+                                                            <Style TargetType="ui:Badge">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding TopAlertSeverity}" Value="High">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                        <Setter Property="Appearance" Value="Caution"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding TopAlertSeverity}" Value="Critical">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                        <Setter Property="Appearance" Value="Danger"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ui:Badge.Style>
+                                                        <TextBlock Text="!" FontWeight="Bold"/>
+                                                    </ui:Badge>
+                                                </Grid>
+
+                                                <TextBlock Grid.Row="1" Text="{Binding PCName}"
+                                                           FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                                                <Grid Grid.Row="2" Margin="0,8,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="4"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="4"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Border Grid.Column="0" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                        <TextBlock Text="{Binding CPU, StringFormat=CPU {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </Border>
+
+                                                    <Border Grid.Column="2" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                        <TextBlock Text="{Binding RAM, StringFormat=RAM {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </Border>
+
+                                                    <Border Grid.Column="4" CornerRadius="6" Padding="4,2" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                        <TextBlock Text="{Binding Network, StringFormat=NET {0}}" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </Border>
+                                                </Grid>
+
+                                                <ui:Badge Grid.Row="3" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                                    <ui:Badge.Style>
+                                                        <Style TargetType="ui:Badge">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Online">
+                                                                    <Setter Property="Appearance" Value="Success"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                                    <Setter Property="Appearance" Value="Danger"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Idle">
+                                                                    <Setter Property="Appearance" Value="Caution"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:Badge.Style>
+                                                    <TextBlock Text="{Binding Status}" FontSize="11"/>
+                                                </ui:Badge>
+                                            </Grid>
+
+                                            <Border CornerRadius="8" Padding="10" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFlipped}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Grid.Row="0" Text="{Binding PCName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding CPUTemperature, StringFormat=CPU Temp: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="2" Margin="0,2,0,0" Text="{Binding GPUTemperature, StringFormat=GPU Temp: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="3" Margin="0,2,0,0" Text="{Binding NetworkDownload, StringFormat=Down: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="4" Margin="0,2,0,0" Text="{Binding NetworkUpload, StringFormat=Up: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="5" Margin="0,2,0,0" Text="{Binding NetworkLatency, StringFormat=Latency: {0}}" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Grid.Row="6" Margin="0,2,0,0" Text="{Binding PacketLoss, StringFormat=Loss: {0}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+
+                                                    <StackPanel Grid.Row="7" Margin="0,8,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <ui:Button Content="View"
+                                                                   Icon="{ui:SymbolIcon Eye24}"
+                                                                   Appearance="Primary"
+                                                                   Command="{Binding DataContext.ViewScreenForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border Visibility="{Binding HasNoPCs, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Desktop24" FontSize="48" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Text="No PCs Found" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="Select a laboratory or wait for PCs to connect" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource LayerFillColorDefaultBrush}"
+                            CornerRadius="8"
+                            Visibility="{Binding IsPcAlertsPanelOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Border Width="460"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="10"
+                                CornerRadius="10"
+                                Padding="10"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding SelectedPcAlertsTitle}" FontSize="14" FontWeight="SemiBold"/>
+                                    <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary" Command="{Binding ClosePcAlertsPanelCommand}"/>
+                                </Grid>
+
+                                <ScrollViewer Grid.Row="1" MaxHeight="360">
+                                    <ItemsControl ItemsSource="{Binding SelectedPcAlerts}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Margin="0,0,0,8" Padding="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Type}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding Timestamp, StringFormat={}{0:MMM dd HH:mm:ss}}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Column="2"
+                        CornerRadius="10"
+                        Padding="10"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SelectedPcTimelineTitle}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Past 24 hours" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <ui:Button Grid.Column="1"
+                                       Icon="{ui:SymbolIcon ArrowClockwise24}"
+                                       Appearance="Secondary"
+                                       Command="{Binding RefreshSelectedPcTimelineCommand}"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding SelectedPcTimeline}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="8"
+                                                    CornerRadius="8"
+                                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <Grid Grid.Row="0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <ui:Badge Margin="0,0,8,0">
+                                                            <ui:Badge.Style>
+                                                                <Style TargetType="ui:Badge">
+                                                                    <Setter Property="Appearance" Value="Info"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="High">
+                                                                            <Setter Property="Appearance" Value="Caution"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                            <Setter Property="Appearance" Value="Danger"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Warning">
+                                                                            <Setter Property="Appearance" Value="Caution"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ui:Badge.Style>
+                                                            <TextBlock Text="{Binding Severity}" FontSize="10"/>
+                                                        </ui:Badge>
+
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding Title}"
+                                                                   FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"/>
+
+                                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding RelativeTime}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                            <TextBlock Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                                        <TextBlock Text="{Binding Category}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Visibility="{Binding IsTimelineLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="28" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="Loading timeline..." Margin="0,8,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSelectedPC}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedPC}" Value="True"/>
+                                                    <Condition Binding="{Binding HasTimelineEvents}" Value="False"/>
+                                                    <Condition Binding="{Binding IsTimelineLoading}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <ui:SymbolIcon Symbol="Desktop24" FontSize="32" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Margin="0,8,0,0"
+                                           Text="{Binding TimelineEmptyMessage}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </ui:Card>
+    </Grid>
+</UserControl>

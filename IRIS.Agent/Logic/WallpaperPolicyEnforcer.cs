@@ -58,7 +58,7 @@ namespace IRIS.Agent.Logic
                     return false;
                 }
 
-                return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath);
+                return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath!);
             }
             catch (Exception ex)
             {
@@ -150,7 +150,7 @@ namespace IRIS.Agent.Logic
                 if (!File.Exists(cachedWallpaperPath))
                 {
                     // No cached wallpaper, enforce policy
-                    return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath);
+                    return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath!);
                 }
 
                 // Check if current wallpaper matches policy
@@ -158,7 +158,7 @@ namespace IRIS.Agent.Logic
                 if (currentWallpaper != cachedWallpaperPath)
                 {
                     Log.Information("Wallpaper compliance violation detected, re-enforcing policy for PC {MacAddress}", _macAddress);
-                    return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath);
+                    return await ApplyWallpaperAsync(wallpaperPolicy.WallpaperPath!);
                 }
 
                 return true;

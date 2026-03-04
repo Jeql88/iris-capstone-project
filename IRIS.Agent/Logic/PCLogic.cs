@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -8,12 +10,12 @@ using Serilog;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using IRIS.Core.DTOs;
-using IRIS.Agent.Interfaces;
+using IRIS.Agent.Services.Contracts;
 
 namespace IRIS.Agent.Logic
 {
     [SupportedOSPlatform("windows")]
-    public class PCLogic : IPCLogic
+    public class PCLogic : IPCService
     {
         private readonly IRISDbContext _context;
 
@@ -37,6 +39,18 @@ namespace IRIS.Agent.Logic
                 var existingPC = await _context.PCs
                     .Include(p => p.HardwareConfigs)
                     .FirstOrDefaultAsync(p => p.MacAddress == networkInfo.MacAddress);
+
+                if (existingPC == null)
+                {
+                    existingPC = await _context.PCs
+                        .Include(p => p.HardwareConfigs)
+                        .Where(p => p.Hostname == pcName)
+                        .OrderByDescending(p => p.LastSeen)
+                        .FirstOrDefaultAsync();
+                }
+
+                // Ensure a default room exists and get its Id
+                var defaultRoomId = await EnsureDefaultRoomAsync();
 
                 if (existingPC != null)
                 {
@@ -67,7 +81,7 @@ namespace IRIS.Agent.Logic
                         OperatingSystem = os,
                         Status = PCStatus.Online,
                         LastSeen = DateTime.UtcNow,
-                        RoomId = 1 // Default room, can be configured later
+                        RoomId = defaultRoomId // Default room, can be configured later
                     };
 
                     _context.PCs.Add(newPC);
@@ -89,7 +103,42 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        private async Task CreateHardwareConfigAsync(int pcId)
+        private async Task<int> EnsureDefaultRoomAsync()
+        {
+            try
+            {
+                // Try to find an existing default room
+                var existingRoom = await _context.Rooms
+                    .FirstOrDefaultAsync(r => r.RoomNumber == "DEFAULT");
+
+                if (existingRoom != null)
+                {
+                    return existingRoom.Id;
+                }
+
+                // Create a default room if it doesn't exist
+                var room = new Room
+                {
+                    RoomNumber = "DEFAULT",
+                    Description = "Default room for unassigned PCs",
+                    Capacity = 0,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Rooms.Add(room);
+                await _context.SaveChangesAsync();
+
+                return room.Id;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to ensure default room exists");
+                throw;
+            }
+        }
+
+        private Task CreateHardwareConfigAsync(int pcId)
         {
             try
             {
@@ -115,6 +164,7 @@ namespace IRIS.Agent.Logic
             {
                 Log.Error(ex, "Failed to create hardware config for PC {PCId}", pcId);
             }
+            return Task.CompletedTask;
         }
 
         private async Task UpdateHardwareConfigAsync(int pcId)
@@ -299,30 +349,80 @@ namespace IRIS.Agent.Logic
 
         public static NetworkInfoDto GetNetworkInfo()
         {
-            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus == OperationalStatus.Up &&
-                    (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet ||
-                     ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+            var candidates = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(ni => ni.OperationalStatus == OperationalStatus.Up)
+                .Where(ni => ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet || ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
+                .Select(ni =>
                 {
                     var ipProps = ni.GetIPProperties();
                     var ipv4 = ipProps.UnicastAddresses
-                        .FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+                        .FirstOrDefault(a => a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address));
 
-                    if (ipv4 != null)
+                    if (ipv4 == null)
                     {
-                        var ipAddress = ipv4.Address.ToString();
-                        var macAddress = ni.GetPhysicalAddress().ToString();
-                        var subnetMask = ipv4.IPv4Mask.ToString();
-                        var defaultGateway = ipProps.GatewayAddresses
-                            .FirstOrDefault(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)?.Address.ToString() ?? "N/A";
-
-                        return new NetworkInfoDto(ipAddress, macAddress, subnetMask, defaultGateway);
+                        return null;
                     }
-                }
+
+                    var gateway = ipProps.GatewayAddresses
+                        .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.Any.Equals(g.Address))
+                        ?.Address;
+
+                    var ip = ipv4.Address;
+                    var score = 0;
+
+                    // Strongly prefer adapters with a valid IPv4 default gateway.
+                    if (gateway != null)
+                    {
+                        score += 100;
+                    }
+
+                    // Prefer private LAN ranges commonly used in labs.
+                    if (IsPrivateIPv4(ip))
+                    {
+                        score += 20;
+                    }
+
+                    // De-prioritize APIPA/self-assigned addresses.
+                    if (ip.ToString().StartsWith("169.254.", StringComparison.Ordinal))
+                    {
+                        score -= 100;
+                    }
+
+                    return new
+                    {
+                        Interface = ni,
+                        IPv4 = ipv4,
+                        Gateway = gateway,
+                        Score = score
+                    };
+                })
+                .Where(x => x != null)
+                .OrderByDescending(x => x!.Score)
+                .ToList();
+
+            var selected = candidates.FirstOrDefault();
+            if (selected != null)
+            {
+                var ipAddress = selected.IPv4.Address.ToString();
+                var macAddress = selected.Interface.GetPhysicalAddress().ToString();
+                var subnetMask = selected.IPv4.IPv4Mask?.ToString() ?? "255.255.255.0";
+                var defaultGateway = selected.Gateway?.ToString() ?? "N/A";
+
+                Log.Information("Selected network adapter for registration: {Adapter} | IP={IpAddress} | Gateway={Gateway}", selected.Interface.Name, ipAddress, defaultGateway);
+
+                return new NetworkInfoDto(ipAddress, macAddress, subnetMask, defaultGateway);
             }
 
             throw new Exception("No active network interface found for IP and MAC detection.");
+        }
+
+        private static bool IsPrivateIPv4(IPAddress ip)
+        {
+            var bytes = ip.GetAddressBytes();
+            return bytes.Length == 4 && (
+                bytes[0] == 10 ||
+                (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
+                (bytes[0] == 192 && bytes[1] == 168));
         }
 
         private static string GetOperatingSystem()

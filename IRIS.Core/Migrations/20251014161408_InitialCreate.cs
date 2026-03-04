@@ -499,6 +499,13 @@ namespace IRIS.Core.Migrations
                 table: "WebsiteUsageHistory",
                 columns: new[] { "PCId", "VisitedAt" });
 
+            // Seed default room to satisfy FK_PCs_Rooms_RoomId
+            migrationBuilder.InsertData(
+                table: "Rooms",
+                columns: new[] { "Id", "RoomNumber", "Description", "Capacity", "IsActive", "CreatedAt" },
+                values: new object[] { 1, "DEFAULT", "Default room for unassigned PCs", 0, true, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            );
+
             // Seed default users with BCrypt hashed passwords (password: "admin")
             migrationBuilder.InsertData(
                 table: "Users",
@@ -514,6 +521,11 @@ namespace IRIS.Core.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DeleteData(
+                table: "Rooms",
+                keyColumn: "Id",
+                keyValue: 1);
+
             migrationBuilder.DeleteData(
                 table: "Users",
                 keyColumn: "Id",
