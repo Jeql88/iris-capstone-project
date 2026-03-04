@@ -51,6 +51,7 @@ namespace IRIS.UI.ViewModels
         private bool _isConnected = true;
         private bool _isLoading;
         private bool _isDisconnected;
+        private DateTime _lastFrameUpdatedUtc = DateTime.MinValue;
         private ImageSource? _screenImage;
 
         public ViewScreenViewModel(
@@ -118,6 +119,9 @@ namespace IRIS.UI.ViewModels
         public bool IsConnected { get => _isConnected; set { _isConnected = value; OnPropertyChanged(); } }
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
         public bool IsDisconnected { get => _isDisconnected; set { _isDisconnected = value; OnPropertyChanged(); } }
+        public string LastFrameUpdatedText => _lastFrameUpdatedUtc == DateTime.MinValue
+            ? "No frame yet"
+            : $"Last frame {TimeZoneInfo.ConvertTimeFromUtc(_lastFrameUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
         public ImageSource? ScreenImage { get => _screenImage; set { _screenImage = value; OnPropertyChanged(); } }
 
         public ICommand ToggleDetailsCommand { get; }
@@ -172,16 +176,24 @@ namespace IRIS.UI.ViewModels
                 if (!string.IsNullOrWhiteSpace(imageBase64))
                 {
                     ScreenImage = CreateImage(imageBase64);
+                    IsConnected = true;
                     IsDisconnected = false;
+                    ConnectionStatus = "Connected";
+                    _lastFrameUpdatedUtc = DateTime.UtcNow;
+                    OnPropertyChanged(nameof(LastFrameUpdatedText));
                 }
                 else
                 {
+                    IsConnected = false;
                     IsDisconnected = true;
+                    ConnectionStatus = "Disconnected";
                 }
             }
             catch
             {
+                IsConnected = false;
                 IsDisconnected = true;
+                ConnectionStatus = "Disconnected";
             }
             finally
             {

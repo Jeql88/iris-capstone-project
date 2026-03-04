@@ -10,6 +10,7 @@ using LibreHardwareMonitor.Hardware;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using IRIS.Core.Data;
+using IRIS.Core.DTOs;
 using IRIS.Core.Models;
 using IRIS.Agent.Services.Contracts;
 
@@ -23,6 +24,7 @@ namespace IRIS.Agent.Logic
         private readonly int _pingTimeoutMs;
         private readonly string _commandServerHost;
         private readonly int _commandServerPort;
+        private readonly string _machineName;
         private readonly SemaphoreSlim _contextLock = new(1, 1);
 
         private long _lastBytesSent = -1;
@@ -44,6 +46,7 @@ namespace IRIS.Agent.Logic
             _pingTimeoutMs = pingTimeoutMs;
             _commandServerHost = commandServerHost;
             _commandServerPort = commandServerPort;
+            _machineName = Environment.MachineName;
 
             try
             {
@@ -65,17 +68,47 @@ namespace IRIS.Agent.Logic
             await _contextLock.WaitAsync();
             try
             {
-                var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
+                var pc = await ResolveCurrentPcAsync();
+                if (pc == null)
+                {
+                    pc = await CreatePcFromHeartbeatAsync();
+                }
+
                 if (pc != null)
                 {
+                    var networkInfo = TryGetNetworkInfo();
+                    if (networkInfo != null)
+                    {
+                        pc.IpAddress = networkInfo.IpAddress;
+                        pc.SubnetMask = networkInfo.SubnetMask;
+                        pc.DefaultGateway = networkInfo.DefaultGateway;
+                        pc.Hostname = _machineName;
+
+                        if (!string.Equals(pc.MacAddress, networkInfo.MacAddress, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var hasConflict = await _context.PCs.AnyAsync(p =>
+                                p.Id != pc.Id &&
+                                p.MacAddress == networkInfo.MacAddress);
+
+                            if (!hasConflict)
+                            {
+                                pc.MacAddress = networkInfo.MacAddress;
+                            }
+                            else
+                            {
+                                Log.Warning("Skipping MAC update for {MachineName}; target MAC {Mac} belongs to another record", _machineName, networkInfo.MacAddress);
+                            }
+                        }
+                    }
+
                     pc.Status = PCStatus.Online;
                     pc.LastSeen = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
-                    Log.Information("Heartbeat sent for PC {MacAddress}", _macAddress);
+                    Log.Information("Heartbeat sent for PC {MacAddress} ({MachineName})", pc.MacAddress, _machineName);
                 }
                 else
                 {
-                    Log.Warning("PC with MAC {MacAddress} not found for heartbeat", _macAddress);
+                    Log.Warning("PC not found for heartbeat (MAC {MacAddress}, Hostname {MachineName})", _macAddress, _machineName);
                 }
             }
             catch (Exception ex)
@@ -94,10 +127,10 @@ namespace IRIS.Agent.Logic
             await _contextLock.WaitAsync();
             try
             {
-                var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
+                var pc = await ResolveCurrentPcAsync();
                 if (pc == null)
                 {
-                    Log.Warning("PC with MAC {MacAddress} not found for metrics capture", _macAddress);
+                    Log.Warning("PC not found for hardware metrics capture (MAC {MacAddress}, Hostname {MachineName})", _macAddress, _machineName);
                     return;
                 }
 
@@ -154,10 +187,10 @@ namespace IRIS.Agent.Logic
             await _contextLock.WaitAsync();
             try
             {
-                var pc = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
+                var pc = await ResolveCurrentPcAsync();
                 if (pc == null)
                 {
-                    Log.Warning("PC with MAC {MacAddress} not found for network metrics", _macAddress);
+                    Log.Warning("PC not found for network metrics capture (MAC {MacAddress}, Hostname {MachineName})", _macAddress, _machineName);
                     return;
                 }
 
@@ -220,7 +253,7 @@ namespace IRIS.Agent.Logic
                 _lastNetworkSample = now;
 
                 Log.Information("Network metrics captured for PC {MacAddress}: Up={Up:F2} Mbps, Down={Down:F2} Mbps, Latency={Lat:F1} ms, Loss={Loss:F1}%",
-                    _macAddress,
+                    pc.MacAddress,
                     uploadMbps ?? 0,
                     downloadMbps ?? 0,
                     latency ?? 0,
@@ -319,6 +352,89 @@ namespace IRIS.Agent.Logic
             catch
             {
                 return (null, null);
+            }
+        }
+
+        private async Task<PC?> ResolveCurrentPcAsync()
+        {
+            var byMac = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == _macAddress);
+            if (byMac != null)
+            {
+                return byMac;
+            }
+
+            return await _context.PCs
+                .Where(p => p.Hostname == _machineName)
+                .OrderByDescending(p => p.LastSeen)
+                .FirstOrDefaultAsync();
+        }
+
+        private async Task<PC?> CreatePcFromHeartbeatAsync()
+        {
+            var networkInfo = TryGetNetworkInfo();
+            var candidateMac = networkInfo?.MacAddress;
+
+            if (!string.IsNullOrWhiteSpace(candidateMac))
+            {
+                var existingByCurrentMac = await _context.PCs.FirstOrDefaultAsync(p => p.MacAddress == candidateMac);
+                if (existingByCurrentMac != null)
+                {
+                    return existingByCurrentMac;
+                }
+            }
+
+            var defaultRoomId = await EnsureDefaultRoomAsync();
+
+            var pc = new PC
+            {
+                Hostname = _machineName,
+                IpAddress = networkInfo?.IpAddress,
+                MacAddress = !string.IsNullOrWhiteSpace(candidateMac) ? candidateMac : _macAddress,
+                SubnetMask = networkInfo?.SubnetMask,
+                DefaultGateway = networkInfo?.DefaultGateway,
+                OperatingSystem = Environment.OSVersion.VersionString,
+                Status = PCStatus.Online,
+                LastSeen = DateTime.UtcNow,
+                RoomId = defaultRoomId
+            };
+
+            _context.PCs.Add(pc);
+            await _context.SaveChangesAsync();
+            Log.Information("Created PC from heartbeat: {MachineName} ({MacAddress})", _machineName, pc.MacAddress);
+            return pc;
+        }
+
+        private async Task<int> EnsureDefaultRoomAsync()
+        {
+            var existingRoom = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomNumber == "DEFAULT");
+            if (existingRoom != null)
+            {
+                return existingRoom.Id;
+            }
+
+            var room = new Room
+            {
+                RoomNumber = "DEFAULT",
+                Description = "Default room for unassigned PCs",
+                Capacity = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Rooms.Add(room);
+            await _context.SaveChangesAsync();
+            return room.Id;
+        }
+
+        private static NetworkInfoDto? TryGetNetworkInfo()
+        {
+            try
+            {
+                return PCLogic.GetNetworkInfo();
+            }
+            catch
+            {
+                return null;
             }
         }
 

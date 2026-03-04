@@ -15,7 +15,6 @@ namespace IRIS.UI.Converters
                 {
                     "online" => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E")),
                     "offline" => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444")),
-                    "idle" => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EAB308")),
                     _ => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#6B7280"))
                 };
             }

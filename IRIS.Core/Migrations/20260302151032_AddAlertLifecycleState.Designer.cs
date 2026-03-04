@@ -3,6 +3,7 @@ using System;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IRIS.Core.Migrations
 {
     [DbContext(typeof(IRISDbContext))]
-    partial class IRISDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302151032_AddAlertLifecycleState")]
+    partial class AddAlertLifecycleState
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,16 +61,18 @@ namespace IRIS.Core.Migrations
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Severity")
-                        .HasColumnType("integer");
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -81,52 +86,6 @@ namespace IRIS.Core.Migrations
                     b.HasIndex("PCId", "AlertKey", "IsResolved");
 
                     b.ToTable("Alerts");
-                });
-
-            modelBuilder.Entity("IRIS.Core.Models.DeploymentLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Details")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<string>("IPAddress")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int?>("PCId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PCName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Timestamp");
-
-                    b.HasIndex("PCId", "Timestamp");
-
-                    b.ToTable("DeploymentLogs");
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.HardwareMetric", b =>
@@ -830,16 +789,6 @@ namespace IRIS.Core.Migrations
                     b.Navigation("PC");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("IRIS.Core.Models.DeploymentLog", b =>
-                {
-                    b.HasOne("IRIS.Core.Models.PC", "PC")
-                        .WithMany()
-                        .HasForeignKey("PCId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("PC");
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.HardwareMetric", b =>

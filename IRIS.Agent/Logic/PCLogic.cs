@@ -38,6 +38,15 @@ namespace IRIS.Agent.Logic
                     .Include(p => p.HardwareConfigs)
                     .FirstOrDefaultAsync(p => p.MacAddress == networkInfo.MacAddress);
 
+                if (existingPC == null)
+                {
+                    existingPC = await _context.PCs
+                        .Include(p => p.HardwareConfigs)
+                        .Where(p => p.Hostname == pcName)
+                        .OrderByDescending(p => p.LastSeen)
+                        .FirstOrDefaultAsync();
+                }
+
                 // Ensure a default room exists and get its Id
                 var defaultRoomId = await EnsureDefaultRoomAsync();
 
