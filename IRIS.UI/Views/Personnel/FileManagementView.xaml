@@ -9,6 +9,41 @@
         <conv:BooleanToVisibilityConverter x:Key="InvertBoolToVisConverter"/>
         <conv:InvertBoolConverter x:Key="InvertBoolConverter"/>
         <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
+
+        <!-- DataGrid row hover / selection highlight styles -->
+        <Style x:Key="FileGridRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#18808080"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#30DC3545"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsSelected" Value="True"/>
+                        <Condition Property="IsMouseOver" Value="True"/>
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="#44DC3545"/>
+                </MultiTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="FileGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                </Trigger>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="16">
@@ -112,7 +147,9 @@
                               PreviewMouseRightButtonDown="LocalFilesGrid_PreviewMouseRightButtonDown"
                               SelectionMode="Single" GridLinesVisibility="None"
                               HeadersVisibility="Column" BorderThickness="0"
-                              RowHeaderWidth="0">
+                              RowHeaderWidth="0"
+                              RowStyle="{StaticResource FileGridRowStyle}"
+                              CellStyle="{StaticResource FileGridCellStyle}">
                         <DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Upload to Remote"
@@ -189,7 +226,9 @@
                               PreviewMouseRightButtonDown="RemoteFilesGrid_PreviewMouseRightButtonDown"
                               SelectionMode="Single" GridLinesVisibility="None"
                               HeadersVisibility="Column" BorderThickness="0"
-                              RowHeaderWidth="0">
+                              RowHeaderWidth="0"
+                              RowStyle="{StaticResource FileGridRowStyle}"
+                              CellStyle="{StaticResource FileGridCellStyle}">
                         <DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Download to Local"
