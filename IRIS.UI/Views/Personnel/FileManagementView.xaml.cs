@@ -118,5 +118,26 @@ namespace IRIS.UI.Views.Personnel
             if (e.Key == Key.Enter && DataContext is FileManagementViewModel vm)
                 vm.NavigateToRemotePathCommand.Execute(null);
         }
+
+        // ═══ Bulk upload: drop zone ═══
+        private void BulkDropZone_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (DataContext is FileManagementViewModel vm)
+                {
+                    vm.AddBulkFiles(files);
+                }
+            }
+        }
+
+        private void BulkDropZone_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
     }
 }

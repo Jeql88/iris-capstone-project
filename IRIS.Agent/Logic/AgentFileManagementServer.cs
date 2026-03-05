@@ -122,6 +122,12 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                if (path.Equals("/api/files/exists", StringComparison.OrdinalIgnoreCase) && method == "GET")
+                {
+                    await HandleExistsAsync(context);
+                    return;
+                }
+
                 if (path.Equals("/api/files/upload", StringComparison.OrdinalIgnoreCase) && method == "POST")
                 {
                     await HandleUploadAsync(context);
@@ -209,10 +215,39 @@ namespace IRIS.Agent.Logic
             await WriteJsonAsync(context.Response, 200, entries);
         }
 
+        private async Task HandleExistsAsync(HttpListenerContext context)
+        {
+            var inputPath = context.Request.QueryString["path"];
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "path is required" });
+                return;
+            }
+
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
+
+            var fileExists = File.Exists(fullPath);
+            var dirExists = Directory.Exists(fullPath);
+
+            await WriteJsonAsync(context.Response, 200, new
+            {
+                exists = fileExists || dirExists,
+                isFile = fileExists,
+                isDirectory = dirExists
+            });
+        }
+
         private async Task HandleUploadAsync(HttpListenerContext context)
         {
             var inputDir = context.Request.QueryString["path"] ?? ".";
             var fileName = context.Request.QueryString["fileName"];
+            var overwrite = string.Equals(context.Request.QueryString["overwrite"], "true", StringComparison.OrdinalIgnoreCase);
 
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -230,6 +265,12 @@ namespace IRIS.Agent.Logic
 
             Directory.CreateDirectory(targetDir);
             var targetPath = Path.Combine(targetDir, Path.GetFileName(fileName));
+
+            if (File.Exists(targetPath) && !overwrite)
+            {
+                await WriteJsonAsync(context.Response, 409, new { error = "File already exists", path = targetPath });
+                return;
+            }
 
             await using var file = File.Create(targetPath);
             await context.Request.InputStream.CopyToAsync(file);

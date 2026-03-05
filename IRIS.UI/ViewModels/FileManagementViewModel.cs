@@ -44,6 +44,13 @@ namespace IRIS.UI.ViewModels
         private string _statusMessage = "Ready";
         private bool _isBusy;
 
+        // Bulk upload state
+        private string _bulkFolderName = string.Empty;
+        private bool _bulkUploadToAll = true;
+        private string _bulkStatusMessage = string.Empty;
+        private double _bulkProgress;
+        private bool _isBulkUploading;
+
         public FileManagementViewModel(
             IDeploymentDataService deploymentDataService,
             IRoomService roomService,
@@ -77,6 +84,14 @@ namespace IRIS.UI.ViewModels
             DownloadRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = DownloadRemoteItemAsync(item));
             UploadLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = UploadLocalItemAsync(item));
 
+            // Bulk upload commands
+            BrowseBulkFilesCommand = new RelayCommand(BrowseBulkFiles, () => true);
+            RemoveBulkFileCommand = new RelayCommand<string>(RemoveBulkFile);
+            StartBulkUploadCommand = new RelayCommand(async () => await StartBulkUploadAsync(),
+                () => BulkPendingFiles.Count > 0 && !string.IsNullOrWhiteSpace(BulkFolderName) && !_isBulkUploading);
+            SelectAllPCsCommand = new RelayCommand(() => { foreach (var pc in PCs) pc.IsSelected = true; OnPropertyChanged(nameof(PCs)); }, () => true);
+            DeselectAllPCsCommand = new RelayCommand(() => { foreach (var pc in PCs) pc.IsSelected = false; OnPropertyChanged(nameof(PCs)); }, () => true);
+
             _ = InitializeAsync();
         }
 
@@ -88,6 +103,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<PCModel> PCs { get; } = new();
         public ObservableCollection<FileItemModel> LocalFiles { get; } = new();
         public ObservableCollection<FileItemModel> RemoteFiles { get; } = new();
+        public ObservableCollection<string> BulkPendingFiles { get; } = new();
 
         // ═══════════════════════════════════════
         // Properties
@@ -176,6 +192,36 @@ namespace IRIS.UI.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public string BulkFolderName
+        {
+            get => _bulkFolderName;
+            set { _bulkFolderName = value; OnPropertyChanged(); (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged(); }
+        }
+
+        public bool BulkUploadToAll
+        {
+            get => _bulkUploadToAll;
+            set { _bulkUploadToAll = value; OnPropertyChanged(); }
+        }
+
+        public string BulkStatusMessage
+        {
+            get => _bulkStatusMessage;
+            set { _bulkStatusMessage = value; OnPropertyChanged(); }
+        }
+
+        public double BulkProgress
+        {
+            get => _bulkProgress;
+            set { _bulkProgress = value; OnPropertyChanged(); }
+        }
+
+        public bool IsBulkUploading
+        {
+            get => _isBulkUploading;
+            set { _isBulkUploading = value; OnPropertyChanged(); (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged(); }
+        }
+
         // ═══════════════════════════════════════
         // Commands
         // ═══════════════════════════════════════
@@ -193,6 +239,11 @@ namespace IRIS.UI.ViewModels
         public ICommand RenameRemoteFileCommand { get; }
         public ICommand DownloadRemoteFileCommand { get; }
         public ICommand UploadLocalFileCommand { get; }
+        public ICommand BrowseBulkFilesCommand { get; }
+        public ICommand RemoveBulkFileCommand { get; }
+        public ICommand StartBulkUploadCommand { get; }
+        public ICommand SelectAllPCsCommand { get; }
+        public ICommand DeselectAllPCsCommand { get; }
 
         // ═══════════════════════════════════════
         // Initialization
@@ -817,10 +868,34 @@ namespace IRIS.UI.ViewModels
         private async Task UploadSingleFileAsync(string localFilePath, string remoteDir)
         {
             var fileName = Path.GetFileName(localFilePath);
-            var apiPath = $"/files/upload?path={Uri.EscapeDataString(remoteDir)}&fileName={Uri.EscapeDataString(fileName)}";
+
+            // Check if file exists on remote first
+            if (_selectedPC != null)
+            {
+                var remotePath = remoteDir.EndsWith('\\') || remoteDir.EndsWith('/')
+                    ? remoteDir + fileName
+                    : remoteDir + "\\" + fileName;
+                bool alreadyExists = await CheckRemoteFileExistsAsync(_selectedPC, remotePath);
+                if (alreadyExists)
+                {
+                    var result = MessageBox.Show(
+                        $"'{fileName}' already exists on {_selectedPC.Hostname}.\nOverwrite?",
+                        "File Exists", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes) return;
+                }
+            }
+
+            await UploadSingleFileToPcAsync(_selectedPC!, localFilePath, remoteDir, overwrite: true);
+        }
+
+        private async Task UploadSingleFileToPcAsync(PCModel pc, string localFilePath, string remoteDir, bool overwrite)
+        {
+            var fileName = Path.GetFileName(localFilePath);
+            var ow = overwrite ? "true" : "false";
+            var apiPath = $"/files/upload?path={Uri.EscapeDataString(remoteDir)}&fileName={Uri.EscapeDataString(fileName)}&overwrite={ow}";
 
             var (response, _) = await SendAgentRequestWithFallbackAsync(
-                _selectedPC!,
+                pc,
                 target =>
                 {
                     var req = new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath))
@@ -833,7 +908,25 @@ namespace IRIS.UI.ViewModels
                 });
 
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"Upload failed ({response.StatusCode})");
+                throw new InvalidOperationException($"Upload to {pc.Hostname} failed ({response.StatusCode})");
+        }
+
+        private async Task<bool> CheckRemoteFileExistsAsync(PCModel pc, string remotePath)
+        {
+            try
+            {
+                var apiPath = $"/files/exists?path={Uri.EscapeDataString(remotePath)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    pc,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, apiPath)));
+                using var response = responsePair.Response;
+                if (!response.IsSuccessStatusCode) return false;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ExistsResponse>(json, JsonOptions());
+                return result?.Exists ?? false;
+            }
+            catch { return false; }
         }
 
         private async Task UploadDirectoryAsync(string localDirPath, string remoteBaseDir)
@@ -845,13 +938,162 @@ namespace IRIS.UI.ViewModels
 
             foreach (var file in Directory.EnumerateFiles(localDirPath))
             {
-                await UploadSingleFileAsync(file, remotePath);
+                await UploadSingleFileToPcAsync(_selectedPC!, file, remotePath, overwrite: true);
             }
 
             foreach (var subDir in Directory.EnumerateDirectories(localDirPath))
             {
                 await UploadDirectoryAsync(subDir, remotePath);
             }
+        }
+
+        // ═══════════════════════════════════════
+        // BULK UPLOAD
+        // ═══════════════════════════════════════
+
+        public void AddBulkFiles(IEnumerable<string> paths)
+        {
+            foreach (var p in paths)
+            {
+                if ((File.Exists(p) || Directory.Exists(p)) &&
+                    !BulkPendingFiles.Contains(p, StringComparer.OrdinalIgnoreCase))
+                {
+                    BulkPendingFiles.Add(p);
+                }
+            }
+            (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void BrowseBulkFiles()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true,
+                Filter = "All files (*.*)|*.*"
+            };
+            if (dialog.ShowDialog() == true)
+                AddBulkFiles(dialog.FileNames);
+        }
+
+        private void RemoveBulkFile(string? path)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                BulkPendingFiles.Remove(path);
+            (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private async Task StartBulkUploadAsync()
+        {
+            if (BulkPendingFiles.Count == 0 || string.IsNullOrWhiteSpace(BulkFolderName))
+                return;
+
+            // Determine target PCs
+            var targetPCs = BulkUploadToAll
+                ? PCs.Where(pc => !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList()
+                : PCs.Where(pc => pc.IsSelected && !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList();
+
+            if (targetPCs.Count == 0)
+            {
+                BulkStatusMessage = "No target PCs available. Select PCs or use 'Upload to All'.";
+                return;
+            }
+
+            IsBulkUploading = true;
+            BulkProgress = 0;
+            var totalOps = targetPCs.Count * BulkPendingFiles.Count;
+            var completedOps = 0;
+            var successCount = 0;
+            var failCount = 0;
+            var skippedFiles = new List<string>();
+
+            // Use Desktop as default remote target folder parent
+            var remoteDesktop = @"C:\Users\Public\Desktop";
+            var remoteFolderPath = Path.Combine(remoteDesktop, BulkFolderName.Trim());
+
+            BulkStatusMessage = $"Uploading {BulkPendingFiles.Count} file(s) to {targetPCs.Count} PC(s) into '{BulkFolderName}'...";
+
+            foreach (var pc in targetPCs)
+            {
+                foreach (var localPath in BulkPendingFiles.ToList())
+                {
+                    try
+                    {
+                        var fileName = Path.GetFileName(localPath);
+
+                        if (File.Exists(localPath))
+                        {
+                            // Check if file already exists on this PC
+                            var remoteFilePath = Path.Combine(remoteFolderPath, fileName);
+                            bool exists = await CheckRemoteFileExistsAsync(pc, remoteFilePath);
+                            if (exists)
+                            {
+                                // Ask once per file-per-PC conflict
+                                var result = MessageBox.Show(
+                                    $"'{fileName}' already exists on {pc.Hostname} in folder '{BulkFolderName}'.\nOverwrite?",
+                                    "File Exists", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+                                if (result == MessageBoxResult.Cancel)
+                                {
+                                    BulkStatusMessage = "Bulk upload cancelled by user.";
+                                    IsBulkUploading = false;
+                                    BulkProgress = 0;
+                                    return;
+                                }
+
+                                if (result == MessageBoxResult.No)
+                                {
+                                    skippedFiles.Add($"{fileName} → {pc.Hostname}");
+                                    completedOps++;
+                                    BulkProgress = (double)completedOps / totalOps * 100;
+                                    continue;
+                                }
+                            }
+
+                            await UploadSingleFileToPcAsync(pc, localPath, remoteFolderPath, overwrite: true);
+                            successCount++;
+                        }
+                        else if (Directory.Exists(localPath))
+                        {
+                            await UploadDirectoryToPcAsync(pc, localPath, remoteFolderPath);
+                            successCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failCount++;
+                        BulkStatusMessage = $"Error uploading to {pc.Hostname}: {ex.Message}";
+                    }
+
+                    completedOps++;
+                    BulkProgress = (double)completedOps / totalOps * 100;
+                }
+            }
+
+            var skippedMsg = skippedFiles.Count > 0 ? $" Skipped: {skippedFiles.Count}." : "";
+            BulkStatusMessage = $"Bulk upload complete. Success: {successCount}, Failed: {failCount}.{skippedMsg}";
+            BulkProgress = 100;
+            IsBulkUploading = false;
+
+            BulkPendingFiles.Clear();
+            (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
+            // Refresh remote pane if we're looking at the same PC
+            if (_selectedPC != null && targetPCs.Any(p => p.Id == _selectedPC.Id) && !string.IsNullOrWhiteSpace(CurrentRemotePath))
+                await BrowseRemotePathAsync(CurrentRemotePath);
+        }
+
+        private async Task UploadDirectoryToPcAsync(PCModel pc, string localDirPath, string remoteBaseDir)
+        {
+            var dirName = Path.GetFileName(localDirPath);
+            var remotePath = string.IsNullOrWhiteSpace(remoteBaseDir)
+                ? dirName
+                : Path.Combine(remoteBaseDir, dirName);
+
+            foreach (var file in Directory.EnumerateFiles(localDirPath))
+                await UploadSingleFileToPcAsync(pc, file, remotePath, overwrite: true);
+
+            foreach (var subDir in Directory.EnumerateDirectories(localDirPath))
+                await UploadDirectoryToPcAsync(pc, subDir, remotePath);
         }
 
         // ═══════════════════════════════════════
@@ -983,6 +1225,13 @@ namespace IRIS.UI.ViewModels
             public string? Label { get; set; }
             public long TotalSize { get; set; }
             public long FreeSpace { get; set; }
+        }
+
+        private sealed class ExistsResponse
+        {
+            public bool Exists { get; set; }
+            public bool IsFile { get; set; }
+            public bool IsDirectory { get; set; }
         }
     }
 }
