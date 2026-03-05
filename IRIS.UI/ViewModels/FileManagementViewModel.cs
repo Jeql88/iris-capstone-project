@@ -77,12 +77,13 @@ namespace IRIS.UI.ViewModels
             GoToRemoteDrivesCommand = new RelayCommand(async () => { CurrentRemotePath = string.Empty; await LoadRemoteDrivesAsync(); }, () => _selectedPC != null);
 
             // Context-menu / action commands
-            DeleteLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = DeleteLocalItemAsync(item));
-            DeleteRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = DeleteRemoteItemAsync(item));
+            DeleteLocalFileCommand = new RelayCommand(async () => await DeleteLocalItemsAsync(SelectedLocalFiles), () => true);
+            DeleteRemoteFileCommand = new RelayCommand(async () => await DeleteRemoteItemsAsync(SelectedRemoteFiles), () => true);
             RenameLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = RenameLocalItemAsync(item));
             RenameRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = RenameRemoteItemAsync(item));
-            DownloadRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = DownloadRemoteItemAsync(item));
-            UploadLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = UploadLocalItemAsync(item));
+            DownloadRemoteFileCommand = new RelayCommand(async () => await DownloadRemoteItemsAsync(SelectedRemoteFiles), () => true);
+            UploadLocalFileCommand = new RelayCommand(async () => await UploadLocalItemsAsync(SelectedLocalFiles), () => true);
+            OpenFileLocationCommand = new RelayCommand(() => OpenFileLocation(SelectedLocalFile), () => true);
 
             // Bulk upload commands
             BrowseBulkFilesCommand = new RelayCommand(BrowseBulkFiles, () => true);
@@ -104,6 +105,10 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<FileItemModel> LocalFiles { get; } = new();
         public ObservableCollection<FileItemModel> RemoteFiles { get; } = new();
         public ObservableCollection<string> BulkPendingFiles { get; } = new();
+
+        // Tracks the current multi-selection in each grid (set by code-behind SelectionChanged)
+        public List<FileItemModel> SelectedLocalFiles { get; set; } = new();
+        public List<FileItemModel> SelectedRemoteFiles { get; set; } = new();
 
         // ═══════════════════════════════════════
         // Properties
@@ -239,6 +244,7 @@ namespace IRIS.UI.ViewModels
         public ICommand RenameRemoteFileCommand { get; }
         public ICommand DownloadRemoteFileCommand { get; }
         public ICommand UploadLocalFileCommand { get; }
+        public ICommand OpenFileLocationCommand { get; }
         public ICommand BrowseBulkFilesCommand { get; }
         public ICommand RemoveBulkFileCommand { get; }
         public ICommand StartBulkUploadCommand { get; }
@@ -455,31 +461,56 @@ namespace IRIS.UI.ViewModels
             await BrowseLocalPathAsync(parent.FullName);
         }
 
-        private async Task DeleteLocalItemAsync(FileItemModel? item)
+        private async Task DeleteLocalItemsAsync(List<FileItemModel> items)
         {
-            if (item == null) return;
+            if (items.Count == 0) return;
 
-            var confirm = MessageBox.Show(
-                $"Delete '{item.Name}'?", "Delete",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var msg = items.Count == 1
+                ? $"Delete '{items[0].Name}'?"
+                : $"Delete {items.Count} selected items?";
+
+            var confirm = MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
             try
             {
+                var snapshot = items.ToList();
                 await Task.Run(() =>
                 {
-                    if (item.IsDirectory)
-                        Directory.Delete(item.FullPath, true);
-                    else
-                        File.Delete(item.FullPath);
+                    foreach (var item in snapshot)
+                    {
+                        if (item.IsDirectory)
+                            Directory.Delete(item.FullPath, true);
+                        else
+                            File.Delete(item.FullPath);
+                    }
                 });
 
-                StatusMessage = $"Deleted '{item.Name}'.";
+                StatusMessage = snapshot.Count == 1
+                    ? $"Deleted '{snapshot[0].Name}'."
+                    : $"Deleted {snapshot.Count} items.";
                 await BrowseLocalPathAsync(CurrentLocalPath);
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Delete failed: {ex.Message}";
+            }
+        }
+
+        private void OpenFileLocation(FileItemModel? item)
+        {
+            if (item == null) return;
+
+            try
+            {
+                var args = item.IsDrive
+                    ? item.FullPath          // open drive root directly
+                    : $"/select,\"{item.FullPath}\"";
+                Process.Start(new ProcessStartInfo("explorer.exe", args) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Could not open file location: {ex.Message}";
             }
         }
 
@@ -512,9 +543,9 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private async Task UploadLocalItemAsync(FileItemModel? item)
+        private async Task UploadLocalItemsAsync(List<FileItemModel> items)
         {
-            if (item == null || _selectedPC == null) return;
+            if (items.Count == 0 || _selectedPC == null) return;
 
             if (string.IsNullOrWhiteSpace(CurrentRemotePath))
             {
@@ -525,13 +556,19 @@ namespace IRIS.UI.ViewModels
             try
             {
                 IsBusy = true;
+                var snapshot = items.ToList();
 
-                if (item.IsDirectory)
-                    await UploadDirectoryAsync(item.FullPath, CurrentRemotePath);
-                else
-                    await UploadSingleFileAsync(item.FullPath, CurrentRemotePath);
+                foreach (var item in snapshot)
+                {
+                    if (item.IsDirectory)
+                        await UploadDirectoryAsync(item.FullPath, CurrentRemotePath);
+                    else
+                        await UploadSingleFileAsync(item.FullPath, CurrentRemotePath);
+                }
 
-                StatusMessage = $"Uploaded '{item.Name}' to remote.";
+                StatusMessage = snapshot.Count == 1
+                    ? $"Uploaded '{snapshot[0].Name}' to remote."
+                    : $"Uploaded {snapshot.Count} item(s) to remote.";
                 await BrowseRemotePathAsync(CurrentRemotePath);
             }
             catch (Exception ex)
@@ -673,31 +710,40 @@ namespace IRIS.UI.ViewModels
             await BrowseRemotePathAsync(_remoteParentPath);
         }
 
-        private async Task DeleteRemoteItemAsync(FileItemModel? item)
+        private async Task DeleteRemoteItemsAsync(List<FileItemModel> items)
         {
-            if (item == null || _selectedPC == null) return;
+            if (items.Count == 0 || _selectedPC == null) return;
 
-            var confirm = MessageBox.Show(
-                $"Delete '{item.Name}' on {_selectedPC.Hostname}?",
-                "Delete Remote Item", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var msg = items.Count == 1
+                ? $"Delete '{items[0].Name}' on {_selectedPC.Hostname}?"
+                : $"Delete {items.Count} items on {_selectedPC.Hostname}?";
+
+            var confirm = MessageBox.Show(msg, "Delete Remote Items", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
             try
             {
                 IsBusy = true;
-                var apiPath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
-                var responsePair = await SendAgentRequestWithFallbackAsync(
-                    _selectedPC,
-                    target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, apiPath)));
-                using var response = responsePair.Response;
+                var snapshot = items.ToList();
+                var failCount = 0;
 
-                if (!response.IsSuccessStatusCode)
+                foreach (var item in snapshot)
                 {
-                    StatusMessage = $"Delete failed: {response.StatusCode}";
-                    return;
+                    try
+                    {
+                        var apiPath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
+                        var responsePair = await SendAgentRequestWithFallbackAsync(
+                            _selectedPC,
+                            target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, apiPath)));
+                        using var response = responsePair.Response;
+                        if (!response.IsSuccessStatusCode) failCount++;
+                    }
+                    catch { failCount++; }
                 }
 
-                StatusMessage = $"Deleted '{item.Name}' on remote.";
+                StatusMessage = snapshot.Count == 1
+                    ? $"Deleted '{snapshot[0].Name}' on remote."
+                    : $"Deleted {snapshot.Count - failCount}/{snapshot.Count} items on remote.";
                 await BrowseRemotePathAsync(CurrentRemotePath);
             }
             catch (Exception ex)
@@ -796,6 +842,65 @@ namespace IRIS.UI.ViewModels
 
                 await DownloadToPathAsync(item, localPath);
                 StatusMessage = $"Downloaded '{item.Name}' → '{localPath}'.";
+
+                if (!string.IsNullOrWhiteSpace(CurrentLocalPath))
+                    await BrowseLocalPathAsync(CurrentLocalPath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Download failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task DownloadRemoteItemsAsync(List<FileItemModel> items)
+        {
+            if (items.Count == 0 || _selectedPC == null) return;
+
+            // Single item: delegate to the existing handler (shows SaveFileDialog)
+            if (items.Count == 1)
+            {
+                await DownloadRemoteItemAsync(items[0]);
+                return;
+            }
+
+            // Multiple items: download all to the current local directory (or Desktop)
+            var localDir = string.IsNullOrWhiteSpace(CurrentLocalPath)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                : CurrentLocalPath;
+
+            var confirm = MessageBox.Show(
+                $"Download {items.Count} items to:\n{localDir}?",
+                "Download Multiple Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                IsBusy = true;
+                var snapshot = items.ToList();
+                var successCount = 0;
+
+                foreach (var item in snapshot)
+                {
+                    try
+                    {
+                        var localPath = Path.Combine(localDir, item.IsDirectory ? $"{item.Name}.zip" : item.Name);
+
+                        if (File.Exists(localPath))
+                        {
+                            var result = MessageBox.Show(
+                                $"'{Path.GetFileName(localPath)}' already exists. Overwrite?",
+                                "Overwrite", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (result != MessageBoxResult.Yes) continue;
+                        }
+
+                        await DownloadToPathAsync(item, localPath);
+                        successCount++;
+                    }
+                    catch { /* continue with remaining files */ }
+                }
+
+                StatusMessage = $"Downloaded {successCount}/{snapshot.Count} item(s) to '{localDir}'.";
 
                 if (!string.IsNullOrWhiteSpace(CurrentLocalPath))
                     await BrowseLocalPathAsync(CurrentLocalPath);

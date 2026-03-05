@@ -13,6 +13,7 @@
         <!-- DataGrid row hover / selection highlight styles -->
         <Style x:Key="FileGridRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="MinHeight" Value="30"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#18808080"/>
@@ -145,7 +146,8 @@
                               PreviewMouseLeftButtonDown="LocalFilesGrid_PreviewMouseLeftButtonDown"
                               PreviewMouseMove="LocalFilesGrid_PreviewMouseMove"
                               PreviewMouseRightButtonDown="LocalFilesGrid_PreviewMouseRightButtonDown"
-                              SelectionMode="Single" GridLinesVisibility="None"
+                              SelectionChanged="LocalFilesGrid_SelectionChanged"
+                              SelectionMode="Extended" GridLinesVisibility="None"
                               HeadersVisibility="Column" BorderThickness="0"
                               RowHeaderWidth="0"
                               RowStyle="{StaticResource FileGridRowStyle}"
@@ -153,15 +155,23 @@
                         <DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Upload to Remote"
-                                          Command="{Binding UploadLocalFileCommand}"
-                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                                          Command="{Binding UploadLocalFileCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowUpload24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Open File Location"
+                                          Command="{Binding OpenFileLocationCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="Rename"
                                           Command="{Binding RenameLocalFileCommand}"
-                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                                          CommandParameter="{Binding SelectedLocalFile}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Delete"
-                                          Command="{Binding DeleteLocalFileCommand}"
-                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                                          Command="{Binding DeleteLocalFileCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Delete24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                         <DataGrid.Columns>
@@ -224,7 +234,8 @@
                               AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                               MouseDoubleClick="RemoteFilesGrid_MouseDoubleClick"
                               PreviewMouseRightButtonDown="RemoteFilesGrid_PreviewMouseRightButtonDown"
-                              SelectionMode="Single" GridLinesVisibility="None"
+                              SelectionChanged="RemoteFilesGrid_SelectionChanged"
+                              SelectionMode="Extended" GridLinesVisibility="None"
                               HeadersVisibility="Column" BorderThickness="0"
                               RowHeaderWidth="0"
                               RowStyle="{StaticResource FileGridRowStyle}"
@@ -232,15 +243,19 @@
                         <DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Download to Local"
-                                          Command="{Binding DownloadRemoteFileCommand}"
-                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                                          Command="{Binding DownloadRemoteFileCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowDownload24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="Rename"
                                           Command="{Binding RenameRemoteFileCommand}"
-                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                                          CommandParameter="{Binding SelectedRemoteFile}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Delete"
-                                          Command="{Binding DeleteRemoteFileCommand}"
-                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                                          Command="{Binding DeleteRemoteFileCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Delete24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                         <DataGrid.Columns>

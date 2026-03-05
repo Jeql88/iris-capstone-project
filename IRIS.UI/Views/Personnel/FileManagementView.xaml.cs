@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -10,6 +11,7 @@ namespace IRIS.UI.Views.Personnel
     public partial class FileManagementView : UserControl
     {
         private Point _dragStartPoint;
+        private List<FileItemModel> _dragSelectionSnapshot = [];
 
         public FileManagementView(FileManagementViewModel viewModel)
         {
@@ -39,6 +41,11 @@ namespace IRIS.UI.Views.Personnel
         private void LocalFilesGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _dragStartPoint = e.GetPosition(null);
+            // Snapshot the full selection immediately (tunnel phase) — before the DataGrid
+            // has a chance to collapse a multi-selection down to a single row.
+            _dragSelectionSnapshot = DataContext is FileManagementViewModel vm
+                ? vm.SelectedLocalFiles.ToList()
+                : [];
         }
 
         private void LocalFilesGrid_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -49,12 +56,20 @@ namespace IRIS.UI.Views.Personnel
             if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                 Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
             {
-                if (DataContext is FileManagementViewModel vm &&
-                    vm.SelectedLocalFile != null &&
-                    !vm.SelectedLocalFile.IsDrive)
+                // Use the snapshot taken at MouseDown so the full multi-selection is
+                // preserved even if the DataGrid changed SelectedItems after the click.
+                var paths = _dragSelectionSnapshot
+                    .Where(f => !f.IsDrive)
+                    .Select(f => f.FullPath)
+                    .ToArray();
+
+                if (paths.Length > 0)
                 {
-                    var data = new DataObject(DataFormats.FileDrop,
-                        new[] { vm.SelectedLocalFile.FullPath });
+                    // Clear both guards so subsequent mouse-moves don't restart a drag.
+                    _dragStartPoint = default;
+                    _dragSelectionSnapshot = [];
+
+                    var data = new DataObject(DataFormats.FileDrop, paths);
                     DragDrop.DoDragDrop(LocalFilesGrid, data, DragDropEffects.Copy);
                 }
             }
@@ -101,9 +116,29 @@ namespace IRIS.UI.Views.Personnel
 
             if (dep is DataGridRow row)
             {
-                row.IsSelected = true;
+                // If the right-clicked row is already part of a multi-selection, keep
+                // the whole selection so that Delete/Upload/Download act on all of them.
+                // Otherwise, collapse to just this row (standard right-click behavior).
+                if (!row.IsSelected)
+                {
+                    grid.SelectedItems.Clear();
+                    row.IsSelected = true;
+                }
                 grid.CurrentItem = row.DataContext;
             }
+        }
+
+        // ═══ Selection tracking (feeds SelectedLocalFiles / SelectedRemoteFiles in VM) ═══
+        private void LocalFilesGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is FileManagementViewModel vm)
+                vm.SelectedLocalFiles = LocalFilesGrid.SelectedItems.Cast<FileItemModel>().ToList();
+        }
+
+        private void RemoteFilesGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is FileManagementViewModel vm)
+                vm.SelectedRemoteFiles = RemoteFilesGrid.SelectedItems.Cast<FileItemModel>().ToList();
         }
 
         // ═══ Path box: Enter key ═══
