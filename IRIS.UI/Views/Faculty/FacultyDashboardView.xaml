@@ -50,10 +50,10 @@
                         </StackPanel>
                     </ui:Button>
                     
-                    <ui:Button x:Name="SoftwareManagementBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="SoftwareManagementBtn_Click">
+                    <ui:Button x:Name="FileManagementBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="FileManagementBtn_Click">
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Apps24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
-                            <TextBlock Text="Software Management" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                            <ui:SymbolIcon Symbol="FolderOpen24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="File Management" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
                 </StackPanel>

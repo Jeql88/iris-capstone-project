@@ -28,7 +28,7 @@ namespace IRIS.UI.Views.Faculty
 
         private void SetActiveButton(Button activeButton)
         {
-            foreach (var btn in new[] { MonitorBtn, SoftwareManagementBtn })
+            foreach (var btn in new[] { MonitorBtn, FileManagementBtn })
             {
                 btn.Background = Brushes.Transparent;
                 btn.Foreground = DefaultForeground;
@@ -45,12 +45,12 @@ namespace IRIS.UI.Views.Faculty
             _navigationService?.NavigateTo("Monitor");
         }
 
-        private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)
+        private void FileManagementBtn_Click(object sender, RoutedEventArgs e)
         {
             UserHeader.SetVisibility(true);
             UserHeader.CloseDropdown();
-            SetActiveButton(SoftwareManagementBtn);
-            _navigationService?.NavigateTo("SoftwareManagement");
+            SetActiveButton(FileManagementBtn);
+            _navigationService?.NavigateTo("FileManagement");
         }
 
         private async void LogoutBtn_Click(object sender, RoutedEventArgs e)

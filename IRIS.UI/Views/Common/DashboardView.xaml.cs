@@ -52,7 +52,7 @@ namespace IRIS.UI.Views.Common
         {
             var allButtons = new[]
             {
-                DashboardBtn, MonitorBtn, SoftwareManagementBtn,
+                DashboardBtn, MonitorBtn, FileManagementBtn,
                 PolicyBtn, LabsBtn, AccessLogsBtn, UserManagementBtn,
                 UsageMetricsBtn, AlertsBtn
             };
@@ -71,7 +71,7 @@ namespace IRIS.UI.Views.Common
         {
             var allButtons = new[]
             {
-                DashboardBtn, MonitorBtn, SoftwareManagementBtn,
+                DashboardBtn, MonitorBtn, FileManagementBtn,
                 PolicyBtn, LabsBtn, AccessLogsBtn, UserManagementBtn,
                 UsageMetricsBtn, AlertsBtn
             };
@@ -140,13 +140,13 @@ namespace IRIS.UI.Views.Common
             _navigationService?.NavigateTo("Labs");
         }
 
-        private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)
+        private void FileManagementBtn_Click(object sender, RoutedEventArgs e)
         {
             UserHeader.SetVisibility(true);
             UserHeader.CloseDropdown();
-            SetActiveButton(SoftwareManagementBtn);
+            SetActiveButton(FileManagementBtn);
             CollapseRightPanel();
-            _navigationService?.NavigateTo("SoftwareManagement");
+            _navigationService?.NavigateTo("FileManagement");
         }
 
         private void UserManagementBtn_Click(object sender, RoutedEventArgs e)

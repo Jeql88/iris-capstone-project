@@ -4,9 +4,9 @@ using IRIS.UI.ViewModels;
 
 namespace IRIS.UI.Views.Personnel
 {
-    public partial class SoftwareManagementView : UserControl
+    public partial class FileManagementView : UserControl
     {
-        public SoftwareManagementView(DeploymentViewModel viewModel)
+        public FileManagementView(FileManagementViewModel viewModel)
         {
             InitializeComponent();
             DataContext = viewModel;
@@ -17,7 +17,7 @@ namespace IRIS.UI.Views.Personnel
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (DataContext is DeploymentViewModel vm)
+                if (DataContext is FileManagementViewModel vm)
                 {
                     await vm.UploadDroppedFilesAsync(files);
                 }
@@ -26,7 +26,7 @@ namespace IRIS.UI.Views.Personnel
 
         private async void RemoteFilesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (DataContext is not DeploymentViewModel vm)
+            if (DataContext is not FileManagementViewModel vm)
             {
                 return;
             }

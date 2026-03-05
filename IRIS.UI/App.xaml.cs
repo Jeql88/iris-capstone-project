@@ -123,7 +123,7 @@ namespace IRIS.UI
             services.AddTransient<DashboardViewModel>();
             services.AddTransient<MonitorViewModel>();
             services.AddTransient<ViewScreenViewModel>();
-            services.AddTransient<DeploymentViewModel>();
+            services.AddTransient<FileManagementViewModel>();
             services.AddTransient<PolicyEnforcementViewModel>();
             services.AddTransient<LabsViewModel>();
             services.AddTransient<UsageMetricsViewModel>();
@@ -150,7 +150,7 @@ namespace IRIS.UI
             
             // Views - Personnel
             services.AddTransient(sp => new MonitorView(sp.GetRequiredService<MonitorViewModel>()));
-            services.AddTransient(sp => new SoftwareManagementView(sp.GetRequiredService<DeploymentViewModel>()));
+            services.AddTransient(sp => new FileManagementView(sp.GetRequiredService<FileManagementViewModel>()));
             services.AddTransient<PersonnelDashboardView>();
             services.AddTransient<PersonnelMainWindow>();
             

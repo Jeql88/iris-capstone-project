@@ -44,7 +44,7 @@ namespace IRIS.UI.Services
 
             // Personnel Views
             _viewRegistry["Monitor"] = typeof(Views.Personnel.MonitorView);
-            _viewRegistry["SoftwareManagement"] = typeof(Views.Personnel.SoftwareManagementView);
+            _viewRegistry["FileManagement"] = typeof(Views.Personnel.FileManagementView);
 
             // Faculty Views
             _viewRegistry["ViewScreen"] = typeof(Views.Faculty.ViewScreenPage);
