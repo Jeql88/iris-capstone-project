@@ -3,116 +3,212 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
 
-    <Grid Margin="20">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="File Management" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}"/>
-            <TextBlock Text="Browse, upload, download, and manage remote files on lab PCs through agents."
-                       Margin="0,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        <!-- ═══ HEADER ═══ -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="File Management" FontSize="28" FontWeight="Bold"
+                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
+            <TextBlock Text="Dual-pane file explorer — Local (left) and Remote (right). Drag files from local to remote to upload."
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
 
-        <Grid Grid.Row="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <!-- ═══ PC SELECTOR ═══ -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Room:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Width="160" Margin="0,0,12,0"
+                      ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding RoomNumber}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="PC:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Width="240" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedPC}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Hostname}"/>
+                            <TextBlock Text=" (" Foreground="Gray"/>
+                            <TextBlock Text="{Binding IPAddress}" Foreground="Gray"/>
+                            <TextBlock Text=")" Foreground="Gray"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary"/>
+        </StackPanel>
 
-            <Grid Grid.Row="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+        <!-- ═══ DUAL PANE ═══ -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <ComboBox Width="200" Margin="0,0,10,0" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding RoomNumber}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <ComboBox Width="260" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedFileManagementPC}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Hostname}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <ui:TextBox Width="360" Margin="10,0,0,0" Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Remote path (relative to agent root)"/>
-                    <ui:Button Margin="10,0,0,0" Content="Load" Command="{Binding LoadRemoteFilesCommand}" Appearance="Secondary"/>
-                    <ui:Button Margin="10,0,0,0" Content="Up" Command="{Binding NavigateUpRemotePathCommand}" Appearance="Secondary" IsEnabled="{Binding CanNavigateUp}"/>
-                </StackPanel>
+            <!-- ─── LEFT PANE: Local Files ─── -->
+            <Border Grid.Column="0" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
-                    <ui:TextBox Width="360" Text="{Binding RemoteSearchText, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Search current folder..."/>
-                    <ui:Button Margin="10,0,0,0" Content="Search" Command="{Binding SearchRemoteFilesCommand}" Appearance="Secondary"/>
-                    <ui:Button Margin="10,0,0,0" Content="Clear Search" Appearance="Secondary" Command="{Binding ClearRemoteSearchCommand}"/>
-                </StackPanel>
-            </Grid>
+                    <TextBlock Grid.Row="0" Text="📁 Local Files (This PC)" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
 
-            <Grid Grid.Row="1" Margin="0,12,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                    <!-- Navigation bar -->
+                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" CornerRadius="8" BorderThickness="2" BorderBrush="{DynamicResource IRISPrimaryBrush}"
-                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                        AllowDrop="True" Drop="FileDropZone_Drop" DragOver="FileDropZone_DragOver" Padding="12">
-                    <StackPanel>
-                        <TextBlock Text="Drag and drop local files here for upload" FontWeight="SemiBold"/>
-                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding PendingUploadFiles}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <DockPanel Margin="0,2,0,2">
-                                        <TextBlock DockPanel.Dock="Left" Text="{Binding}" TextTrimming="CharacterEllipsis" Width="460"/>
-                                        <ui:Button DockPanel.Dock="Right" Content="Remove" Appearance="Secondary"
-                                                   Command="{Binding DataContext.RemovePendingUploadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                   CommandParameter="{Binding}"/>
-                                    </DockPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
+                        <ui:Button Grid.Column="0" Margin="0,0,4,0" ToolTip="Drives"
+                                   Command="{Binding GoToLocalDrivesCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="Home24"/>
+                        </ui:Button>
+                        <ui:Button Grid.Column="1" Margin="0,0,4,0" ToolTip="Up"
+                                   Command="{Binding NavigateUpLocalCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="ArrowUp24"/>
+                        </ui:Button>
+                        <ui:TextBox Grid.Column="2"
+                                    Text="{Binding CurrentLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Path..."
+                                    KeyDown="LocalPathBox_KeyDown"/>
+                        <ui:Button Grid.Column="3" Margin="4,0,0,0" Content="Go"
+                                   Command="{Binding NavigateToLocalPathCommand}" Appearance="Secondary" Padding="10,4"/>
+                    </Grid>
 
-                <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                    <ui:Button Content="Browse Local Files" Command="{Binding BrowseUploadFilesCommand}" Appearance="Secondary" Margin="0,0,0,8"/>
-                    <ui:Button Content="Upload to Selected PCs" Command="{Binding UploadFilesCommand}" Appearance="Primary"/>
-                </StackPanel>
-            </Grid>
+                    <!-- File list -->
+                    <DataGrid x:Name="LocalFilesGrid" Grid.Row="2"
+                              ItemsSource="{Binding LocalFiles}"
+                              SelectedItem="{Binding SelectedLocalFile}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                              MouseDoubleClick="LocalFilesGrid_MouseDoubleClick"
+                              PreviewMouseLeftButtonDown="LocalFilesGrid_PreviewMouseLeftButtonDown"
+                              PreviewMouseMove="LocalFilesGrid_PreviewMouseMove"
+                              PreviewMouseRightButtonDown="LocalFilesGrid_PreviewMouseRightButtonDown"
+                              SelectionMode="Single" GridLinesVisibility="None"
+                              HeadersVisibility="Column" BorderThickness="0"
+                              RowHeaderWidth="0">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Upload to Remote"
+                                          Command="{Binding UploadLocalFileCommand}"
+                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                                <Separator/>
+                                <MenuItem Header="Rename"
+                                          Command="{Binding RenameLocalFileCommand}"
+                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                                <MenuItem Header="Delete"
+                                          Command="{Binding DeleteLocalFileCommand}"
+                                          CommandParameter="{Binding SelectedLocalFile}"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="80"/>
+                            <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" Width="130"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
 
-            <DataGrid x:Name="RemoteFilesGrid" Grid.Row="2" ItemsSource="{Binding RemoteFiles}" SelectedItem="{Binding SelectedRemoteFile}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" MouseDoubleClick="RemoteFilesGrid_MouseDoubleClick">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                    <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="90"/>
-                    <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="100"/>
-                    <DataGridTextColumn Header="Last Modified (UTC)" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
-                    <DataGridTemplateColumn Header="Actions" Width="220">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:Button Content="Download" Appearance="Secondary" Margin="0,0,8,0"
-                                               Command="{Binding DataContext.DownloadRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                               CommandParameter="{Binding}"/>
-                                    <ui:Button Content="Delete" Appearance="Danger"
-                                               Command="{Binding DataContext.DeleteRemoteFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                               CommandParameter="{Binding}"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+            <!-- ─── RIGHT PANE: Remote Files ─── -->
+            <Border Grid.Column="2" CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8"
+                    AllowDrop="True" Drop="RemotePane_Drop" DragOver="RemotePane_DragOver">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="🌐 Remote Files" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
+
+                    <!-- Navigation bar -->
+                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Button Grid.Column="0" Margin="0,0,4,0" ToolTip="Drives"
+                                   Command="{Binding GoToRemoteDrivesCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="Home24"/>
+                        </ui:Button>
+                        <ui:Button Grid.Column="1" Margin="0,0,4,0" ToolTip="Up"
+                                   Command="{Binding NavigateUpRemoteCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="ArrowUp24"/>
+                        </ui:Button>
+                        <ui:TextBox Grid.Column="2"
+                                    Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Remote path..."
+                                    KeyDown="RemotePathBox_KeyDown"/>
+                        <ui:Button Grid.Column="3" Margin="4,0,0,0" Content="Go"
+                                   Command="{Binding NavigateToRemotePathCommand}" Appearance="Secondary" Padding="10,4"/>
+                    </Grid>
+
+                    <!-- File list -->
+                    <DataGrid x:Name="RemoteFilesGrid" Grid.Row="2"
+                              ItemsSource="{Binding RemoteFiles}"
+                              SelectedItem="{Binding SelectedRemoteFile}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                              MouseDoubleClick="RemoteFilesGrid_MouseDoubleClick"
+                              PreviewMouseRightButtonDown="RemoteFilesGrid_PreviewMouseRightButtonDown"
+                              SelectionMode="Single" GridLinesVisibility="None"
+                              HeadersVisibility="Column" BorderThickness="0"
+                              RowHeaderWidth="0">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Download to Local"
+                                          Command="{Binding DownloadRemoteFileCommand}"
+                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                                <Separator/>
+                                <MenuItem Header="Rename"
+                                          Command="{Binding RenameRemoteFileCommand}"
+                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                                <MenuItem Header="Delete"
+                                          Command="{Binding DeleteRemoteFileCommand}"
+                                          CommandParameter="{Binding SelectedRemoteFile}"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="80"/>
+                            <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" Width="130"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
         </Grid>
 
-        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,10,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        <!-- ═══ STATUS BAR ═══ -->
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Margin="0,8,0,0"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
     </Grid>
 </UserControl>

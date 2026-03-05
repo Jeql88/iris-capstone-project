@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -12,7 +13,6 @@ using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
 {
@@ -21,18 +21,28 @@ namespace IRIS.UI.ViewModels
         private readonly IDeploymentDataService _deploymentDataService;
         private readonly IRoomService _roomService;
         private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(60) };
-
-        private string _currentRemotePath = ".";
-        private string _remoteSearchText = string.Empty;
-        private string? _remoteParentPath;
-        private string _statusMessage = "Ready";
-        private RoomDto? _selectedRoom;
-        private PCModel? _selectedFileManagementPC;
-        private RemoteFileItemModel? _selectedRemoteFile;
+        private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
 
         private readonly int _agentFileApiPort;
         private readonly string _agentApiToken;
+
+        // PC selection
+        private RoomDto? _selectedRoom;
+        private PCModel? _selectedPC;
+
+        // Local browser state
+        private string _currentLocalPath = string.Empty;
+        private FileItemModel? _selectedLocalFile;
+        private bool _isAtLocalDriveRoot = true;
+
+        // Remote browser state
+        private string _currentRemotePath = string.Empty;
+        private FileItemModel? _selectedRemoteFile;
+        private bool _isAtRemoteDriveRoot = true;
+        private string? _remoteParentPath;
+
+        private string _statusMessage = "Ready";
+        private bool _isBusy;
 
         public FileManagementViewModel(
             IDeploymentDataService deploymentDataService,
@@ -46,107 +56,147 @@ namespace IRIS.UI.ViewModels
             _agentFileApiPort = int.TryParse(_configuration["AgentSettings:FileApiPort"], out var port) ? port : 5065;
             _agentApiToken = _configuration["AgentSettings:FileApiToken"] ?? string.Empty;
 
+            // PC commands
             RefreshPCsCommand = new RelayCommand(async () => await LoadPCsAsync(), () => true);
 
-            BrowseUploadFilesCommand = new RelayCommand(BrowseUploadFiles, () => true);
-            UploadFilesCommand = new RelayCommand(async () => await UploadFilesAsync(), CanUploadFiles);
-            LoadRemoteFilesCommand = new RelayCommand(async () => await LoadRemoteFilesAsync(), () => SelectedFileManagementPC != null);
-            NavigateUpRemotePathCommand = new RelayCommand(async () => await NavigateUpRemotePathAsync(), () => SelectedFileManagementPC != null && CanNavigateUp);
-            SearchRemoteFilesCommand = new RelayCommand(async () => await LoadRemoteFilesAsync(), () => SelectedFileManagementPC != null);
-            ClearRemoteSearchCommand = new RelayCommand(async () => await ClearRemoteSearchAsync(), () => SelectedFileManagementPC != null);
-            OpenRemoteFolderCommand = new RelayCommand<RemoteFileItemModel>(item => _ = OpenRemoteItemAsync(item));
-            DownloadRemoteFileCommand = new RelayCommand<RemoteFileItemModel>(item => _ = DownloadRemoteItemAsync(item));
-            DeleteRemoteFileCommand = new RelayCommand<RemoteFileItemModel>(item => _ = DeleteRemoteFileAsync(item));
-            RemovePendingUploadCommand = new RelayCommand<string>(RemovePendingUploadFile);
+            // Local navigation commands
+            NavigateUpLocalCommand = new RelayCommand(async () => await NavigateUpLocalAsync(), () => !_isAtLocalDriveRoot);
+            NavigateToLocalPathCommand = new RelayCommand(async () => await BrowseLocalPathAsync(CurrentLocalPath), () => true);
+            GoToLocalDrivesCommand = new RelayCommand(async () => { CurrentLocalPath = string.Empty; await LoadLocalDrivesAsync(); }, () => true);
+
+            // Remote navigation commands
+            NavigateUpRemoteCommand = new RelayCommand(async () => await NavigateUpRemoteAsync(), () => !_isAtRemoteDriveRoot && _selectedPC != null);
+            NavigateToRemotePathCommand = new RelayCommand(async () => await BrowseRemotePathAsync(CurrentRemotePath), () => _selectedPC != null);
+            GoToRemoteDrivesCommand = new RelayCommand(async () => { CurrentRemotePath = string.Empty; await LoadRemoteDrivesAsync(); }, () => _selectedPC != null);
+
+            // Context-menu / action commands
+            DeleteLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = DeleteLocalItemAsync(item));
+            DeleteRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = DeleteRemoteItemAsync(item));
+            RenameLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = RenameLocalItemAsync(item));
+            RenameRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = RenameRemoteItemAsync(item));
+            DownloadRemoteFileCommand = new RelayCommand<FileItemModel>(item => _ = DownloadRemoteItemAsync(item));
+            UploadLocalFileCommand = new RelayCommand<FileItemModel>(item => _ = UploadLocalItemAsync(item));
 
             _ = InitializeAsync();
         }
 
-        public ObservableCollection<PCModel> PCs { get; } = new();
+        // ═══════════════════════════════════════
+        // Collections
+        // ═══════════════════════════════════════
+
         public ObservableCollection<RoomDto> Rooms { get; } = new();
-        public ObservableCollection<RemoteFileItemModel> RemoteFiles { get; } = new();
-        public ObservableCollection<string> PendingUploadFiles { get; } = new();
+        public ObservableCollection<PCModel> PCs { get; } = new();
+        public ObservableCollection<FileItemModel> LocalFiles { get; } = new();
+        public ObservableCollection<FileItemModel> RemoteFiles { get; } = new();
+
+        // ═══════════════════════════════════════
+        // Properties
+        // ═══════════════════════════════════════
 
         public RoomDto? SelectedRoom
         {
             get => _selectedRoom;
+            set { _selectedRoom = value; OnPropertyChanged(); _ = LoadPCsAsync(); }
+        }
+
+        public PCModel? SelectedPC
+        {
+            get => _selectedPC;
             set
             {
-                _selectedRoom = value;
+                _selectedPC = value;
                 OnPropertyChanged();
-                _ = LoadPCsAsync();
+                RaiseAllRemoteCanExecuteChanged();
+                if (_selectedPC != null)
+                    _ = LoadRemoteDrivesAsync();
+                else
+                {
+                    RemoteFiles.Clear();
+                    CurrentRemotePath = string.Empty;
+                    IsAtRemoteDriveRoot = true;
+                }
             }
         }
 
-        public PCModel? SelectedFileManagementPC
+        public string CurrentLocalPath
         {
-            get => _selectedFileManagementPC;
-            set
-            {
-                _selectedFileManagementPC = value;
-                OnPropertyChanged();
-                (LoadRemoteFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SearchRemoteFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (ClearRemoteSearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                _ = LoadRemoteFilesAsync();
-            }
+            get => _currentLocalPath;
+            set { _currentLocalPath = value; OnPropertyChanged(); }
         }
 
-        public RemoteFileItemModel? SelectedRemoteFile
+        public FileItemModel? SelectedLocalFile
         {
-            get => _selectedRemoteFile;
-            set
-            {
-                _selectedRemoteFile = value;
-                OnPropertyChanged();
-            }
+            get => _selectedLocalFile;
+            set { _selectedLocalFile = value; OnPropertyChanged(); }
         }
 
         public string CurrentRemotePath
         {
             get => _currentRemotePath;
-            set
-            {
-                _currentRemotePath = value;
-                OnPropertyChanged();
-            }
+            set { _currentRemotePath = value; OnPropertyChanged(); }
         }
 
-        public string RemoteSearchText
+        public FileItemModel? SelectedRemoteFile
         {
-            get => _remoteSearchText;
-            set
+            get => _selectedRemoteFile;
+            set { _selectedRemoteFile = value; OnPropertyChanged(); }
+        }
+
+        public bool IsAtLocalDriveRoot
+        {
+            get => _isAtLocalDriveRoot;
+            private set
             {
-                _remoteSearchText = value;
+                _isAtLocalDriveRoot = value;
                 OnPropertyChanged();
+                (NavigateUpLocalCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
-        public bool CanNavigateUp => !string.IsNullOrWhiteSpace(_remoteParentPath);
+        public bool IsAtRemoteDriveRoot
+        {
+            get => _isAtRemoteDriveRoot;
+            private set
+            {
+                _isAtRemoteDriveRoot = value;
+                OnPropertyChanged();
+                (NavigateUpRemoteCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
 
         public string StatusMessage
         {
             get => _statusMessage;
-            set
-            {
-                _statusMessage = value;
-                OnPropertyChanged();
-            }
+            set { _statusMessage = value; OnPropertyChanged(); }
         }
 
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set { _isBusy = value; OnPropertyChanged(); }
+        }
+
+        // ═══════════════════════════════════════
+        // Commands
+        // ═══════════════════════════════════════
+
         public ICommand RefreshPCsCommand { get; }
-        public ICommand BrowseUploadFilesCommand { get; }
-        public ICommand UploadFilesCommand { get; }
-        public ICommand LoadRemoteFilesCommand { get; }
-        public ICommand NavigateUpRemotePathCommand { get; }
-        public ICommand SearchRemoteFilesCommand { get; }
-        public ICommand ClearRemoteSearchCommand { get; }
-        public ICommand OpenRemoteFolderCommand { get; }
-        public ICommand DownloadRemoteFileCommand { get; }
+        public ICommand NavigateUpLocalCommand { get; }
+        public ICommand NavigateToLocalPathCommand { get; }
+        public ICommand GoToLocalDrivesCommand { get; }
+        public ICommand NavigateUpRemoteCommand { get; }
+        public ICommand NavigateToRemotePathCommand { get; }
+        public ICommand GoToRemoteDrivesCommand { get; }
+        public ICommand DeleteLocalFileCommand { get; }
         public ICommand DeleteRemoteFileCommand { get; }
-        public ICommand RemovePendingUploadCommand { get; }
+        public ICommand RenameLocalFileCommand { get; }
+        public ICommand RenameRemoteFileCommand { get; }
+        public ICommand DownloadRemoteFileCommand { get; }
+        public ICommand UploadLocalFileCommand { get; }
+
+        // ═══════════════════════════════════════
+        // Initialization
+        // ═══════════════════════════════════════
 
         private async Task InitializeAsync()
         {
@@ -156,21 +206,24 @@ namespace IRIS.UI.ViewModels
                 Rooms.Clear();
                 Rooms.Add(new RoomDto(-1, "All Rooms", string.Empty, 0, true, DateTime.UtcNow));
                 foreach (var room in rooms.OrderBy(r => r.RoomNumber))
-                {
                     Rooms.Add(room);
-                }
 
                 SelectedRoom = Rooms.FirstOrDefault();
-
                 await LoadPCsAsync();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Initialization failed: {ex.Message}";
+                StatusMessage = $"Init failed: {ex.Message}";
             }
+
+            await LoadLocalDrivesAsync();
         }
 
-        public async Task LoadPCsAsync()
+        // ═══════════════════════════════════════
+        // PC Loading
+        // ═══════════════════════════════════════
+
+        private async Task LoadPCsAsync()
         {
             try
             {
@@ -180,24 +233,20 @@ namespace IRIS.UI.ViewModels
                 PCs.Clear();
                 foreach (var pc in pcs)
                 {
-                    var item = new PCModel
+                    PCs.Add(new PCModel
                     {
                         Id = pc.Id,
                         Hostname = pc.Hostname ?? "Unknown",
                         IPAddress = pc.IpAddress ?? "N/A",
                         Status = pc.Status,
                         RoomNumber = pc.RoomNumber
-                    };
-                    PCs.Add(item);
+                    });
                 }
 
-                if (SelectedFileManagementPC == null)
-                {
-                    SelectedFileManagementPC = PCs.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A");
-                }
+                if (_selectedPC == null)
+                    SelectedPC = PCs.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A");
 
-                StatusMessage = $"Loaded {PCs.Count} registered PCs.";
-                (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                StatusMessage = $"Loaded {PCs.Count} PCs.";
             }
             catch (Exception ex)
             {
@@ -205,177 +254,331 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        public void AddPendingUploadFiles(IEnumerable<string> files)
+        // ═══════════════════════════════════════
+        // LOCAL FILE BROWSER
+        // ═══════════════════════════════════════
+
+        public Task LoadLocalDrivesAsync()
         {
-            foreach (var file in files)
-            {
-                if (!PendingUploadFiles.Contains(file, StringComparer.OrdinalIgnoreCase) && File.Exists(file))
-                {
-                    PendingUploadFiles.Add(file);
-                }
-            }
+            LocalFiles.Clear();
+            CurrentLocalPath = string.Empty;
+            IsAtLocalDriveRoot = true;
 
-            (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        }
-
-        public async Task UploadDroppedFilesAsync(IEnumerable<string> files)
-        {
-            AddPendingUploadFiles(files);
-
-            if (CanUploadFiles())
-            {
-                await UploadFilesAsync();
-                return;
-            }
-
-            if (!PCs.Any(p => p.IsSelected))
-            {
-                StatusMessage = "Select at least one PC before dropping files to upload.";
-            }
-        }
-
-        public async Task OpenRemoteItemAsync(RemoteFileItemModel? item)
-        {
-            if (item == null || !item.IsDirectory)
-            {
-                return;
-            }
-
-            CurrentRemotePath = item.FullPath;
-            await LoadRemoteFilesAsync();
-        }
-
-        private async Task NavigateUpRemotePathAsync()
-        {
-            if (string.IsNullOrWhiteSpace(_remoteParentPath))
-            {
-                return;
-            }
-
-            CurrentRemotePath = _remoteParentPath;
-            await LoadRemoteFilesAsync();
-        }
-
-        private async Task ClearRemoteSearchAsync()
-        {
-            RemoteSearchText = string.Empty;
-            await LoadRemoteFilesAsync();
-        }
-
-        private void BrowseUploadFiles()
-        {
-            var dialog = new OpenFileDialog
-            {
-                Multiselect = true,
-                Filter = "All files (*.*)|*.*"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                AddPendingUploadFiles(dialog.FileNames);
-            }
-        }
-
-        private bool CanUploadFiles()
-        {
-            if (PendingUploadFiles.Count == 0)
-            {
-                return false;
-            }
-
-            return SelectedFileManagementPC != null &&
-                   !string.IsNullOrWhiteSpace(SelectedFileManagementPC.IPAddress) &&
-                   SelectedFileManagementPC.IPAddress != "N/A";
-        }
-
-        private async Task UploadFilesAsync()
-        {
-            var selectedPcs = new List<PCModel>();
-            if (SelectedFileManagementPC != null)
-            {
-                selectedPcs.Add(SelectedFileManagementPC);
-            }
-
-            if (!selectedPcs.Any() || PendingUploadFiles.Count == 0)
-            {
-                return;
-            }
-
-            StatusMessage = "Uploading files...";
-
-            foreach (var pc in selectedPcs)
-            {
-                foreach (var localPath in PendingUploadFiles.ToList())
-                {
-                    await UploadFileToPcAsync(pc, localPath);
-                }
-            }
-
-            StatusMessage = "File upload completed.";
-            PendingUploadFiles.Clear();
-            (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-
-            await LoadRemoteFilesAsync();
-        }
-
-        private async Task UploadFileToPcAsync(PCModel pc, string localPath)
-        {
-            var fileName = Path.GetFileName(localPath);
-            var relativePath = $"/files/upload?path={Uri.EscapeDataString(CurrentRemotePath)}&fileName={Uri.EscapeDataString(fileName)}";
-            var (response, target) = await SendAgentRequestWithFallbackAsync(
-                pc,
-                target =>
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, relativePath))
-                    {
-                        Content = new StreamContent(File.OpenRead(localPath))
-                    };
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-                    return request;
-                });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException($"Upload failed for {pc.Hostname} via {target} ({response.StatusCode})");
-            }
-        }
-
-        private async Task LoadRemoteFilesAsync()
-        {
             try
             {
-                RemoteFiles.Clear();
-
-                if (SelectedFileManagementPC == null || string.IsNullOrWhiteSpace(SelectedFileManagementPC.IPAddress) || SelectedFileManagementPC.IPAddress == "N/A")
+                foreach (var drive in DriveInfo.GetDrives())
                 {
-                    _remoteParentPath = null;
-                    OnPropertyChanged(nameof(CanNavigateUp));
-                    (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    try
+                    {
+                        if (!drive.IsReady) continue;
+                        LocalFiles.Add(new FileItemModel
+                        {
+                            Name = $"{drive.Name.TrimEnd('\\')} ({drive.VolumeLabel})",
+                            FullPath = drive.Name,
+                            IsDirectory = true,
+                            IsDrive = true,
+                            Length = drive.TotalSize,
+                        });
+                    }
+                    catch { /* skip inaccessible drives */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Could not enumerate drives: {ex.Message}";
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public async Task BrowseLocalPathAsync(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                await LoadLocalDrivesAsync();
+                return;
+            }
+
+            try
+            {
+                var fullPath = Path.GetFullPath(path);
+                if (!Directory.Exists(fullPath))
+                {
+                    StatusMessage = $"Local path not found: {path}";
                     return;
                 }
 
-                var relativePath = $"/files/browse?path={Uri.EscapeDataString(CurrentRemotePath)}&search={Uri.EscapeDataString(RemoteSearchText ?? string.Empty)}";
+                var items = await Task.Run(() =>
+                {
+                    var list = new List<FileItemModel>();
+                    var dirInfo = new DirectoryInfo(fullPath);
+
+                    foreach (var dir in dirInfo.EnumerateDirectories())
+                    {
+                        try
+                        {
+                            list.Add(new FileItemModel
+                            {
+                                Name = dir.Name,
+                                FullPath = dir.FullName,
+                                IsDirectory = true,
+                                LastWriteTimeUtc = dir.LastWriteTimeUtc
+                            });
+                        }
+                        catch { /* skip inaccessible */ }
+                    }
+
+                    foreach (var file in dirInfo.EnumerateFiles())
+                    {
+                        try
+                        {
+                            list.Add(new FileItemModel
+                            {
+                                Name = file.Name,
+                                FullPath = file.FullName,
+                                IsDirectory = false,
+                                Length = file.Length,
+                                LastWriteTimeUtc = file.LastWriteTimeUtc
+                            });
+                        }
+                        catch { /* skip inaccessible */ }
+                    }
+
+                    return list;
+                });
+
+                LocalFiles.Clear();
+                foreach (var item in items.OrderByDescending(i => i.IsDirectory).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase))
+                    LocalFiles.Add(item);
+
+                CurrentLocalPath = fullPath;
+                IsAtLocalDriveRoot = false;
+                StatusMessage = $"Local: {LocalFiles.Count} item(s) in {fullPath}";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                StatusMessage = $"Access denied: {path}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Local browse failed: {ex.Message}";
+            }
+        }
+
+        public async Task OpenLocalItemAsync(FileItemModel? item)
+        {
+            if (item == null) return;
+
+            if (item.IsDirectory || item.IsDrive)
+            {
+                await BrowseLocalPathAsync(item.FullPath);
+                return;
+            }
+
+            // Double-click file → open with default program
+            try
+            {
+                Process.Start(new ProcessStartInfo(item.FullPath) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Could not open file: {ex.Message}";
+            }
+        }
+
+        private async Task NavigateUpLocalAsync()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentLocalPath))
+            {
+                await LoadLocalDrivesAsync();
+                return;
+            }
+
+            var parent = Directory.GetParent(CurrentLocalPath);
+            if (parent == null)
+            {
+                await LoadLocalDrivesAsync();
+                return;
+            }
+
+            await BrowseLocalPathAsync(parent.FullName);
+        }
+
+        private async Task DeleteLocalItemAsync(FileItemModel? item)
+        {
+            if (item == null) return;
+
+            var confirm = MessageBox.Show(
+                $"Delete '{item.Name}'?", "Delete",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (item.IsDirectory)
+                        Directory.Delete(item.FullPath, true);
+                    else
+                        File.Delete(item.FullPath);
+                });
+
+                StatusMessage = $"Deleted '{item.Name}'.";
+                await BrowseLocalPathAsync(CurrentLocalPath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Delete failed: {ex.Message}";
+            }
+        }
+
+        private async Task RenameLocalItemAsync(FileItemModel? item)
+        {
+            if (item == null) return;
+
+            var newName = PromptForNewName(item.Name);
+            if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
+
+            try
+            {
+                var dir = Path.GetDirectoryName(item.FullPath)!;
+                var newPath = Path.Combine(dir, newName);
+
+                await Task.Run(() =>
+                {
+                    if (item.IsDirectory)
+                        Directory.Move(item.FullPath, newPath);
+                    else
+                        File.Move(item.FullPath, newPath);
+                });
+
+                StatusMessage = $"Renamed '{item.Name}' → '{newName}'.";
+                await BrowseLocalPathAsync(CurrentLocalPath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Rename failed: {ex.Message}";
+            }
+        }
+
+        private async Task UploadLocalItemAsync(FileItemModel? item)
+        {
+            if (item == null || _selectedPC == null) return;
+
+            if (string.IsNullOrWhiteSpace(CurrentRemotePath))
+            {
+                StatusMessage = "Navigate to a remote directory first.";
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+
+                if (item.IsDirectory)
+                    await UploadDirectoryAsync(item.FullPath, CurrentRemotePath);
+                else
+                    await UploadSingleFileAsync(item.FullPath, CurrentRemotePath);
+
+                StatusMessage = $"Uploaded '{item.Name}' to remote.";
+                await BrowseRemotePathAsync(CurrentRemotePath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Upload failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
+
+        // ═══════════════════════════════════════
+        // REMOTE FILE BROWSER
+        // ═══════════════════════════════════════
+
+        public async Task LoadRemoteDrivesAsync()
+        {
+            if (_selectedPC == null) return;
+
+            try
+            {
+                IsBusy = true;
+                RemoteFiles.Clear();
+                CurrentRemotePath = string.Empty;
+                IsAtRemoteDriveRoot = true;
+                _remoteParentPath = null;
+
                 var responsePair = await SendAgentRequestWithFallbackAsync(
-                    SelectedFileManagementPC,
-                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, relativePath)));
+                    _selectedPC,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, "/files/drives")));
                 using var response = responsePair.Response;
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Could not read remote files: {response.StatusCode}";
+                    StatusMessage = $"Could not list remote drives: {response.StatusCode}";
+                    return;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                var drives = JsonSerializer.Deserialize<List<AgentDriveEntry>>(json, JsonOptions()) ?? [];
+
+                foreach (var drive in drives)
+                {
+                    RemoteFiles.Add(new FileItemModel
+                    {
+                        Name = $"{drive.Name?.TrimEnd('\\')} ({drive.Label})",
+                        FullPath = drive.Name ?? string.Empty,
+                        IsDirectory = true,
+                        IsDrive = true,
+                        Length = drive.TotalSize
+                    });
+                }
+
+                StatusMessage = $"Remote: {RemoteFiles.Count} drive(s) on {responsePair.Target}.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Remote drives failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
+
+        public async Task BrowseRemotePathAsync(string path)
+        {
+            if (_selectedPC == null) return;
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                await LoadRemoteDrivesAsync();
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                RemoteFiles.Clear();
+
+                var apiPath = $"/files/browse?path={Uri.EscapeDataString(path)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    _selectedPC,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, apiPath)));
+                using var response = responsePair.Response;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    StatusMessage = $"Remote browse failed: {response.StatusCode}";
                     return;
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
                 var browse = JsonSerializer.Deserialize<AgentBrowseResponse>(json, JsonOptions());
                 var files = browse?.Entries ?? [];
-                CurrentRemotePath = string.IsNullOrWhiteSpace(browse?.CurrentPath) ? "." : browse.CurrentPath;
-                _remoteParentPath = browse?.ParentPath;
-                OnPropertyChanged(nameof(CanNavigateUp));
-                (NavigateUpRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
-                foreach (var file in files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name))
+                CurrentRemotePath = browse?.CurrentPath ?? path;
+                _remoteParentPath = browse?.ParentPath;
+                IsAtRemoteDriveRoot = false;
+
+                foreach (var file in files)
                 {
-                    RemoteFiles.Add(new RemoteFileItemModel
+                    RemoteFiles.Add(new FileItemModel
                     {
                         Name = file.Name ?? string.Empty,
                         FullPath = file.FullPath ?? string.Empty,
@@ -385,100 +588,288 @@ namespace IRIS.UI.ViewModels
                     });
                 }
 
-                StatusMessage = $"Showing {RemoteFiles.Count} item(s) at '{CurrentRemotePath}' from {responsePair.Target}.";
+                StatusMessage = $"Remote: {RemoteFiles.Count} item(s) at '{CurrentRemotePath}' via {responsePair.Target}.";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Remote file load failed: {ex.Message}";
+                StatusMessage = $"Remote browse failed: {ex.Message}";
             }
+            finally { IsBusy = false; }
         }
 
-        private async Task DeleteRemoteFileAsync(RemoteFileItemModel? item)
+        public async Task OpenRemoteItemAsync(FileItemModel? item)
         {
-            if (item == null || SelectedFileManagementPC == null)
+            if (item == null) return;
+
+            if (item.IsDirectory || item.IsDrive)
             {
+                await BrowseRemotePathAsync(item.FullPath);
                 return;
             }
 
+            // Double-click file → download to local current directory
+            await DownloadRemoteItemToLocalAsync(item);
+        }
+
+        private async Task NavigateUpRemoteAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_remoteParentPath))
+            {
+                await LoadRemoteDrivesAsync();
+                return;
+            }
+
+            await BrowseRemotePathAsync(_remoteParentPath);
+        }
+
+        private async Task DeleteRemoteItemAsync(FileItemModel? item)
+        {
+            if (item == null || _selectedPC == null) return;
+
+            var confirm = MessageBox.Show(
+                $"Delete '{item.Name}' on {_selectedPC.Hostname}?",
+                "Delete Remote Item", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
             try
             {
-                var confirm = MessageBox.Show($"Delete '{item.Name}' on {SelectedFileManagementPC.Hostname}?", "Delete Remote Item", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (confirm != MessageBoxResult.Yes)
-                {
-                    return;
-                }
-
-                var relativePath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
+                IsBusy = true;
+                var apiPath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
                 var responsePair = await SendAgentRequestWithFallbackAsync(
-                    SelectedFileManagementPC,
-                    target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, relativePath)));
+                    _selectedPC,
+                    target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, apiPath)));
                 using var response = responsePair.Response;
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Delete failed via {responsePair.Target}: {response.StatusCode}";
+                    StatusMessage = $"Delete failed: {response.StatusCode}";
                     return;
                 }
 
-                await LoadRemoteFilesAsync();
+                StatusMessage = $"Deleted '{item.Name}' on remote.";
+                await BrowseRemotePathAsync(CurrentRemotePath);
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Delete failed: {ex.Message}";
             }
+            finally { IsBusy = false; }
         }
 
-        private async Task DownloadRemoteItemAsync(RemoteFileItemModel? item)
+        private async Task RenameRemoteItemAsync(FileItemModel? item)
         {
-            if (item == null || SelectedFileManagementPC == null)
-            {
-                return;
-            }
+            if (item == null || _selectedPC == null) return;
+
+            var newName = PromptForNewName(item.Name);
+            if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
 
             try
             {
-                var defaultFileName = item.IsDirectory ? $"{item.Name}.zip" : item.Name;
-                var dialog = new SaveFileDialog
-                {
-                    FileName = defaultFileName,
-                    Filter = item.IsDirectory ? "Zip files (*.zip)|*.zip|All files (*.*)|*.*" : "All files (*.*)|*.*",
-                    AddExtension = true,
-                    OverwritePrompt = true
-                };
-
-                if (dialog.ShowDialog() != true)
-                {
-                    return;
-                }
-
-                var relativePath = $"/files/download?path={Uri.EscapeDataString(item.FullPath)}";
+                IsBusy = true;
+                var apiPath = $"/files/rename?path={Uri.EscapeDataString(item.FullPath)}&newName={Uri.EscapeDataString(newName)}";
                 var responsePair = await SendAgentRequestWithFallbackAsync(
-                    SelectedFileManagementPC,
-                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, relativePath)),
-                    HttpCompletionOption.ResponseHeadersRead);
+                    _selectedPC,
+                    target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath)));
                 using var response = responsePair.Response;
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Download failed via {responsePair.Target}: {response.StatusCode}";
+                    StatusMessage = $"Rename failed: {response.StatusCode}";
                     return;
                 }
 
-                await using var remoteStream = await response.Content.ReadAsStreamAsync();
-                await using var localFile = File.Create(dialog.FileName);
-                await remoteStream.CopyToAsync(localFile);
+                StatusMessage = $"Renamed '{item.Name}' → '{newName}'.";
+                await BrowseRemotePathAsync(CurrentRemotePath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Rename failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
 
-                StatusMessage = $"Downloaded '{item.Name}' to '{dialog.FileName}' via {responsePair.Target}.";
+        private async Task DownloadRemoteItemAsync(FileItemModel? item)
+        {
+            if (item == null || _selectedPC == null) return;
+
+            try
+            {
+                IsBusy = true;
+                var defaultFileName = item.IsDirectory ? $"{item.Name}.zip" : item.Name;
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    FileName = defaultFileName,
+                    Filter = item.IsDirectory
+                        ? "Zip files (*.zip)|*.zip|All files (*.*)|*.*"
+                        : "All files (*.*)|*.*",
+                    InitialDirectory = string.IsNullOrWhiteSpace(CurrentLocalPath)
+                        ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                        : CurrentLocalPath
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                await DownloadToPathAsync(item, dialog.FileName);
+                StatusMessage = $"Downloaded '{item.Name}' → '{dialog.FileName}'.";
+
+                // Refresh local pane if downloading into current local dir
+                if (!string.IsNullOrWhiteSpace(CurrentLocalPath))
+                    await BrowseLocalPathAsync(CurrentLocalPath);
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Download failed: {ex.Message}";
             }
+            finally { IsBusy = false; }
         }
 
-        private void RemovePendingUploadFile(string? localPath)
+        private async Task DownloadRemoteItemToLocalAsync(FileItemModel item)
         {
-            if (string.IsNullOrWhiteSpace(localPath)) return;
-            PendingUploadFiles.Remove(localPath);
-            (UploadFilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            if (_selectedPC == null) return;
+
+            try
+            {
+                IsBusy = true;
+                var localDir = string.IsNullOrWhiteSpace(CurrentLocalPath)
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                    : CurrentLocalPath;
+                var localPath = Path.Combine(localDir, item.IsDirectory ? $"{item.Name}.zip" : item.Name);
+
+                if (File.Exists(localPath))
+                {
+                    var confirm = MessageBox.Show(
+                        $"'{Path.GetFileName(localPath)}' already exists locally. Overwrite?",
+                        "Overwrite", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (confirm != MessageBoxResult.Yes) return;
+                }
+
+                await DownloadToPathAsync(item, localPath);
+                StatusMessage = $"Downloaded '{item.Name}' → '{localPath}'.";
+
+                if (!string.IsNullOrWhiteSpace(CurrentLocalPath))
+                    await BrowseLocalPathAsync(CurrentLocalPath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Download failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task DownloadToPathAsync(FileItemModel item, string localPath)
+        {
+            var apiPath = $"/files/download?path={Uri.EscapeDataString(item.FullPath)}";
+            var responsePair = await SendAgentRequestWithFallbackAsync(
+                _selectedPC!,
+                target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, apiPath)),
+                HttpCompletionOption.ResponseHeadersRead);
+            using var response = responsePair.Response;
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Download failed: {response.StatusCode}");
+
+            await using var remoteStream = await response.Content.ReadAsStreamAsync();
+            await using var localFile = File.Create(localPath);
+            await remoteStream.CopyToAsync(localFile);
+        }
+
+        // ═══════════════════════════════════════
+        // UPLOAD (Local → Remote)
+        // ═══════════════════════════════════════
+
+        public async Task UploadDroppedFilesToRemoteAsync(string[] localPaths)
+        {
+            if (_selectedPC == null || string.IsNullOrWhiteSpace(CurrentRemotePath))
+            {
+                StatusMessage = "Select a PC and navigate to a remote directory first.";
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                int count = 0;
+
+                foreach (var path in localPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        await UploadSingleFileAsync(path, CurrentRemotePath);
+                        count++;
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        await UploadDirectoryAsync(path, CurrentRemotePath);
+                        count++;
+                    }
+                }
+
+                StatusMessage = $"Uploaded {count} item(s) to remote.";
+                await BrowseRemotePathAsync(CurrentRemotePath);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Upload failed: {ex.Message}";
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task UploadSingleFileAsync(string localFilePath, string remoteDir)
+        {
+            var fileName = Path.GetFileName(localFilePath);
+            var apiPath = $"/files/upload?path={Uri.EscapeDataString(remoteDir)}&fileName={Uri.EscapeDataString(fileName)}";
+
+            var (response, _) = await SendAgentRequestWithFallbackAsync(
+                _selectedPC!,
+                target =>
+                {
+                    var req = new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath))
+                    {
+                        Content = new StreamContent(File.OpenRead(localFilePath))
+                    };
+                    req.Content.Headers.ContentType =
+                        new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                    return req;
+                });
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Upload failed ({response.StatusCode})");
+        }
+
+        private async Task UploadDirectoryAsync(string localDirPath, string remoteBaseDir)
+        {
+            var dirName = Path.GetFileName(localDirPath);
+            var remotePath = string.IsNullOrWhiteSpace(remoteBaseDir)
+                ? dirName
+                : Path.Combine(remoteBaseDir, dirName);
+
+            foreach (var file in Directory.EnumerateFiles(localDirPath))
+            {
+                await UploadSingleFileAsync(file, remotePath);
+            }
+
+            foreach (var subDir in Directory.EnumerateDirectories(localDirPath))
+            {
+                await UploadDirectoryAsync(subDir, remotePath);
+            }
+        }
+
+        // ═══════════════════════════════════════
+        // HELPERS
+        // ═══════════════════════════════════════
+
+        private static string? PromptForNewName(string currentName)
+        {
+            var dialog = new Views.Dialogs.RenameDialog(currentName);
+            dialog.Owner = Application.Current.MainWindow;
+            return dialog.ShowDialog() == true ? dialog.NewName : null;
+        }
+
+        private void RaiseAllRemoteCanExecuteChanged()
+        {
+            (NavigateUpRemoteCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (NavigateToRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (GoToRemoteDrivesCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private Uri BuildAgentUri(string ipAddress, string relativePath)
@@ -504,14 +895,8 @@ namespace IRIS.UI.ViewModels
                     var response = await _httpClient.SendAsync(request, completionOption);
                     return (response, target);
                 }
-                catch (HttpRequestException ex)
-                {
-                    lastException = ex;
-                }
-                catch (TaskCanceledException ex)
-                {
-                    lastException = ex;
-                }
+                catch (HttpRequestException ex) { lastException = ex; }
+                catch (TaskCanceledException ex) { lastException = ex; }
             }
 
             throw lastException ?? new HttpRequestException($"Could not reach agent for PC '{pc.Hostname}'.");
@@ -527,9 +912,7 @@ namespace IRIS.UI.ViewModels
                 var trimmed = value.Trim();
                 if (trimmed.Equals("N/A", StringComparison.OrdinalIgnoreCase)) return;
                 if (!targets.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
-                {
                     targets.Add(trimmed);
-                }
             }
 
             Add(pc.IPAddress);
@@ -547,10 +930,7 @@ namespace IRIS.UI.ViewModels
                         Add(ip.ToString());
                     }
                 }
-                catch
-                {
-                    // best-effort fallback only
-                }
+                catch { /* best-effort fallback only */ }
             }
 
             return targets;
@@ -565,20 +945,21 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private static JsonSerializerOptions JsonOptions()
-        {
-            return new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-        }
+        private static JsonSerializerOptions JsonOptions() =>
+            new() { PropertyNameCaseInsensitive = true };
+
+        // ═══════════════════════════════════════
+        // INotifyPropertyChanged
+        // ═══════════════════════════════════════
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        // ═══════════════════════════════════════
+        // Agent response models
+        // ═══════════════════════════════════════
 
         private sealed class AgentBrowseResponse
         {
@@ -594,6 +975,14 @@ namespace IRIS.UI.ViewModels
             public bool IsDirectory { get; set; }
             public long Length { get; set; }
             public DateTime LastWriteTimeUtc { get; set; }
+        }
+
+        private sealed class AgentDriveEntry
+        {
+            public string? Name { get; set; }
+            public string? Label { get; set; }
+            public long TotalSize { get; set; }
+            public long FreeSpace { get; set; }
         }
     }
 }
