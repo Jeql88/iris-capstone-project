@@ -11,15 +11,13 @@ namespace IRIS.UI.Views.Common
     {
         private readonly SettingsViewModel _viewModel;
         private readonly IAuthenticationService _authService;
-        private readonly INavigationService _navigationService;
 
-        public SettingsView(SettingsViewModel viewModel, IAuthenticationService authService, INavigationService navigationService)
+        public SettingsView(SettingsViewModel viewModel, IAuthenticationService authService)
         {
             InitializeComponent();
             DataContext = viewModel;
             _viewModel = viewModel;
             _authService = authService;
-            _navigationService = navigationService;
         }
 
         private async void ChangePassword_Click(object sender, RoutedEventArgs e)

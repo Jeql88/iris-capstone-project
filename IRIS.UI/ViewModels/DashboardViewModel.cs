@@ -502,6 +502,9 @@ namespace IRIS.UI.ViewModels
             model.Axes.Add(timeAxis);
             model.Axes.Add(valueAxis);
 
+            // Convert UTC timestamps to local time for display
+            var localPoints = points.Select(p => (Timestamp: p.Timestamp.ToLocalTime(), p.Value)).OrderBy(p => p.Timestamp).ToList();
+
             var series = new LineSeries
             {
                 Color = OxyColor.FromRgb(180, 40, 40),
@@ -511,7 +514,7 @@ namespace IRIS.UI.ViewModels
                 CanTrackerInterpolatePoints = false
             };
 
-            foreach (var p in points.OrderBy(p => p.Timestamp))
+            foreach (var p in localPoints)
             {
                 series.Points.Add(new OxyPlot.DataPoint(DateTimeAxis.ToDouble(p.Timestamp), p.Value));
             }

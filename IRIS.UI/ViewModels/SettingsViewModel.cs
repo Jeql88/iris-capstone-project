@@ -2,24 +2,50 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IRIS.UI.ViewModels
 {
     public class SettingsViewModel : INotifyPropertyChanged
     {
         private readonly IAuthenticationService _authService;
+        private readonly IServiceScopeFactory _scopeFactory;
         private string _currentPassword = string.Empty;
         private string _newPassword = string.Empty;
         private string _confirmPassword = string.Empty;
 
-        public SettingsViewModel(IAuthenticationService authService)
+        // Data retention properties
+        private int _hardwareRetentionDays = 30;
+        private int _networkRetentionDays = 30;
+        private int _alertRetentionDays = 90;
+        private int _websiteUsageRetentionDays = 60;
+        private int _softwareUsageRetentionDays = 60;
+        private int _cleanupHourUtc = 2;
+        private bool _isRetentionLoading;
+        private string _retentionStatusMessage = string.Empty;
+
+        public SettingsViewModel(IAuthenticationService authService, IServiceScopeFactory scopeFactory)
         {
             _authService = authService;
+            _scopeFactory = scopeFactory;
             ChangePasswordCommand = new RelayCommand(async () => await ChangePasswordAsync(), () => true);
+            SaveRetentionCommand = new RelayCommand(async () => await SaveRetentionSettingsAsync(), () => !_isRetentionLoading);
+            RunCleanupNowCommand = new RelayCommand(async () => await RunCleanupNowAsync(), () => !_isRetentionLoading);
+
+            _ = LoadRetentionSettingsAsync();
         }
 
+        // --- User Profile ---
+        public string? Username => _authService.GetCurrentUser()?.Username;
+        public string? FullName => _authService.GetCurrentUser()?.FullName;
+        public string? Role => _authService.GetCurrentUser()?.Role.ToString()
+            .Replace("SystemAdministrator", "System Administrator")
+            .Replace("ITPersonnel", "IT Personnel");
+
+        // --- Password ---
         public string CurrentPassword
         {
             get => _currentPassword;
@@ -38,14 +64,61 @@ namespace IRIS.UI.ViewModels
             set { _confirmPassword = value; OnPropertyChanged(); }
         }
 
-        public string? Username => _authService.GetCurrentUser()?.Username;
-        public string? FullName => _authService.GetCurrentUser()?.FullName;
-        public string? Role => _authService.GetCurrentUser()?.Role.ToString()
-            .Replace("SystemAdministrator", "System Administrator")
-            .Replace("ITPersonnel", "IT Personnel");
-
         public ICommand ChangePasswordCommand { get; }
 
+        // --- Data Retention ---
+        public int HardwareRetentionDays
+        {
+            get => _hardwareRetentionDays;
+            set { _hardwareRetentionDays = value; OnPropertyChanged(); }
+        }
+
+        public int NetworkRetentionDays
+        {
+            get => _networkRetentionDays;
+            set { _networkRetentionDays = value; OnPropertyChanged(); }
+        }
+
+        public int AlertRetentionDays
+        {
+            get => _alertRetentionDays;
+            set { _alertRetentionDays = value; OnPropertyChanged(); }
+        }
+
+        public int WebsiteUsageRetentionDays
+        {
+            get => _websiteUsageRetentionDays;
+            set { _websiteUsageRetentionDays = value; OnPropertyChanged(); }
+        }
+
+        public int SoftwareUsageRetentionDays
+        {
+            get => _softwareUsageRetentionDays;
+            set { _softwareUsageRetentionDays = value; OnPropertyChanged(); }
+        }
+
+        public int CleanupHourUtc
+        {
+            get => _cleanupHourUtc;
+            set { _cleanupHourUtc = value; OnPropertyChanged(); }
+        }
+
+        public bool IsRetentionLoading
+        {
+            get => _isRetentionLoading;
+            set { _isRetentionLoading = value; OnPropertyChanged(); }
+        }
+
+        public string RetentionStatusMessage
+        {
+            get => _retentionStatusMessage;
+            set { _retentionStatusMessage = value; OnPropertyChanged(); }
+        }
+
+        public ICommand SaveRetentionCommand { get; }
+        public ICommand RunCleanupNowCommand { get; }
+
+        // --- Password Logic ---
         private async Task ChangePasswordAsync()
         {
             if (string.IsNullOrWhiteSpace(CurrentPassword))
@@ -91,6 +164,118 @@ namespace IRIS.UI.ViewModels
             else
             {
                 MessageBox.Show("Failed to change password. Please check your current password.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // --- Data Retention Logic ---
+        private async Task LoadRetentionSettingsAsync()
+        {
+            try
+            {
+                IsRetentionLoading = true;
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
+
+                HardwareRetentionDays = await service.GetRetentionDaysAsync(SettingsKeys.HardwareMetricRetentionDays);
+                NetworkRetentionDays = await service.GetRetentionDaysAsync(SettingsKeys.NetworkMetricRetentionDays);
+                AlertRetentionDays = await service.GetRetentionDaysAsync(SettingsKeys.AlertRetentionDays);
+                WebsiteUsageRetentionDays = await service.GetRetentionDaysAsync(SettingsKeys.WebsiteUsageRetentionDays);
+                SoftwareUsageRetentionDays = await service.GetRetentionDaysAsync(SettingsKeys.SoftwareUsageRetentionDays);
+                CleanupHourUtc = await service.GetCleanupHourAsync();
+            }
+            catch
+            {
+                // Use defaults if DB isn't reachable yet
+            }
+            finally
+            {
+                IsRetentionLoading = false;
+            }
+        }
+
+        private async Task SaveRetentionSettingsAsync()
+        {
+            if (HardwareRetentionDays < 1 || NetworkRetentionDays < 1 || AlertRetentionDays < 1)
+            {
+                MessageBox.Show("Retention days must be at least 1.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (CleanupHourUtc < 0 || CleanupHourUtc > 23)
+            {
+                MessageBox.Show("Cleanup hour must be between 0 and 23.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                IsRetentionLoading = true;
+                RetentionStatusMessage = "Saving...";
+
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
+
+                await service.UpdateSettingAsync(SettingsKeys.HardwareMetricRetentionDays, HardwareRetentionDays);
+                await service.UpdateSettingAsync(SettingsKeys.NetworkMetricRetentionDays, NetworkRetentionDays);
+                await service.UpdateSettingAsync(SettingsKeys.AlertRetentionDays, AlertRetentionDays);
+                await service.UpdateSettingAsync(SettingsKeys.WebsiteUsageRetentionDays, WebsiteUsageRetentionDays);
+                await service.UpdateSettingAsync(SettingsKeys.SoftwareUsageRetentionDays, SoftwareUsageRetentionDays);
+                await service.UpdateSettingAsync(SettingsKeys.CleanupHourUtc, CleanupHourUtc);
+
+                RetentionStatusMessage = "Settings saved successfully.";
+            }
+            catch (Exception ex)
+            {
+                RetentionStatusMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsRetentionLoading = false;
+            }
+        }
+
+        private async Task RunCleanupNowAsync()
+        {
+            var confirm = MessageBox.Show(
+                "This will permanently delete all monitoring data older than the configured retention periods.\n\nAre you sure you want to proceed?",
+                "Confirm Cleanup",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                IsRetentionLoading = true;
+                RetentionStatusMessage = "Running cleanup...";
+
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
+
+                var result = await service.PurgeOldDataAsync();
+
+                if (result.TotalDeleted == 0)
+                {
+                    RetentionStatusMessage = "Cleanup completed — no stale data found.";
+                }
+                else
+                {
+                    var parts = new List<string>();
+                    if (result.HardwareMetricsDeleted > 0) parts.Add($"{result.HardwareMetricsDeleted} hardware");
+                    if (result.NetworkMetricsDeleted > 0) parts.Add($"{result.NetworkMetricsDeleted} network");
+                    if (result.AlertsDeleted > 0) parts.Add($"{result.AlertsDeleted} alert");
+                    if (result.WebsiteUsageDeleted > 0) parts.Add($"{result.WebsiteUsageDeleted} website usage");
+                    if (result.SoftwareUsageDeleted > 0) parts.Add($"{result.SoftwareUsageDeleted} app usage");
+                    RetentionStatusMessage = $"Cleanup completed — deleted {string.Join(", ", parts)} records.";
+                }
+            }
+            catch (Exception ex)
+            {
+                RetentionStatusMessage = $"Cleanup failed: {ex.Message}";
+            }
+            finally
+            {
+                IsRetentionLoading = false;
             }
         }
 

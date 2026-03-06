@@ -29,7 +29,7 @@
 
                         <!-- Search Box -->
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                         PlaceholderText="Search by username, action, or IP..."
                                         Icon="{ui:SymbolIcon Search24}"
@@ -38,29 +38,29 @@
 
                         <!-- Action Filter -->
                         <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding SelectedAction, Mode=TwoWay}" 
                                          SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Actions" IsSelected="True" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Login" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Logout" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Password Change" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Created" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Updated" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Deactivated" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="System Access" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="All Actions" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Login" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Logout" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Password Change" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="User Created" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="User Updated" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="User Deactivated" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="System Access" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </ComboBox>
                         </StackPanel>
 
                         <!-- Role Filter -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                          SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </ComboBox>
                         </StackPanel>
                     </Grid>
@@ -84,11 +84,11 @@
                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
+                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
                                          ItemsSource="{Binding PageSizeOptions}"
                                          Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="#1a1a1a"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         </StackPanel>
                     </Grid>
 
@@ -115,7 +115,7 @@
                                    Margin="0,0,10,0"/>
                         
                         <TextBlock Text="{Binding PageInfo}" FontSize="13" 
-                                   VerticalAlignment="Center" Margin="15,0" Foreground="#1a1a1a"/>
+                                   VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         
                         <ui:Button Command="{Binding NextPageCommand}" 
                                    Content="Next" 

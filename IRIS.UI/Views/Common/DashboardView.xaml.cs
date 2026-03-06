@@ -6,10 +6,6 @@ using IRIS.UI.ViewModels;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Shared;
 using Microsoft.Extensions.DependencyInjection;
-using OxyPlot;
-using OxyPlot.Axes;
-using OxyPlot.Series;
-using OxyPlot.Wpf;
 
 namespace IRIS.UI.Views.Common
 {
@@ -107,6 +103,15 @@ namespace IRIS.UI.Views.Common
 
         private void DashboardBtn_Click(object sender, RoutedEventArgs e)
         {
+            RestoreDashboardContent();
+        }
+
+        /// <summary>
+        /// Restores the dashboard scroll content and right panel.
+        /// Called by child pages (e.g. NetworkAnalyticsView) to navigate back.
+        /// </summary>
+        public void RestoreDashboardContent()
+        {
             UserHeader.SetVisibility(true);
             SetActiveButton(DashboardBtn);
             ShowRightPanel();
@@ -202,110 +207,57 @@ namespace IRIS.UI.Views.Common
                 Window.GetWindow(this)?.Close();
             }
         }
-        private static void OpenPlotInWindow(string title, PlotModel? model)
-        {
-            if (model == null)
-            {
-                return;
-            }
-
-            var detailedModel = CreateDetailedPlotModel(title, model);
-            var zoomWindow = new Window
-            {
-                Title = title,
-                Width = 1220,
-                Height = 760,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new PlotView
-                {
-                    Model = detailedModel,
-                    Margin = new Thickness(10)
-                }
-            };
-
-            zoomWindow.ShowDialog();
-        }
-
-        private static PlotModel CreateDetailedPlotModel(string title, PlotModel source)
-        {
-            var detailed = new PlotModel
-            {
-                Title = title,
-                Subtitle = "Detailed view • scroll to zoom • drag to pan • hover points for exact values"
-            };
-
-            foreach (var axis in source.Axes)
-            {
-                if (axis is DateTimeAxis dateTimeAxis)
-                {
-                    detailed.Axes.Add(new DateTimeAxis
-                    {
-                        Position = dateTimeAxis.Position,
-                        StringFormat = "yyyy-MM-dd HH:mm",
-                        IntervalType = DateTimeIntervalType.Auto,
-                        MinorIntervalType = DateTimeIntervalType.Auto,
-                        IsZoomEnabled = true,
-                        IsPanEnabled = true,
-                        FontSize = 12,
-                        Title = dateTimeAxis.Title
-                    });
-                    continue;
-                }
-
-                if (axis is LinearAxis linearAxis)
-                {
-                    detailed.Axes.Add(new LinearAxis
-                    {
-                        Position = linearAxis.Position,
-                        Minimum = linearAxis.ActualMinimum,
-                        Maximum = linearAxis.ActualMaximum,
-                        LabelFormatter = linearAxis.LabelFormatter,
-                        IsZoomEnabled = true,
-                        IsPanEnabled = true,
-                        FontSize = 12,
-                        Title = linearAxis.Title,
-                        MinimumPadding = 0.1,
-                        MaximumPadding = 0.1
-                    });
-                    continue;
-                }
-
-                detailed.Axes.Add(axis);
-            }
-
-            foreach (var line in source.Series.OfType<LineSeries>())
-            {
-                var detailedSeries = new LineSeries
-                {
-                    Title = string.IsNullOrWhiteSpace(line.Title) ? title : line.Title,
-                    Color = line.Color,
-                    StrokeThickness = Math.Max(2, line.StrokeThickness),
-                    MarkerType = MarkerType.Circle,
-                    MarkerSize = 3,
-                    MarkerStroke = line.Color,
-                    MarkerFill = OxyColors.White,
-                    CanTrackerInterpolatePoints = false,
-                    TrackerFormatString = "{0}\nTime: {2:yyyy-MM-dd HH:mm:ss}\nValue: {4:0.###}"
-                };
-
-                foreach (var point in line.Points)
-                {
-                    detailedSeries.Points.Add(point);
-                }
-
-                detailed.Series.Add(detailedSeries);
-            }
-
-            return detailed;
-        }
 
         private void LatencyChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-            => OpenPlotInWindow($"Latency - Detailed View ({_viewModel.ActiveRoomDescription} • {_viewModel.ActiveRangeDescription})", _viewModel.LatencyPlot);
+            => NavigateToAnalytics("Latency");
 
         private void BandwidthChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-            => OpenPlotInWindow($"Bandwidth - Detailed View ({_viewModel.ActiveRoomDescription} • {_viewModel.ActiveRangeDescription})", _viewModel.BandwidthPlot);
+            => NavigateToAnalytics("Bandwidth");
 
         private void PacketLossChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-            => OpenPlotInWindow($"Packet Loss - Detailed View ({_viewModel.ActiveRoomDescription} • {_viewModel.ActiveRangeDescription})", _viewModel.PacketLossPlot);
+            => NavigateToAnalytics("PacketLoss");
+
+        private void NavigateToAnalytics(string chartType)
+        {
+            if (_navigationService == null) return;
+
+            // Replicate the same date range logic as DashboardViewModel.GetRangeUtc()
+            DateTime startUtc, endUtc;
+            var preset = _viewModel.SelectedRangePreset;
+
+            if (string.Equals(preset, "Last 24h", StringComparison.OrdinalIgnoreCase))
+            {
+                endUtc = DateTime.UtcNow;
+                startUtc = endUtc.AddHours(-24);
+            }
+            else if (string.Equals(preset, "Last 7d", StringComparison.OrdinalIgnoreCase))
+            {
+                endUtc = DateTime.UtcNow;
+                startUtc = endUtc.AddDays(-7);
+            }
+            else
+            {
+                var startLocal = _viewModel.StartDate.Date;
+                var endLocal = _viewModel.EndDate.Date.AddDays(1).AddTicks(-1);
+                if (endLocal < startLocal) endLocal = startLocal.AddDays(1).AddTicks(-1);
+                startUtc = DateTime.SpecifyKind(startLocal, DateTimeKind.Local).ToUniversalTime();
+                endUtc = DateTime.SpecifyKind(endLocal, DateTimeKind.Local).ToUniversalTime();
+            }
+
+            var param = new ViewModels.NetworkAnalyticsParameter
+            {
+                ChartType = chartType,
+                RoomId = _viewModel.SelectedRoom != null && _viewModel.SelectedRoom.Id > 0
+                    ? _viewModel.SelectedRoom.Id
+                    : null,
+                RoomDescription = _viewModel.ActiveRoomDescription,
+                RangeDescription = _viewModel.ActiveRangeDescription,
+                StartUtc = startUtc,
+                EndUtc = endUtc
+            };
+
+            CollapseRightPanel();
+            _navigationService.NavigateTo("NetworkAnalytics", param);
+        }
     }
 }

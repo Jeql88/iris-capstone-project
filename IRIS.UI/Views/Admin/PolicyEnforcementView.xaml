@@ -358,7 +358,7 @@
                                           Foreground="#999999" 
                                           HorizontalAlignment="Center" Margin="0,0,0,12"/>
                             <TextBlock Text="Select a Laboratory" FontSize="16" FontWeight="SemiBold" 
-                                       HorizontalAlignment="Center" Margin="0,0,0,6" Foreground="#1a1a1a"/>
+                                       HorizontalAlignment="Center" Margin="0,0,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <TextBlock Text="Choose a laboratory from the list to view and configure its policy settings" 
                                        FontSize="13" Foreground="#666666" 
                                        HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>

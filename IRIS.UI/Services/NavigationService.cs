@@ -36,6 +36,7 @@ namespace IRIS.UI.Services
             _viewRegistry["AccessLogs"] = typeof(Views.Common.AccessLogsView);
             _viewRegistry["UsageMetrics"] = typeof(Views.Common.UsageMetricsView);
             _viewRegistry["Alerts"] = typeof(Views.Common.AlertsView);
+            _viewRegistry["NetworkAnalytics"] = typeof(Views.Common.NetworkAnalyticsView);
 
             // Admin Views
             _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
@@ -69,6 +70,11 @@ namespace IRIS.UI.Services
                     if (parameter != null && userControl is Views.Faculty.ViewScreenPage viewScreenPage)
                     {
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
+                    }
+
+                    if (parameter != null && userControl is Views.Common.NetworkAnalyticsView analyticsView)
+                    {
+                        analyticsView.LoadParameter((ViewModels.NetworkAnalyticsParameter)parameter);
                     }
 
                     _navigationStack.Push((viewKey, parameter));
@@ -115,6 +121,11 @@ namespace IRIS.UI.Services
                     if (parameter != null && userControl is Views.Faculty.ViewScreenPage viewScreenPage)
                     {
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
+                    }
+
+                    if (parameter != null && userControl is Views.Common.NetworkAnalyticsView analyticsView)
+                    {
+                        analyticsView.LoadParameter((ViewModels.NetworkAnalyticsParameter)parameter);
                     }
 
                     _navigationFrame.Content = userControl;

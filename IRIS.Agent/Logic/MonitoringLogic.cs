@@ -252,7 +252,7 @@ namespace IRIS.Agent.Logic
                 _lastBytesReceived = bytesReceived;
                 _lastNetworkSample = now;
 
-                Log.Information("Network metrics captured for PC {MacAddress}: Up={Up:F2} Mbps, Down={Down:F2} Mbps, Latency={Lat:F1} ms, Loss={Loss:F1}%",
+                Log.Information("Network metrics captured for PC {MacAddress}: Up={Up:F2} Mbps, Down={Down:F2} Mbps, Latency={Lat:F0} ms, Loss={Loss:F1}%",
                     pc.MacAddress,
                     uploadMbps ?? 0,
                     downloadMbps ?? 0,

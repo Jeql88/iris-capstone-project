@@ -6,9 +6,6 @@
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <Style x:Key="SummaryLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
-        </Style>
     </UserControl.Resources>
 
     <Grid Margin="24,18">
@@ -35,12 +32,12 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <ui:Button Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge All Visible" Appearance="Secondary" Command="{Binding AcknowledgeVisibleCommand}" Margin="0,0,8,0"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve All Visible" Appearance="Secondary" Command="{Binding ResolveVisibleCommand}" Margin="0,0,8,0"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}" Content="Acknowledge Selected" Appearance="Secondary" Command="{Binding AcknowledgeCommand}" Margin="0,0,8,0"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Selected" Appearance="Primary" Command="{Binding ResolveCommand}" Margin="0,0,8,0"/>
-                <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" Content="Refresh" Appearance="Secondary" Command="{Binding RefreshCommand}" Margin="0,0,8,0" ToolTip="Refresh alerts"/>
-                <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export CSV" Appearance="Secondary" Command="{Binding ExportCommand}"/>
+                <ui:Button Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge Visible" Appearance="Secondary" Command="{Binding AcknowledgeVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Visible" Appearance="Secondary" Command="{Binding ResolveVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}" Content="Ack Selected" Appearance="Secondary" Command="{Binding AcknowledgeCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Selected" Appearance="Primary" Command="{Binding ResolveCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" Appearance="Secondary" Command="{Binding RefreshCommand}" Padding="8,6" ToolTip="Refresh alerts" Margin="0,0,6,0"/>
+                <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Padding="10,6" FontSize="12"/>
             </StackPanel>
         </Grid>
 
@@ -149,46 +146,58 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="80"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Search -->
                     <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                        <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                        <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:TextBox PlaceholderText="Search PC, room, or message..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                     Icon="{ui:SymbolIcon Search24}"/>
                     </StackPanel>
 
                     <!-- Severity -->
                     <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                        <TextBlock Text="Severity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                        <TextBlock Text="Severity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ComboBox ItemsSource="{Binding SeverityOptions}" SelectedItem="{Binding SeverityFilter}"/>
                     </StackPanel>
 
                     <!-- Type -->
                     <StackPanel Grid.Column="2" Margin="0,0,15,0">
-                        <TextBlock Text="Type" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                        <TextBlock Text="Type" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ComboBox ItemsSource="{Binding TypeOptions}" SelectedItem="{Binding TypeFilter}"/>
                     </StackPanel>
 
                     <!-- State -->
                     <StackPanel Grid.Column="3" Margin="0,0,15,0">
-                        <TextBlock Text="State" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                        <TextBlock Text="State" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ComboBox ItemsSource="{Binding StateOptions}" SelectedItem="{Binding StateFilter}"/>
                     </StackPanel>
 
                     <!-- Lab -->
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="Lab" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                    <StackPanel Grid.Column="4" Margin="0,0,15,0">
+                        <TextBlock Text="Lab" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber"/>
+                    </StackPanel>
+
+                    <!-- Per Page -->
+                    <StackPanel Grid.Column="5">
+                        <TextBlock Text="Per Page" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}"/>
                     </StackPanel>
                 </Grid>
             </StackPanel>
         </ui:Card>
 
-        <!-- Data grid -->
+        <!-- Data grid with pagination -->
         <ui:Card Grid.Row="3">
             <Grid>
-                <DataGrid ItemsSource="{Binding FilteredAlerts}"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DataGrid ItemsSource="{Binding PagedAlerts}"
                           SelectedItem="{Binding SelectedAlert}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
@@ -198,9 +207,22 @@
                           CanUserDeleteRows="False"
                           ColumnHeaderHeight="36"
                           RowHeight="34"
-                              MinHeight="450"
-                          Margin="8">
+                          MinHeight="350"
+                          Margin="8,8,8,0">
                     <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="40">
+                            <DataGridTemplateColumn.Header>
+                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          Command="{Binding DataContext.ToggleSelectAllCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                              VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="160"/>
                         <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90"/>
                         <DataGridTextColumn Header="State" Binding="{Binding State}" Width="100"/>
@@ -211,18 +233,15 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
+                <!-- Empty state -->
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding IsLoading}" Value="False"/>
-                                        <Condition Binding="{Binding AlertCount}" Value="0"/>
-                                    </MultiDataTrigger.Conditions>
+                                <DataTrigger Binding="{Binding AlertCount}" Value="0">
                                     <Setter Property="Visibility" Value="Visible"/>
-                                </MultiDataTrigger>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
@@ -232,6 +251,34 @@
                     <TextBlock Text="Try adjusting your filters or check back later" Margin="0,4,0,0" FontSize="11"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
                 </StackPanel>
+
+                <!-- Pagination controls -->
+                <Grid Grid.Row="1" Margin="8,10,8,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="{Binding PageInfo}" FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleLeft20}" Appearance="Secondary"
+                                   Command="{Binding FirstPageCommand}" Margin="0,0,4,0"
+                                   Padding="6,4" ToolTip="First page"/>
+                        <ui:Button Icon="{ui:SymbolIcon ChevronLeft24}" Appearance="Secondary"
+                                   Command="{Binding PreviousPageCommand}" Margin="0,0,4,0"
+                                   Padding="6,4" ToolTip="Previous page"/>
+                        <ui:Button Icon="{ui:SymbolIcon ChevronRight24}" Appearance="Secondary"
+                                   Command="{Binding NextPageCommand}" Margin="0,0,4,0"
+                                   Padding="6,4" ToolTip="Next page"/>
+                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleRight20}" Appearance="Secondary"
+                                   Command="{Binding LastPageCommand}"
+                                   Padding="6,4" ToolTip="Last page"/>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </ui:Card>
     </Grid>

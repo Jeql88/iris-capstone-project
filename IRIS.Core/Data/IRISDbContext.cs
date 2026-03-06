@@ -39,6 +39,7 @@ namespace IRIS.Core.Data
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
         public DbSet<DeploymentLog> DeploymentLogs { get; set; }
+        public DbSet<SystemSettings> SystemSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,6 +61,7 @@ namespace IRIS.Core.Data
             ConfigurePolicy(modelBuilder);
             ConfigurePCHardwareConfig(modelBuilder);
             ConfigureDeploymentLog(modelBuilder);
+            ConfigureSystemSettings(modelBuilder);
 
             // Seed test users with BCrypt hashed passwords (password: "admin")
             modelBuilder.Entity<User>().HasData(
@@ -348,6 +350,21 @@ namespace IRIS.Core.Data
 
             modelBuilder.Entity<DeploymentLog>()
                 .HasIndex(dl => dl.Timestamp);
+        }
+
+        private void ConfigureSystemSettings(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<SystemSettings>()
+                .HasKey(s => s.Key);
+
+            // Seed default retention settings
+            var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            modelBuilder.Entity<SystemSettings>().HasData(
+                new SystemSettings { Key = SettingsKeys.HardwareMetricRetentionDays, Value = "30", UpdatedAt = seedDate },
+                new SystemSettings { Key = SettingsKeys.NetworkMetricRetentionDays, Value = "30", UpdatedAt = seedDate },
+                new SystemSettings { Key = SettingsKeys.AlertRetentionDays, Value = "90", UpdatedAt = seedDate },
+                new SystemSettings { Key = SettingsKeys.CleanupHourUtc, Value = "2", UpdatedAt = seedDate }
+            );
         }
 
     }

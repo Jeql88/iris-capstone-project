@@ -34,6 +34,7 @@ namespace IRIS.Core.Services
             var warningPCs = 0;
 
             var networkQuery = _context.NetworkMetrics
+                .AsNoTracking()
                 .Where(nm => nm.Timestamp >= since);
 
             if (roomId.HasValue)
@@ -41,13 +42,27 @@ namespace IRIS.Core.Services
                 networkQuery = networkQuery.Where(nm => _context.PCs.Any(p => p.Id == nm.PCId && p.RoomId == roomId.Value));
             }
 
-            var networkList = await networkQuery.ToListAsync();
+            // Compute aggregates server-side instead of loading all rows into memory
+            var networkStats = await networkQuery
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    AvgLatency = g.Average(n => n.Latency ?? 0),
+                    AvgPacketLoss = g.Average(n => n.PacketLoss ?? 0),
+                    PeakBandwidth = g.Max(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0))
+                })
+                .FirstOrDefaultAsync();
 
-            var avgLatency = networkList.Any() ? networkList.Average(n => n.Latency ?? 0) : 0;
-            var avgPacketLoss = networkList.Any() ? networkList.Average(n => n.PacketLoss ?? 0) : 0;
-            var recentNetwork = networkList.Where(n => n.Timestamp >= DateTime.UtcNow.AddHours(-1)).ToList();
-            var currentBandwidth = recentNetwork.Any() ? recentNetwork.Average(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0)) : 0;
-            var peakBandwidth = networkList.Any() ? networkList.Max(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0)) : 0;
+            var avgLatency = networkStats?.AvgLatency ?? 0;
+            var avgPacketLoss = networkStats?.AvgPacketLoss ?? 0;
+            var peakBandwidth = networkStats?.PeakBandwidth ?? 0;
+
+            var recentCutoff = nowUtc.AddHours(-1);
+            var currentBandwidth = await networkQuery
+                .Where(n => n.Timestamp >= recentCutoff)
+                .GroupBy(_ => 1)
+                .Select(g => g.Average(n => (n.DownloadSpeed ?? 0) + (n.UploadSpeed ?? 0)))
+                .FirstOrDefaultAsync();
 
             var labStatuses = await GetActiveLabPCsAsync();
             var heavyApps = await GetHeavyApplicationsAsync(roomId);
@@ -78,16 +93,26 @@ namespace IRIS.Core.Services
             var totalPCs = allPcs.Count;
             var onlinePCs = allPcs.Count(p => IsPcOnlineForMonitor(p, nowUtc));
 
-            var latestMetrics = await _context.NetworkMetrics
+            var metricsQuery = _context.NetworkMetrics
+                .AsNoTracking()
                 .Where(nm => roomId == null || _context.PCs.Any(p => p.Id == nm.PCId && p.RoomId == roomId.Value))
-                .Where(nm => nm.Timestamp >= DateTime.UtcNow.AddHours(-1))
-                .ToListAsync();
+                .Where(nm => nm.Timestamp >= DateTime.UtcNow.AddHours(-1));
+
+            var metricsAgg = await metricsQuery
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    AvgLatency = g.Average(m => m.Latency ?? 0),
+                    AvgBandwidth = g.Average(m => (m.DownloadSpeed ?? 0) + (m.UploadSpeed ?? 0)),
+                    PeakBandwidth = g.Max(m => (m.DownloadSpeed ?? 0) + (m.UploadSpeed ?? 0))
+                })
+                .FirstOrDefaultAsync();
 
             return new DashboardMetrics
             {
-                AverageLatency = latestMetrics.Any() ? latestMetrics.Average(m => m.Latency ?? 0) : 0,
-                CurrentBandwidth = latestMetrics.Any() ? latestMetrics.Average(m => (m.DownloadSpeed ?? 0) + (m.UploadSpeed ?? 0)) : 0,
-                PeakBandwidth = latestMetrics.Any() ? latestMetrics.Max(m => (m.DownloadSpeed ?? 0) + (m.UploadSpeed ?? 0)) : 0,
+                AverageLatency = metricsAgg?.AvgLatency ?? 0,
+                CurrentBandwidth = metricsAgg?.AvgBandwidth ?? 0,
+                PeakBandwidth = metricsAgg?.PeakBandwidth ?? 0,
                 TotalPCs = totalPCs,
                 OnlinePCs = onlinePCs
             };
@@ -230,7 +255,7 @@ namespace IRIS.Core.Services
                     EscapeCsv(row.PC?.MacAddress ?? string.Empty),
                     (row.UploadSpeed ?? 0).ToString("F3"),
                     (row.DownloadSpeed ?? 0).ToString("F3"),
-                    (row.Latency ?? 0).ToString("F2"),
+                    (row.Latency ?? 0).ToString("F0"),
                     (row.PacketLoss ?? 0).ToString("F2")));
             }
 
@@ -352,34 +377,56 @@ namespace IRIS.Core.Services
         public async Task<List<PCMonitorInfo>> GetPCsForMonitorAsync(int? roomId = null)
         {
             var nowUtc = DateTime.UtcNow;
+            var metricCutoff = nowUtc.AddMinutes(-10);
 
-            var query = _context.PCs
-                .Include(p => p.HardwareMetrics)
-                .Include(p => p.NetworkMetrics)
-                .Include(p => p.UserLogs)
+            var pcQuery = _context.PCs
+                .AsNoTracking()
                 .Include(p => p.Room)
                 .AsQueryable();
 
             if (roomId.HasValue)
-                query = query.Where(p => p.RoomId == roomId.Value);
+                pcQuery = pcQuery.Where(p => p.RoomId == roomId.Value);
 
-            var pcs = await query.ToListAsync();
+            var pcs = await pcQuery.ToListAsync();
+            var pcIds = pcs.Select(p => p.Id).ToList();
+
+            // Load only recent metrics instead of the entire history
+            var recentHardware = await _context.HardwareMetrics
+                .AsNoTracking()
+                .Where(h => pcIds.Contains(h.PCId) && h.Timestamp >= metricCutoff)
+                .ToListAsync();
+
+            var recentNetwork = await _context.NetworkMetrics
+                .AsNoTracking()
+                .Where(n => pcIds.Contains(n.PCId) && n.Timestamp >= metricCutoff)
+                .ToListAsync();
+
+            var recentUsers = await _context.UserLogs
+                .AsNoTracking()
+                .Include(u => u.User)
+                .Where(u => u.PCId != null && pcIds.Contains(u.PCId.Value) && u.Timestamp >= metricCutoff)
+                .ToListAsync();
+
+            var latestHwByPc = recentHardware
+                .GroupBy(h => h.PCId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Timestamp).First());
+
+            var latestNetByPc = recentNetwork
+                .GroupBy(n => n.PCId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Timestamp).First());
+
+            var latestUserByPc = recentUsers
+                .Where(u => u.PCId.HasValue)
+                .GroupBy(u => u.PCId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Timestamp).First());
 
             return pcs.Select(pc =>
             {
                 var isOnline = IsPcOnlineForMonitor(pc, nowUtc);
 
-                var latestMetric = pc.HardwareMetrics
-                    .OrderByDescending(m => m.Timestamp)
-                    .FirstOrDefault();
-
-                var latestUser = pc.UserLogs
-                    .OrderByDescending(u => u.Timestamp)
-                    .FirstOrDefault();
-
-                var latestNetwork = pc.NetworkMetrics
-                    .OrderByDescending(n => n.Timestamp)
-                    .FirstOrDefault();
+                latestHwByPc.TryGetValue(pc.Id, out var latestMetric);
+                latestNetByPc.TryGetValue(pc.Id, out var latestNetwork);
+                latestUserByPc.TryGetValue(pc.Id, out var latestUser);
 
                 var networkUsage = isOnline
                     ? (latestNetwork?.DownloadSpeed ?? 0) + (latestNetwork?.UploadSpeed ?? 0)
@@ -432,24 +479,44 @@ namespace IRIS.Core.Services
 
         public async Task<List<LiveAlertItem>> GetLiveAlertsAsync(int? roomId = null, int maxItems = 50)
         {
-            var query = _context.PCs
+            var nowUtc = DateTime.UtcNow;
+            // IsSustained only needs data within sustainSeconds window (max ~30s).
+            // Load 5 minutes of history to be safe.
+            var metricCutoff = nowUtc.AddMinutes(-5);
+
+            var pcQuery = _context.PCs
+                .AsNoTracking()
                 .Include(p => p.Room)
                 .ThenInclude(r => r.Policies)
-                .Include(p => p.HardwareMetrics)
-                .Include(p => p.NetworkMetrics)
                 .AsQueryable();
 
             if (roomId.HasValue)
-                query = query.Where(p => p.RoomId == roomId.Value);
+                pcQuery = pcQuery.Where(p => p.RoomId == roomId.Value);
 
-            var pcs = await query.ToListAsync();
+            var pcs = await pcQuery.ToListAsync();
+            var pcIds = pcs.Select(p => p.Id).ToList();
+
+            // Load only recent metrics instead of ALL history
+            var recentHardware = await _context.HardwareMetrics
+                .AsNoTracking()
+                .Where(h => pcIds.Contains(h.PCId) && h.Timestamp >= metricCutoff)
+                .ToListAsync();
+
+            var recentNetwork = await _context.NetworkMetrics
+                .AsNoTracking()
+                .Where(n => pcIds.Contains(n.PCId) && n.Timestamp >= metricCutoff)
+                .ToListAsync();
+
+            var hardwareByPc = recentHardware.GroupBy(h => h.PCId).ToDictionary(g => g.Key, g => g.ToList());
+            var networkByPc = recentNetwork.GroupBy(n => n.PCId).ToDictionary(g => g.Key, g => g.ToList());
+
             var alerts = new List<LiveAlertItem>();
 
             foreach (var pc in pcs)
             {
                 var pcName = pc.Hostname ?? $"PC-{pc.Id}";
                 var roomName = pc.Room?.RoomNumber ?? "Unassigned";
-                var isOnline = IsPcOnlineForMonitor(pc, DateTime.UtcNow);
+                var isOnline = IsPcOnlineForMonitor(pc, nowUtc);
 
                 if (!isOnline)
                 {
@@ -457,15 +524,18 @@ namespace IRIS.Core.Services
                 }
 
                 var activePolicy = pc.Room?.Policies?.FirstOrDefault(p => p.IsActive);
-                var latestHardware = pc.HardwareMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
-                var latestNetwork = pc.NetworkMetrics.OrderByDescending(x => x.Timestamp).FirstOrDefault();
-                var cpuHistory = pc.HardwareMetrics.Where(m => m.CpuUsage.HasValue).Select(m => (m.Timestamp, m.CpuUsage!.Value));
-                var ramHistory = pc.HardwareMetrics.Where(m => m.MemoryUsage.HasValue).Select(m => (m.Timestamp, m.MemoryUsage!.Value));
-                var diskHistory = pc.HardwareMetrics.Where(m => m.DiskUsage.HasValue).Select(m => (m.Timestamp, m.DiskUsage!.Value));
-                var cpuTempHistory = pc.HardwareMetrics.Where(m => m.CpuTemperature.HasValue).Select(m => (m.Timestamp, m.CpuTemperature!.Value));
-                var gpuTempHistory = pc.HardwareMetrics.Where(m => m.GpuTemperature.HasValue).Select(m => (m.Timestamp, m.GpuTemperature!.Value));
-                var packetLossHistory = pc.NetworkMetrics.Where(m => m.PacketLoss.HasValue).Select(m => (m.Timestamp, m.PacketLoss!.Value));
-                var latencyHistory = pc.NetworkMetrics.Where(m => m.Latency.HasValue).Select(m => (m.Timestamp, m.Latency!.Value));
+                var pcHardware = hardwareByPc.GetValueOrDefault(pc.Id) ?? new List<HardwareMetric>();
+                var pcNetwork = networkByPc.GetValueOrDefault(pc.Id) ?? new List<NetworkMetric>();
+
+                var latestHardware = pcHardware.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                var latestNetwork = pcNetwork.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+                var cpuHistory = pcHardware.Where(m => m.CpuUsage.HasValue).Select(m => (m.Timestamp, m.CpuUsage!.Value));
+                var ramHistory = pcHardware.Where(m => m.MemoryUsage.HasValue).Select(m => (m.Timestamp, m.MemoryUsage!.Value));
+                var diskHistory = pcHardware.Where(m => m.DiskUsage.HasValue).Select(m => (m.Timestamp, m.DiskUsage!.Value));
+                var cpuTempHistory = pcHardware.Where(m => m.CpuTemperature.HasValue).Select(m => (m.Timestamp, m.CpuTemperature!.Value));
+                var gpuTempHistory = pcHardware.Where(m => m.GpuTemperature.HasValue).Select(m => (m.Timestamp, m.GpuTemperature!.Value));
+                var packetLossHistory = pcNetwork.Where(m => m.PacketLoss.HasValue).Select(m => (m.Timestamp, m.PacketLoss!.Value));
+                var latencyHistory = pcNetwork.Where(m => m.Latency.HasValue).Select(m => (m.Timestamp, m.Latency!.Value));
 
                 if (latestHardware != null)
                 {

@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using IRIS.Core.Data;
 using IRIS.Core.Services;
 using IRIS.Core.Services.Contracts;
@@ -26,6 +27,8 @@ namespace IRIS.UI
     {
         private IServiceProvider? _serviceProvider;
         private IPowerCommandPollingServer? _powerCommandPollingServer;
+        private DataRetentionBackgroundService? _dataRetentionService;
+        private CancellationTokenSource? _appCts;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -43,6 +46,11 @@ namespace IRIS.UI
             _powerCommandPollingServer = _serviceProvider.GetRequiredService<IPowerCommandPollingServer>();
             _powerCommandPollingServer.Start();
 
+            // Start the data retention background cleanup service
+            _appCts = new CancellationTokenSource();
+            _dataRetentionService = _serviceProvider.GetRequiredService<DataRetentionBackgroundService>();
+            _ = _dataRetentionService.StartAsync(_appCts.Token);
+
             // Show login window only
             var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
             loginWindow.Show();
@@ -52,6 +60,13 @@ namespace IRIS.UI
         {
             try
             {
+                _appCts?.Cancel();
+                _dataRetentionService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch { /* Ignore shutdown errors from data retention service */ }
+
+            try
+            {
                 _powerCommandPollingServer?.StopAsync().GetAwaiter().GetResult();
             }
             catch
@@ -59,6 +74,7 @@ namespace IRIS.UI
                 // Ignore shutdown errors from background command polling server.
             }
 
+            _appCts?.Dispose();
             base.OnExit(e);
         }
 
@@ -98,6 +114,9 @@ namespace IRIS.UI
 
             services.AddSingleton<IConfiguration>(configuration);
 
+            // Logging
+            services.AddLogging();
+
             // Database
             services.AddDbContext<IRISDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("IRISDatabase")));
@@ -113,10 +132,12 @@ namespace IRIS.UI
             services.AddScoped<IUsageMetricsService, UsageMetricsService>();
             services.AddScoped<IApplicationUsageService, ApplicationUsageService>();
             services.AddScoped<IDeploymentDataService, DeploymentDataService>();
+            services.AddScoped<IDataRetentionService, DataRetentionService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
             services.AddSingleton<IPowerCommandPollingServer, PowerCommandPollingServer>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
+            services.AddSingleton<DataRetentionBackgroundService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();
@@ -131,6 +152,7 @@ namespace IRIS.UI
             services.AddTransient<UserManagementViewModel>();
             services.AddTransient<AccessLogsViewModel>();
             services.AddTransient<SettingsViewModel>();
+            services.AddTransient<NetworkAnalyticsViewModel>();
 
             // Views - Shared
             services.AddTransient<LoginWindow>();
@@ -141,7 +163,8 @@ namespace IRIS.UI
             services.AddTransient(sp => new AccessLogsView(sp.GetRequiredService<AccessLogsViewModel>()));
             services.AddTransient(sp => new UsageMetricsView(sp.GetRequiredService<UsageMetricsViewModel>()));
             services.AddTransient(sp => new AlertsView(sp.GetRequiredService<AlertsViewModel>()));
-            services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>(), sp.GetRequiredService<INavigationService>()));
+            services.AddTransient(sp => new SettingsView(sp.GetRequiredService<SettingsViewModel>(), sp.GetRequiredService<IAuthenticationService>()));
+            services.AddTransient(sp => new NetworkAnalyticsView(sp.GetRequiredService<NetworkAnalyticsViewModel>()));
             
             // Views - Admin
             services.AddTransient(sp => new UserManagementView(sp.GetRequiredService<UserManagementViewModel>(), sp.GetRequiredService<IUserManagementService>()));

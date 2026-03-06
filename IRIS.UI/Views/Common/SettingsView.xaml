@@ -1,111 +1,292 @@
 <UserControl x:Class="IRIS.UI.Views.Common.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-    
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="25,20" MaxWidth="700">
-            <!-- Header -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                <ui:SymbolIcon Symbol="Settings24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                <TextBlock Text="Settings" FontSize="32" FontWeight="Bold" 
-                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters">
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+        <StackPanel Margin="30,24,30,40" MaxWidth="760">
+
+            <!-- ═══════════ Page Header ═══════════ -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,28">
+                <ui:SymbolIcon Symbol="Settings24" FontSize="28" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- User Profile Card -->
-            <ui:Card Margin="0,0,0,20">
-                <StackPanel Margin="15">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Person24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="User Profile" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
+            <!-- ═══════════ User Profile ═══════════ -->
+            <TextBlock Text="ACCOUNT" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Margin="2,0,0,8"/>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="20,18" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Username" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Username, TargetNullValue='—'}" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Full Name" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding FullName, TargetNullValue='—'}" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Role" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                    <Border Grid.Row="4" Grid.Column="2" HorizontalAlignment="Left"
+                            Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="4" Padding="10,3">
+                        <TextBlock Text="{Binding Role, TargetNullValue='—'}" FontSize="12" Foreground="White" FontWeight="SemiBold"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════ Change Password ═══════════ -->
+            <TextBlock Text="SECURITY" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Margin="2,20,0,8"/>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="20,18" Margin="0,0,0,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <ui:SymbolIcon Symbol="ShieldKeyhole24" FontSize="18" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Change Password" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    
+
+                    <TextBlock Text="Current Password" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ui:PasswordBox x:Name="CurrentPasswordBox"
+                                    PlaceholderText="Enter current password"
+                                    Margin="0,0,0,14"/>
+
+                    <TextBlock Text="New Password" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ui:PasswordBox x:Name="NewPasswordBox"
+                                    PlaceholderText="Enter new password"
+                                    Margin="0,0,0,14"/>
+
+                    <TextBlock Text="Confirm New Password" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ui:PasswordBox x:Name="ConfirmPasswordBox"
+                                    PlaceholderText="Confirm new password"
+                                    Margin="0,0,0,18"/>
+
+                    <ui:Button Content="Change Password"
+                               Icon="{ui:SymbolIcon Checkmark24}"
+                               Appearance="Primary"
+                               HorizontalAlignment="Left"
+                               Padding="16,8"
+                               Click="ChangePassword_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════ Data Retention ═══════════ -->
+            <TextBlock Text="DATA RETENTION" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Margin="2,20,0,8"/>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="20,18" Margin="0,0,0,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <ui:SymbolIcon Symbol="Delete24" FontSize="18" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Automatic Cleanup" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Old monitoring data is automatically deleted daily. Configure retention periods below."
+                               FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,18" TextWrapping="Wrap"/>
+
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="14"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="14"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Username:" FontSize="14" FontWeight="SemiBold" 
-                                   Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Username, TargetNullValue='—', FallbackValue='—'}" FontSize="14" 
-                                   Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
+                        <!-- Hardware Metrics -->
+                        <StackPanel Grid.Row="0" Grid.Column="0">
+                            <TextBlock Text="Hardware Metrics" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding HardwareRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Full Name:" FontSize="14" FontWeight="SemiBold" 
-                                   Margin="0,0,0,15" Foreground="#1a1a1a" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullName, TargetNullValue='—', FallbackValue='—'}" FontSize="14" 
-                                   Foreground="#333333" Margin="0,0,0,15" VerticalAlignment="Center" FontWeight="Medium"/>
+                        <!-- Network Metrics -->
+                        <StackPanel Grid.Row="0" Grid.Column="2">
+                            <TextBlock Text="Network Metrics" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding NetworkRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Role:" FontSize="14" FontWeight="SemiBold" 
-                                   Foreground="#1a1a1a" VerticalAlignment="Center"/>
-                        <Border Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left"
-                                Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="4" Padding="10,4">
-                            <TextBlock Text="{Binding Role, TargetNullValue='—', FallbackValue='—'}" FontSize="13" 
-                                       Foreground="White" FontWeight="SemiBold"/>
-                        </Border>
+                        <!-- Alerts -->
+                        <StackPanel Grid.Row="2" Grid.Column="0">
+                            <TextBlock Text="Alerts" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding AlertRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="730"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Website Usage -->
+                        <StackPanel Grid.Row="2" Grid.Column="2">
+                            <TextBlock Text="Website Usage" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding WebsiteUsageRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Application Usage -->
+                        <StackPanel Grid.Row="4" Grid.Column="0">
+                            <TextBlock Text="Application Usage" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding SoftwareUsageRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Cleanup Hour -->
+                        <StackPanel Grid.Row="4" Grid.Column="2">
+                            <TextBlock Text="Daily Cleanup Hour (UTC)" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:NumberBox Grid.Column="0" Value="{Binding CleanupHourUtc, Mode=TwoWay}" Minimum="0" Maximum="23"
+                                              SpinButtonPlacementMode="Compact"/>
+                                <TextBlock Grid.Column="1" Text=":00" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
                     </Grid>
-                </StackPanel>
-            </ui:Card>
 
-            <!-- Change Password Card -->
-            <ui:Card Margin="0,0,0,20">
-                <StackPanel Margin="15">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Key24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Change Password" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    <!-- Status + Actions -->
+                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                        <ui:Button Content="Save Settings"
+                                   Icon="{ui:SymbolIcon Save24}"
+                                   Appearance="Primary"
+                                   Padding="16,8"
+                                   Command="{Binding SaveRetentionCommand}"/>
+                        <ui:Button Content="Run Cleanup Now"
+                                   Icon="{ui:SymbolIcon Delete24}"
+                                   Padding="16,8" Margin="10,0,0,0"
+                                   Command="{Binding RunCleanupNowCommand}"
+                                   Foreground="White">
+                            <ui:Button.Background>
+                                <SolidColorBrush Color="#DC2626"/>
+                            </ui:Button.Background>
+                        </ui:Button>
                     </StackPanel>
-                    
-                    <TextBlock Text="Current Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                    <ui:PasswordBox x:Name="CurrentPasswordBox" 
-                                    PlaceholderText="Enter current password"
-                                    Icon="{ui:SymbolIcon LockClosed24}"
-                                    Margin="0,0,0,15"/>
-                    
-                    <TextBlock Text="New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                    <ui:PasswordBox x:Name="NewPasswordBox" 
-                                    PlaceholderText="Enter new password"
-                                    Icon="{ui:SymbolIcon Key24}"
-                                    Margin="0,0,0,15"/>
-                    
-                    <TextBlock Text="Confirm New Password" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                    <ui:PasswordBox x:Name="ConfirmPasswordBox" 
-                                    PlaceholderText="Confirm new password"
-                                    Icon="{ui:SymbolIcon Checkmark24}"
-                                    Margin="0,0,0,20"/>
-                    
-                    <ui:Button x:Name="ChangePasswordButton" 
-                               Content="Change Password" 
-                               Icon="{ui:SymbolIcon ArrowRight24}"
-                               Appearance="Primary"
-                               HorizontalAlignment="Stretch"
-                               Click="ChangePassword_Click"/>
-                </StackPanel>
-            </ui:Card>
 
-            <!-- Session Card -->
-            <ui:Card>
-                <StackPanel Margin="15">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="SignOut24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Session" FontSize="18" FontWeight="Bold" 
-                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    <TextBlock Text="{Binding RetentionStatusMessage}" FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,10,0,0" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RetentionStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════ Session ═══════════ -->
+            <TextBlock Text="SESSION" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Margin="2,20,0,8"/>
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="20,18" Margin="0,0,0,0">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Sign Out" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    
-                    <ui:Button x:Name="LogoutButton" 
-                               Content="Logout" 
+                    <TextBlock Text="End your current session and return to the login screen."
+                               FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,14" TextWrapping="Wrap"/>
+                    <ui:Button x:Name="LogoutButton"
+                               Content="Logout"
                                Icon="{ui:SymbolIcon SignOut24}"
-                               Appearance="Danger"
-                               HorizontalAlignment="Stretch"
-                               Click="Logout_Click"/>
+                               HorizontalAlignment="Left"
+                               Padding="16,8"
+                               Click="Logout_Click"
+                               Foreground="White">
+                        <ui:Button.Background>
+                            <SolidColorBrush Color="#620F1E"/>
+                        </ui:Button.Background>
+                    </ui:Button>
                 </StackPanel>
-            </ui:Card>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>
