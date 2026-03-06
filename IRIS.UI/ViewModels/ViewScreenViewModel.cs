@@ -51,6 +51,7 @@ namespace IRIS.UI.ViewModels
         private bool _isConnected = true;
         private bool _isLoading;
         private bool _isDisconnected;
+        private bool _isFreezeActive;
         private DateTime _lastFrameUpdatedUtc = DateTime.MinValue;
         private ImageSource? _screenImage;
 
@@ -70,6 +71,7 @@ namespace IRIS.UI.ViewModels
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
+            ToggleFreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
@@ -119,9 +121,11 @@ namespace IRIS.UI.ViewModels
         public bool IsConnected { get => _isConnected; set { _isConnected = value; OnPropertyChanged(); } }
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
         public bool IsDisconnected { get => _isDisconnected; set { _isDisconnected = value; OnPropertyChanged(); } }
+        public bool IsFreezeActive { get => _isFreezeActive; set { _isFreezeActive = value; OnPropertyChanged(); OnPropertyChanged(nameof(FreezeButtonText)); } }
         public string LastFrameUpdatedText => _lastFrameUpdatedUtc == DateTime.MinValue
             ? "No frame yet"
             : $"Last frame {TimeZoneInfo.ConvertTimeFromUtc(_lastFrameUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+        public string FreezeButtonText => IsFreezeActive ? "Unfreeze" : "Freeze";
         public ImageSource? ScreenImage { get => _screenImage; set { _screenImage = value; OnPropertyChanged(); } }
 
         public ICommand ToggleDetailsCommand { get; }
@@ -129,6 +133,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ShutDownCommand { get; }
         public ICommand ShutdownPCCommand { get; }
         public ICommand RestartPCCommand { get; }
+        public ICommand ToggleFreezeCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RefreshScreenCommand { get; }
         public ICommand RetryConnectionCommand { get; }
@@ -155,6 +160,7 @@ namespace IRIS.UI.ViewModels
             ConnectionStatus = pc.Status == "Online" ? "Connected" : "Disconnected";
             IsConnected = pc.Status == "Online";
             IsDisconnected = pc.Status == "Offline";
+            IsFreezeActive = false;
 
             _isActive = true;
             await LoadHardwareConfigAsync();
@@ -326,6 +332,51 @@ namespace IRIS.UI.ViewModels
             }
 
             MessageBox.Show("Failed to queue restart command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private async Task ToggleFreezeAsync()
+        {
+            if (string.IsNullOrWhiteSpace(MacAddress))
+            {
+                MessageBox.Show("Cannot send freeze command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!IsFreezeActive && !IsConnected)
+            {
+                MessageBox.Show("Cannot freeze this PC because it is offline.", "PC Offline", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var commandType = IsFreezeActive ? "FreezeOff" : "FreezeOn";
+            var confirmation = MessageBox.Show(
+                IsFreezeActive
+                    ? $"Unfreeze {PCName}?"
+                    : $"Freeze {PCName}?",
+                IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, commandType);
+            if (!queued)
+            {
+                MessageBox.Show("Failed to queue freeze command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            IsFreezeActive = !IsFreezeActive;
+            MessageBox.Show(
+                IsFreezeActive
+                    ? $"Freeze command queued for {PCName}."
+                    : $"Unfreeze command queued for {PCName}.",
+                "Command Queued",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private async Task RemoteDesktopAsync()
