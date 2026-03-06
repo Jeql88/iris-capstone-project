@@ -51,8 +51,16 @@ namespace IRIS.Agent
             var pingTimeout = int.TryParse(configuration["AgentSettings:PingTimeoutMs"], out var pto) ? pto : 1000;
             var commandServerHost = configuration["AgentSettings:CommandServerHost"] ?? "127.0.0.1";
             var commandServerPort = int.TryParse(configuration["AgentSettings:CommandServerPort"], out var csp) ? csp : 5091;
+            var freezeAutoUnfreezeMinutes = int.TryParse(configuration["AgentSettings:FreezeAutoUnfreezeMinutes"], out var fum) ? fum : 10;
 
-            var monitoringLogic = new MonitoringLogic(context, networkInfo.MacAddress, pingHost, pingTimeout, commandServerHost, commandServerPort);
+            var monitoringLogic = new MonitoringLogic(
+                context,
+                networkInfo.MacAddress,
+                pingHost,
+                pingTimeout,
+                commandServerHost,
+                commandServerPort,
+                freezeAutoUnfreezeMinutes);
             var monitoringController = new MonitoringController(monitoringLogic, configuration);
             var screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
             var snapshotMaxWidth = int.TryParse(configuration["AgentSettings:SnapshotMaxWidth"], out var smw) ? smw : 1280;

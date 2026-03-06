@@ -153,7 +153,11 @@
                         <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" 
                                    Content="Restart"
                                    Command="{Binding RestartPCCommand}"
-                                   Appearance="Secondary" Height="34" MinWidth="100"/>
+                                   Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="100"/>
+                        <ui:Button Icon="{ui:SymbolIcon LockClosed24}"
+                                   Content="{Binding FreezeButtonText}"
+                                   Command="{Binding ToggleFreezeCommand}"
+                                   Appearance="Secondary" Height="34" MinWidth="105"/>
                     </StackPanel>
                 </Grid>
 
