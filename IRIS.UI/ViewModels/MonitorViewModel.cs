@@ -1,72 +1,202 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Threading;
+using System.Collections.Specialized;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
+using IRIS.Core.DTOs;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IRIS.UI.ViewModels
 {
-    public class MonitorViewModel : INotifyPropertyChanged
+    public class MonitorViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly INavigationService _navigationService;
-        private readonly IMonitoringService _monitoringService;
+        private readonly IPCDataCacheService _cache;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IPowerCommandQueueService _powerCommandQueueService;
+        private readonly int _screenStreamPort;
+        private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _refreshTimer;
+        private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(2200) };
         private string _searchText = string.Empty;
-        private string _selectedLab = "Archi Lab 1";
-        private int _onlineCount;
-        private int _offlineCount;
-        private int _warningCount;
+        private RoomDto? _selectedRoom;
+        private int? _selectedRoomId = null;
+        private int _totalPCCount;
+        private int _onlinePCCount;
+        private int _offlinePCCount;
+        private bool _hasNoPCs = true;
+        private int _criticalAlertCount;
+        private int _highAlertCount;
+        private string _topAlertMessage = "No active alerts";
+        private string _alertHeaderText = "All clear";
+        private bool _isPcAlertsPanelOpen;
+        private bool _isTimelinePanelOpen;
+        private string _selectedPcAlertsTitle = "Device Alerts";
+        private string _selectedPcTimelineTitle = "PC Health Timeline";
+        private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
+        private DateTime _lastAgentRefreshRequestUtc = DateTime.MinValue;
+        private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
+        private bool _isInitialized;
+        private bool _isActive = true;
+        private bool _isTimelineLoading;
 
-        public MonitorViewModel(INavigationService navigationService, IMonitoringService monitoringService)
+        public MonitorViewModel(
+            INavigationService navigationService,
+            IPCDataCacheService cache,
+            IServiceScopeFactory scopeFactory,
+            IPowerCommandQueueService powerCommandQueueService,
+            IConfiguration configuration)
         {
             _navigationService = navigationService;
-            _monitoringService = monitoringService;
+            _cache = cache;
+            _scopeFactory = scopeFactory;
+            _powerCommandQueueService = powerCommandQueueService;
+            _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
+            _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ViewScreenCommand = new RelayCommand(async () => await ViewScreenAsync(), () => SelectedPC != null);
+            ViewScreenForPCCommand = new RelayCommand<PCDisplayModel>(pc => ViewScreenForPC(pc));
+            ToggleCardDetailsCommand = new RelayCommand<PCDisplayModel>(pc => ToggleCardDetails(pc));
+            OpenPcAlertsForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenAlertsForPC(pc));
+            ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
+            ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
+            CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
-            
+            RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
+            RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
+
+            SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
+
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
-            _refreshTimer.Start();
-            
-            _ = LoadPCDataAsync();
+
+            _ = InitializeAsync();
         }
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
+        public ObservableCollection<PCDisplayModel> FilteredPCs { get; } = new();
+        public ObservableCollection<RoomDto> Rooms { get; } = new();
+        public ObservableCollection<LiveAlertDisplayModel> ActiveAlerts { get; } = new();
+        public ObservableCollection<LiveAlertDisplayModel> SelectedPcAlerts { get; } = new();
+        public ObservableCollection<PCHealthTimelineDisplayModel> SelectedPcTimeline { get; } = new();
 
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); }
+            set
+            {
+                _searchText = value;
+                OnPropertyChanged();
+                ApplyFilter();
+            }
         }
 
-        public string SelectedLab
+        public RoomDto? SelectedRoom
         {
-            get => _selectedLab;
-            set { _selectedLab = value; OnPropertyChanged(); _ = LoadPCDataAsync(); }
+            get => _selectedRoom;
+            set
+            {
+                _selectedRoom = value;
+                _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
+                OnPropertyChanged();
+                if (_isInitialized)
+                {
+                    _ = LoadPCDataAsync();
+                }
+            }
         }
 
-        public int OnlineCount
+        public int TotalPCCount
         {
-            get => _onlineCount;
-            set { _onlineCount = value; OnPropertyChanged(); }
+            get => _totalPCCount;
+            set { _totalPCCount = value; OnPropertyChanged(); }
         }
 
-        public int OfflineCount
+        public int OnlinePCCount
         {
-            get => _offlineCount;
-            set { _offlineCount = value; OnPropertyChanged(); }
+            get => _onlinePCCount;
+            set { _onlinePCCount = value; OnPropertyChanged(); }
         }
 
-        public int WarningCount
+        public int OfflinePCCount
         {
-            get => _warningCount;
-            set { _warningCount = value; OnPropertyChanged(); }
+            get => _offlinePCCount;
+            set { _offlinePCCount = value; OnPropertyChanged(); }
         }
+
+        public bool HasNoPCs
+        {
+            get => _hasNoPCs;
+            set { _hasNoPCs = value; OnPropertyChanged(); }
+        }
+
+        public int CriticalAlertCount
+        {
+            get => _criticalAlertCount;
+            set { _criticalAlertCount = value; OnPropertyChanged(); }
+        }
+
+        public int HighAlertCount
+        {
+            get => _highAlertCount;
+            set { _highAlertCount = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertMessage
+        {
+            get => _topAlertMessage;
+            set { _topAlertMessage = value; OnPropertyChanged(); }
+        }
+
+        public string AlertHeaderText
+        {
+            get => _alertHeaderText;
+            set { _alertHeaderText = value; OnPropertyChanged(); }
+        }
+
+        public bool IsPcAlertsPanelOpen
+        {
+            get => _isPcAlertsPanelOpen;
+            set { _isPcAlertsPanelOpen = value; OnPropertyChanged(); }
+        }
+
+        public bool IsTimelinePanelOpen
+        {
+            get => _isTimelinePanelOpen;
+            set { _isTimelinePanelOpen = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedPcAlertsTitle
+        {
+            get => _selectedPcAlertsTitle;
+            set { _selectedPcAlertsTitle = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedPcTimelineTitle
+        {
+            get => _selectedPcTimelineTitle;
+            set { _selectedPcTimelineTitle = value; OnPropertyChanged(); }
+        }
+
+        public bool IsTimelineLoading
+        {
+            get => _isTimelineLoading;
+            set { _isTimelineLoading = value; OnPropertyChanged(); }
+        }
+
+        public bool HasSelectedPC => SelectedPC != null;
+        public bool HasTimelineEvents => SelectedPcTimeline.Count > 0;
+        public string TimelineEmptyMessage => HasSelectedPC
+            ? "No timeline events for the selected period"
+            : "Select a PC to view health timeline";
 
         private PCDisplayModel? _selectedPC;
         public PCDisplayModel? SelectedPC
@@ -74,84 +204,443 @@ namespace IRIS.UI.ViewModels
             get => _selectedPC;
             set
             {
+                // Deselect previous
+                if (_selectedPC != null) _selectedPC.IsSelected = false;
                 _selectedPC = value;
+                if (_selectedPC != null) _selectedPC.IsSelected = true;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedPC));
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
         public ICommand ViewScreenCommand { get; }
+        public ICommand ViewScreenForPCCommand { get; }
+        public ICommand ToggleCardDetailsCommand { get; }
+        public ICommand OpenPcAlertsForPCCommand { get; }
+        public ICommand ClosePcAlertsPanelCommand { get; }
+        public ICommand ShowTimelineForPCCommand { get; }
+        public ICommand CloseTimelinePanelCommand { get; }
         public ICommand LockScreenCommand { get; }
+        public ICommand RefreshCommand { get; }
+        public ICommand RefreshSelectedPcTimelineCommand { get; }
+
+        private async Task InitializeAsync()
+        {
+            await LoadRoomsAsync();
+            _isInitialized = true;
+
+            // If cache already has data (e.g. navigating back from Dashboard), show it immediately
+            if (_cache.HasData)
+            {
+                ApplyCachedPCData();
+            }
+
+            await LoadPCDataAsync();
+            _refreshTimer.Start();
+        }
 
         private async Task LoadPCDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadPcDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
-                var pcs = await _monitoringService.GetPCsForMonitorAsync();
-                var counts = await _monitoringService.GetPCStatusCountsAsync();
-                
-                PCs.Clear();
-                
-                foreach (var pc in pcs)
+                if (!_isActive)
                 {
-                    var statusColor = pc.Status == "Online" ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) :
-                                     pc.Status == "Offline" ? new SolidColorBrush(Color.FromRgb(239, 68, 68)) :
-                                     new SolidColorBrush(Color.FromRgb(245, 158, 11));
-
-                    PCs.Add(new PCDisplayModel
-                    {
-                        Id = pc.Id,
-                        Name = pc.Name,
-                        IP = $"IP: {pc.IpAddress}",
-                        OS = $"OS: {pc.OperatingSystem}",
-                        CPU = $"CPU: {pc.CpuUsage:F0}%",
-                        Network = $"Network: {pc.NetworkUsage:F1} Mbps",
-                        RAM = $"RAM: {pc.RamUsage:F0}%",
-                        User = string.IsNullOrEmpty(pc.User) ? "" : $"User: {pc.User}",
-                        StatusColor = statusColor
-                    });
+                    return;
                 }
-                
-                OnlineCount = counts.OnlineCount;
-                OfflineCount = counts.OfflineCount;
-                WarningCount = counts.WarningCount;
+
+                var previousSelectionId = SelectedPC?.Id;
+                var previousFlipState = SelectedPC?.IsFlipped ?? false;
+
+                // Refresh via shared cache (uses its own DI scope — safe from navigation disposal)
+                _cache.CurrentRoomFilter = _selectedRoomId;
+                await _cache.RefreshPCDataAsync();
+
+                var pcs = _cache.CachedPCs;
+                var counts = _cache.CachedStatusCounts;
+
+                await RequestImmediateAgentRefreshAsync(pcs);
+
+                ApplyCachedPCData();
+
+                // Always apply filter first so PCs are visible even if alerts/snapshots fail
+                ApplyFilter();
+
+                try
+                {
+                    if ((DateTime.UtcNow - _lastAlertRefreshUtc).TotalSeconds >= 10)
+                    {
+                        await LoadLiveAlertsAsync();
+                    }
+                }
+                catch { /* Alert loading failure must not block PC display */ }
+
+                // Screenshots only load on Monitor page (not from cache) — reduces overhead
+                try
+                {
+                    await LoadSnapshotsAsync();
+                }
+                catch { /* Snapshot loading failure must not block PC display */ }
+
+                if (previousSelectionId.HasValue)
+                {
+                    var matchedSelection = PCs.FirstOrDefault(p => p.Id == previousSelectionId.Value);
+                    if (matchedSelection != null)
+                    {
+                        matchedSelection.IsFlipped = previousFlipState;
+                    }
+
+                    SelectedPC = matchedSelection;
+                }
+                else
+                {
+                    SelectedPC = null;
+                }
             }
             catch
             {
                 // Fallback to empty if error
             }
+            finally
+            {
+                _loadPcDataSemaphore.Release();
+            }
         }
 
-        private void LoadPCData_OLD()
+        public void OnNavigatedFrom()
         {
-            PCs.Clear();
-            var pcData = new[]
-            {
-                new PCDisplayModel { Name = "LAB1-PC01", IP = "IP: 192.168.1.101", OS = "OS: Windows 11", CPU = "CPU: 0%", Network = "Network: 0.0 Mbps", RAM = "RAM: 0%", User = "", StatusColor = new SolidColorBrush(Color.FromRgb(239, 68, 68)) },
-                new PCDisplayModel { Name = "LAB1-PC02", IP = "IP: 192.168.1.102", OS = "OS: Windows 11", CPU = "CPU: 0%", Network = "Network: 0.0 Mbps", RAM = "RAM: 0%", User = "", StatusColor = new SolidColorBrush(Color.FromRgb(239, 68, 68)) },
-                new PCDisplayModel { Name = "LAB1-PC03", IP = "IP: 192.168.1.103", OS = "OS: Windows 11", CPU = "CPU: 0%", Network = "Network: 0.0 Mbps", RAM = "RAM: 0%", User = "", StatusColor = new SolidColorBrush(Color.FromRgb(239, 68, 68)) },
-                new PCDisplayModel { Name = "LAB1-PC04", IP = "IP: 192.168.1.104", OS = "OS: Windows 11", CPU = "CPU: 0%", Network = "Network: 0.0 Mbps", RAM = "RAM: 0%", User = "", StatusColor = new SolidColorBrush(Color.FromRgb(239, 68, 68)) },
-                new PCDisplayModel { Name = "LAB1-PC05", IP = "IP: 192.168.1.105", OS = "OS: Windows 11", CPU = "CPU: 65%", Network = "Network: 6.0 Mbps", RAM = "RAM: 43%", User = "User: student5", StatusColor = new SolidColorBrush(Color.FromRgb(245, 158, 11)) },
-                new PCDisplayModel { Name = "LAB1-PC06", IP = "IP: 192.168.1.106", OS = "OS: Windows 11", CPU = "CPU: 87%", Network = "Network: 9.1 Mbps", RAM = "RAM: 73%", User = "User: student6", StatusColor = new SolidColorBrush(Color.FromRgb(245, 158, 11)) },
-                new PCDisplayModel { Name = "LAB1-PC07", IP = "IP: 192.168.1.107", OS = "OS: Windows 11", CPU = "CPU: 27%", Network = "Network: 3.0 Mbps", RAM = "RAM: 0%", User = "User: student7", StatusColor = new SolidColorBrush(Color.FromRgb(245, 158, 11)) },
-                new PCDisplayModel { Name = "LAB1-PC08", IP = "IP: 192.168.1.108", OS = "OS: Windows 11", CPU = "CPU: 0%", Network = "Network: 0.0 Mbps", RAM = "RAM: 57%", User = "", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC09", IP = "IP: 192.168.1.109", OS = "OS: Windows 11", CPU = "CPU: 69%", Network = "Network: 3.8 Mbps", RAM = "RAM: 34%", User = "User: student9", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC10", IP = "IP: 192.168.1.110", OS = "OS: Windows 11", CPU = "CPU: 9%", Network = "Network: 3.6 Mbps", RAM = "RAM: 26%", User = "User: student10", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC11", IP = "IP: 192.168.1.111", OS = "OS: Windows 11", CPU = "CPU: 35%", Network = "Network: 5.5 Mbps", RAM = "RAM: 1%", User = "User: student11", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC12", IP = "IP: 192.168.1.112", OS = "OS: Windows 11", CPU = "CPU: 11%", Network = "Network: 5.4 Mbps", RAM = "RAM: 93%", User = "User: student12", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC13", IP = "IP: 192.168.1.113", OS = "OS: Windows 11", CPU = "CPU: 40%", Network = "Network: 6.9 Mbps", RAM = "RAM: 64%", User = "User: student13", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC14", IP = "IP: 192.168.1.114", OS = "OS: Windows 11", CPU = "CPU: 79%", Network = "Network: 8.9 Mbps", RAM = "RAM: 68%", User = "User: student14", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC15", IP = "IP: 192.168.1.115", OS = "OS: Windows 11", CPU = "CPU: 95%", Network = "Network: 8.1 Mbps", RAM = "RAM: 67%", User = "User: student15", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC16", IP = "IP: 192.168.1.116", OS = "OS: Windows 11", CPU = "CPU: 68%", Network = "Network: 7.0 Mbps", RAM = "RAM: 43%", User = "User: student16", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC17", IP = "IP: 192.168.1.117", OS = "OS: Windows 11", CPU = "CPU: 50%", Network = "Network: 0.2 Mbps", RAM = "RAM: 31%", User = "User: student17", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC18", IP = "IP: 192.168.1.118", OS = "OS: Windows 11", CPU = "CPU: 99%", Network = "Network: 8.0 Mbps", RAM = "RAM: 1%", User = "User: student18", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC19", IP = "IP: 192.168.1.119", OS = "OS: Windows 11", CPU = "CPU: 11%", Network = "Network: 7.2 Mbps", RAM = "RAM: 36%", User = "User: student19", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) },
-                new PCDisplayModel { Name = "LAB1-PC20", IP = "IP: 192.168.1.120", OS = "OS: Windows 11", CPU = "CPU: 71%", Network = "Network: 1.4 Mbps", RAM = "RAM: 7%", User = "User: student20", StatusColor = new SolidColorBrush(Color.FromRgb(16, 185, 129)) }
-            };
+            _isActive = false;
+            _refreshTimer.Stop();
+        }
 
-            foreach (var pc in pcData)
-                PCs.Add(pc);
+        /// <summary>
+        /// Updates PCs collection in-place from the shared cache.
+        /// Existing items are updated without removing them (no visual flash).
+        /// New PCs are added; stale PCs are removed.
+        /// </summary>
+        private void ApplyCachedPCData()
+        {
+            var pcs = _cache.CachedPCs;
+            var counts = _cache.CachedStatusCounts;
+
+            var existingById = PCs.ToDictionary(p => p.Id);
+            var incomingIds = new HashSet<int>();
+
+            foreach (var pc in pcs)
+            {
+                incomingIds.Add(pc.Id);
+
+                if (existingById.TryGetValue(pc.Id, out var existing))
+                {
+                    // Update in-place — each setter fires PropertyChanged, UI updates smoothly
+                    UpdateDisplayModel(existing, pc);
+                }
+                else
+                {
+                    // Brand-new PC — add it
+                    var display = CreateDisplayModel(pc);
+                    PCs.Add(display);
+                }
+            }
+
+            // Remove PCs that are no longer in the cache
+            for (int i = PCs.Count - 1; i >= 0; i--)
+            {
+                if (!incomingIds.Contains(PCs[i].Id))
+                {
+                    PCs.RemoveAt(i);
+                }
+            }
+
+            OnlinePCCount = counts.OnlineCount;
+            OfflinePCCount = counts.OfflineCount;
+            TotalPCCount = OnlinePCCount + OfflinePCCount;
+        }
+
+        private static PCDisplayModel CreateDisplayModel(PCMonitorInfo pc)
+        {
+            return new PCDisplayModel
+            {
+                Id = pc.Id,
+                PCName = pc.Name,
+                IPAddress = pc.IpAddress,
+                MacAddress = pc.MacAddress,
+                RoomName = pc.RoomName,
+                Status = pc.Status,
+                OS = pc.OperatingSystem,
+                CPU = $"{pc.CpuUsage:F0}%",
+                CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
+                GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
+                GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
+                Network = $"{pc.NetworkUsage:F1} Mbps",
+                NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
+                NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
+                NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A",
+                PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A",
+                RAM = $"{pc.RamUsage:F0}%",
+                CpuUsagePercent = pc.CpuUsage,
+                CpuTemperatureValue = pc.CpuTemperature,
+                GpuUsagePercent = pc.GpuUsage,
+                GpuTemperatureValue = pc.GpuTemperature,
+                RamUsagePercent = pc.RamUsage,
+                DiskUsagePercent = pc.DiskUsage,
+                NetworkUploadMbps = pc.NetworkUploadMbps,
+                NetworkDownloadMbps = pc.NetworkDownloadMbps,
+                NetworkLatencyMs = pc.NetworkLatencyMs,
+                PacketLossPercent = pc.PacketLossPercent,
+                User = pc.User,
+                SnapshotImageBase64 = null,
+                TopAlertSeverity = "None",
+                TopAlertMessage = "No active alerts",
+                LastMetricTimestamp = pc.LastMetricTimestamp
+            };
+        }
+
+        private static void UpdateDisplayModel(PCDisplayModel display, PCMonitorInfo pc)
+        {
+            display.PCName = pc.Name;
+            display.IPAddress = pc.IpAddress;
+            display.MacAddress = pc.MacAddress;
+            display.RoomName = pc.RoomName;
+            display.Status = pc.Status;
+            display.OS = pc.OperatingSystem;
+            display.CPU = $"{pc.CpuUsage:F0}%";
+            display.CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A";
+            display.GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A";
+            display.GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A";
+            display.Network = $"{pc.NetworkUsage:F1} Mbps";
+            display.NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps";
+            display.NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps";
+            display.NetworkLatency = pc.NetworkLatencyMs.HasValue ? $"{pc.NetworkLatencyMs.Value:F0} ms" : "N/A";
+            display.PacketLoss = pc.PacketLossPercent.HasValue ? $"{pc.PacketLossPercent.Value:F1}%" : "N/A";
+            display.RAM = $"{pc.RamUsage:F0}%";
+            display.CpuUsagePercent = pc.CpuUsage;
+            display.CpuTemperatureValue = pc.CpuTemperature;
+            display.GpuUsagePercent = pc.GpuUsage;
+            display.GpuTemperatureValue = pc.GpuTemperature;
+            display.RamUsagePercent = pc.RamUsage;
+            display.DiskUsagePercent = pc.DiskUsage;
+            display.NetworkUploadMbps = pc.NetworkUploadMbps;
+            display.NetworkDownloadMbps = pc.NetworkDownloadMbps;
+            display.NetworkLatencyMs = pc.NetworkLatencyMs;
+            display.PacketLossPercent = pc.PacketLossPercent;
+            display.User = pc.User;
+            display.LastMetricTimestamp = pc.LastMetricTimestamp;
+            // SnapshotImageBase64 and alert fields are NOT overwritten — they're loaded separately
+        }
+
+        private async Task LoadRoomsAsync()
+        {
+            try
+            {
+                await _cache.RefreshRoomsAsync();
+                var rooms = _cache.CachedRooms;
+                Rooms.Clear();
+                Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+                foreach (var room in rooms)
+                {
+                    Rooms.Add(room);
+                }
+
+                if (SelectedRoom == null && Rooms.Any())
+                {
+                    SelectedRoom = Rooms.First();
+                }
+            }
+            catch
+            {
+                // ignore for now
+            }
+        }
+
+        private void ApplyFilter()
+        {
+            var desired = new List<PCDisplayModel>();
+            foreach (var pc in PCs)
+            {
+                bool matchesSearch = string.IsNullOrEmpty(SearchText) ||
+                    pc.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                    pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+
+                if (matchesSearch)
+                {
+                    desired.Add(pc);
+                }
+            }
+
+            // Build a set of desired IDs for quick removal lookup
+            var desiredIds = new HashSet<int>(desired.Select(p => p.Id));
+
+            // Remove items that should no longer be visible
+            for (int i = FilteredPCs.Count - 1; i >= 0; i--)
+            {
+                if (!desiredIds.Contains(FilteredPCs[i].Id))
+                {
+                    FilteredPCs.RemoveAt(i);
+                }
+            }
+
+            // Add items that are missing
+            var existingIds = new HashSet<int>(FilteredPCs.Select(p => p.Id));
+            foreach (var pc in desired)
+            {
+                if (!existingIds.Contains(pc.Id))
+                {
+                    FilteredPCs.Add(pc);
+                }
+            }
+
+            HasNoPCs = FilteredPCs.Count == 0;
+        }
+
+        private async Task LoadLiveAlertsAsync()
+        {
+            await _cache.RefreshLiveAlertsAsync();
+            var alerts = _cache.CachedLiveAlerts;
+            ActiveAlerts.Clear();
+
+            foreach (var alert in alerts)
+            {
+                ActiveAlerts.Add(new LiveAlertDisplayModel
+                {
+                    PCId = alert.PCId,
+                    PCName = alert.PCName,
+                    RoomName = alert.RoomName,
+                    Severity = alert.Severity,
+                    Type = alert.Type,
+                    Message = alert.Message,
+                    Timestamp = alert.Timestamp
+                });
+            }
+
+            CriticalAlertCount = alerts.Count(a => a.Severity == "Critical");
+            HighAlertCount = alerts.Count(a => a.Severity == "High");
+            TopAlertMessage = alerts.FirstOrDefault()?.Message ?? "No active alerts";
+            AlertHeaderText = CriticalAlertCount == 0 && HighAlertCount == 0
+                ? "All clear"
+                : $"Critical {CriticalAlertCount} • High {HighAlertCount}";
+
+            var topByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(a => a.SeverityRank).ThenByDescending(a => a.Timestamp).First());
+
+            var countByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var pc in PCs)
+            {
+                if (topByPc.TryGetValue(pc.Id, out var topAlert))
+                {
+                    pc.TopAlertSeverity = topAlert.Severity;
+                    pc.TopAlertMessage = topAlert.Message;
+                    pc.AlertCount = countByPc.TryGetValue(pc.Id, out var alertCount) ? alertCount : 0;
+                }
+                else
+                {
+                    pc.TopAlertSeverity = "None";
+                    pc.TopAlertMessage = "No active alerts";
+                    pc.AlertCount = 0;
+                }
+            }
+
+            if (IsPcAlertsPanelOpen && SelectedPC != null)
+            {
+                PopulateSelectedPcAlerts(SelectedPC.Id);
+            }
+
+            _lastAlertRefreshUtc = DateTime.UtcNow;
+        }
+
+        private async Task LoadSnapshotsAsync()
+        {
+            var reachablePcs = PCs
+                .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .ToList();
+
+            var semaphore = new SemaphoreSlim(4);
+            var tasks = reachablePcs.Select(async pc =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    var base64 = await GetSnapshotBase64Async(pc.IPAddress);
+                    if (!string.IsNullOrWhiteSpace(base64))
+                    {
+                        pc.SnapshotImageBase64 = base64;
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task RequestImmediateAgentRefreshAsync(IEnumerable<PCMonitorInfo> pcs)
+        {
+            var nowUtc = DateTime.UtcNow;
+            if ((nowUtc - _lastAgentRefreshRequestUtc).TotalSeconds < 12)
+            {
+                return;
+            }
+
+            _lastAgentRefreshRequestUtc = nowUtc;
+
+            var uniqueMacs = pcs
+                .Select(pc => pc.MacAddress?.Trim())
+                .Where(mac => !string.IsNullOrWhiteSpace(mac))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var mac in uniqueMacs)
+            {
+                await _powerCommandQueueService.QueueCommandAsync(mac!, "RefreshMetrics");
+            }
+        }
+
+        private async Task<string?> GetSnapshotBase64Async(string ipAddress)
+        {
+            try
+            {
+                var url = $"http://{ipAddress}:{_screenStreamPort}/snapshot";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (!string.IsNullOrWhiteSpace(_screenStreamToken))
+                {
+                    request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
+                }
+
+                using var response = await SnapshotHttpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                return bytes.Length > 0 ? Convert.ToBase64String(bytes) : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private async Task ViewScreenAsync()
@@ -161,6 +650,144 @@ namespace IRIS.UI.ViewModels
                 await Task.CompletedTask;
                 _navigationService.NavigateTo("ViewScreen", SelectedPC);
             }
+        }
+
+        private void ViewScreenForPC(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            _navigationService.NavigateTo("ViewScreen", pc);
+        }
+
+        private void ToggleCardDetails(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            pc.IsFlipped = !pc.IsFlipped;
+        }
+
+        private void OpenAlertsForPC(PCDisplayModel? pc)
+        {
+            if (pc == null)
+            {
+                return;
+            }
+
+            SelectedPC = pc;
+            PopulateSelectedPcAlerts(pc.Id);
+            SelectedPcAlertsTitle = $"Alerts • {pc.PCName}";
+            IsPcAlertsPanelOpen = true;
+        }
+
+        private void OpenTimelineForPC(PCDisplayModel? pc)
+        {
+            if (pc == null) return;
+            SelectedPC = pc;
+            IsTimelinePanelOpen = true;
+            _ = LoadSelectedPcTimelineAsync(pc.Id);
+        }
+
+        private void PopulateSelectedPcAlerts(int pcId)
+        {
+            SelectedPcAlerts.Clear();
+            foreach (var alert in ActiveAlerts.Where(a => a.PCId == pcId).OrderByDescending(a => a.Timestamp))
+            {
+                SelectedPcAlerts.Add(alert);
+            }
+        }
+
+        private async Task RefreshSelectedPcTimelineAsync()
+        {
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            await LoadSelectedPcTimelineAsync(SelectedPC.Id);
+        }
+
+        private async Task LoadSelectedPcTimelineAsync(int pcId)
+        {
+            if (pcId <= 0)
+            {
+                SelectedPcTimeline.Clear();
+                return;
+            }
+
+            try
+            {
+                IsTimelineLoading = true;
+
+                using var scope = _scopeFactory.CreateScope();
+                var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var events = await monitoringService.GetPcHealthTimelineAsync(pcId, 24, 100);
+
+                SelectedPcTimeline.Clear();
+                foreach (var timelineEvent in events.OrderByDescending(e => e.Timestamp))
+                {
+                    SelectedPcTimeline.Add(new PCHealthTimelineDisplayModel
+                    {
+                        Timestamp = timelineEvent.Timestamp,
+                        RelativeTime = ToRelativeTime(timelineEvent.Timestamp),
+                        Severity = string.IsNullOrWhiteSpace(timelineEvent.Severity) ? "Info" : timelineEvent.Severity,
+                        Category = string.IsNullOrWhiteSpace(timelineEvent.Category) ? "System" : timelineEvent.Category,
+                        Title = timelineEvent.Title,
+                        Message = timelineEvent.Message
+                    });
+                }
+
+                SelectedPcTimelineTitle = SelectedPC != null
+                    ? $"PC Health Timeline • {SelectedPC.PCName}"
+                    : "PC Health Timeline";
+
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
+            }
+            catch
+            {
+                SelectedPcTimeline.Clear();
+                OnPropertyChanged(nameof(HasTimelineEvents));
+                OnPropertyChanged(nameof(TimelineEmptyMessage));
+            }
+            finally
+            {
+                IsTimelineLoading = false;
+            }
+        }
+
+        private static string ToRelativeTime(DateTime timestamp)
+        {
+            var delta = DateTime.UtcNow - timestamp;
+            if (delta.TotalSeconds < 60)
+            {
+                return $"{Math.Max(0, (int)delta.TotalSeconds)}s ago";
+            }
+
+            if (delta.TotalMinutes < 60)
+            {
+                return $"{(int)delta.TotalMinutes}m ago";
+            }
+
+            if (delta.TotalHours < 24)
+            {
+                return $"{(int)delta.TotalHours}h ago";
+            }
+
+            return $"{(int)delta.TotalDays}d ago";
+        }
+
+        private void OnSelectedPcTimelineCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(HasTimelineEvents));
+            OnPropertyChanged(nameof(TimelineEmptyMessage));
         }
 
         private async Task LockScreenAsync()
@@ -177,14 +804,40 @@ namespace IRIS.UI.ViewModels
     public class PCDisplayModel : INotifyPropertyChanged
     {
         private int _id;
-        private string _name = string.Empty;
-        private string _ip = string.Empty;
+        private string _pcName = string.Empty;
+        private string _ipAddress = string.Empty;
+        private string _status = string.Empty;
         private string _os = string.Empty;
         private string _cpu = string.Empty;
+        private string _cpuTemperature = "N/A";
+        private string _gpu = "N/A";
+        private string _gpuTemperature = "N/A";
         private string _network = string.Empty;
+        private string _networkUpload = "0 Mbps";
+        private string _networkDownload = "0 Mbps";
+        private string _networkLatency = "N/A";
+        private string _packetLoss = "N/A";
         private string _ram = string.Empty;
         private string _user = string.Empty;
-        private SolidColorBrush _statusColor = new(Colors.Gray);
+        private string _macAddress = string.Empty;
+        private string _roomName = string.Empty;
+        private double _cpuUsagePercent;
+        private double? _cpuTemperatureValue;
+        private double? _gpuUsagePercent;
+        private double? _gpuTemperatureValue;
+        private double _ramUsagePercent;
+        private double _diskUsagePercent;
+        private double _networkUploadMbps;
+        private double _networkDownloadMbps;
+        private double? _networkLatencyMs;
+        private double? _packetLossPercent;
+        private DateTime? _lastMetricTimestamp;
+        private string? _snapshotImageBase64;
+        private string _topAlertSeverity = "None";
+        private string _topAlertMessage = "No active alerts";
+        private int _alertCount;
+        private bool _isSelected;
+        private bool _isFlipped;
 
         public int Id
         {
@@ -192,16 +845,22 @@ namespace IRIS.UI.ViewModels
             set { _id = value; OnPropertyChanged(); }
         }
 
-        public string Name
+        public string PCName
         {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
+            get => _pcName;
+            set { _pcName = value; OnPropertyChanged(); }
         }
 
-        public string IP
+        public string IPAddress
         {
-            get => _ip;
-            set { _ip = value; OnPropertyChanged(); }
+            get => _ipAddress;
+            set { _ipAddress = value; OnPropertyChanged(); }
+        }
+
+        public string Status
+        {
+            get => _status;
+            set { _status = value; OnPropertyChanged(); }
         }
 
         public string OS
@@ -216,10 +875,52 @@ namespace IRIS.UI.ViewModels
             set { _cpu = value; OnPropertyChanged(); }
         }
 
+        public string CPUTemperature
+        {
+            get => _cpuTemperature;
+            set { _cpuTemperature = value; OnPropertyChanged(); }
+        }
+
+        public string GPU
+        {
+            get => _gpu;
+            set { _gpu = value; OnPropertyChanged(); }
+        }
+
+        public string GPUTemperature
+        {
+            get => _gpuTemperature;
+            set { _gpuTemperature = value; OnPropertyChanged(); }
+        }
+
         public string Network
         {
             get => _network;
             set { _network = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkUpload
+        {
+            get => _networkUpload;
+            set { _networkUpload = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkDownload
+        {
+            get => _networkDownload;
+            set { _networkDownload = value; OnPropertyChanged(); }
+        }
+
+        public string NetworkLatency
+        {
+            get => _networkLatency;
+            set { _networkLatency = value; OnPropertyChanged(); }
+        }
+
+        public string PacketLoss
+        {
+            get => _packetLoss;
+            set { _packetLoss = value; OnPropertyChanged(); }
         }
 
         public string RAM
@@ -234,14 +935,161 @@ namespace IRIS.UI.ViewModels
             set { _user = value; OnPropertyChanged(); }
         }
 
+        public string MacAddress
+        {
+            get => _macAddress;
+            set { _macAddress = value; OnPropertyChanged(); }
+        }
+
+        public string RoomName
+        {
+            get => _roomName;
+            set { _roomName = value; OnPropertyChanged(); }
+        }
+
+        public double CpuUsagePercent
+        {
+            get => _cpuUsagePercent;
+            set { _cpuUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double? CpuTemperatureValue
+        {
+            get => _cpuTemperatureValue;
+            set
+            {
+                _cpuTemperatureValue = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double? GpuUsagePercent
+        {
+            get => _gpuUsagePercent;
+            set { _gpuUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double? GpuTemperatureValue
+        {
+            get => _gpuTemperatureValue;
+            set
+            {
+                _gpuTemperatureValue = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double RamUsagePercent
+        {
+            get => _ramUsagePercent;
+            set { _ramUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double DiskUsagePercent
+        {
+            get => _diskUsagePercent;
+            set { _diskUsagePercent = value; OnPropertyChanged(); }
+        }
+
+        public double NetworkUploadMbps
+        {
+            get => _networkUploadMbps;
+            set { _networkUploadMbps = value; OnPropertyChanged(); }
+        }
+
+        public double NetworkDownloadMbps
+        {
+            get => _networkDownloadMbps;
+            set { _networkDownloadMbps = value; OnPropertyChanged(); }
+        }
+
+        public double? NetworkLatencyMs
+        {
+            get => _networkLatencyMs;
+            set { _networkLatencyMs = value; OnPropertyChanged(); }
+        }
+
+        public double? PacketLossPercent
+        {
+            get => _packetLossPercent;
+            set { _packetLossPercent = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? LastMetricTimestamp
+        {
+            get => _lastMetricTimestamp;
+            set { _lastMetricTimestamp = value; OnPropertyChanged(); }
+        }
+
+        public string? SnapshotImageBase64
+        {
+            get => _snapshotImageBase64;
+            set { _snapshotImageBase64 = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertSeverity
+        {
+            get => _topAlertSeverity;
+            set { _topAlertSeverity = value; OnPropertyChanged(); }
+        }
+
+        public string TopAlertMessage
+        {
+            get => _topAlertMessage;
+            set { _topAlertMessage = value; OnPropertyChanged(); }
+        }
+
+        public int AlertCount
+        {
+            get => _alertCount;
+            set { _alertCount = value; OnPropertyChanged(); }
+        }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFlipped
+        {
+            get => _isFlipped;
+            set { _isFlipped = value; OnPropertyChanged(); }
+        }
+
+        // Legacy property aliases for backward compatibility
+        public string Name { get => PCName; set => PCName = value; }
+        public string IP { get => IPAddress; set => IPAddress = value; }
         public SolidColorBrush StatusColor
         {
-            get => _statusColor;
-            set { _statusColor = value; OnPropertyChanged(); }
+            get => Status == "Online" ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) :
+                   new SolidColorBrush(Color.FromRgb(239, 68, 68));
+            set { } // ignore sets
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    public class LiveAlertDisplayModel
+    {
+        public int PCId { get; set; }
+        public string PCName { get; set; } = string.Empty;
+        public string RoomName { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+    }
+
+    public class PCHealthTimelineDisplayModel
+    {
+        public DateTime Timestamp { get; set; }
+        public string RelativeTime { get; set; } = string.Empty;
+        public string Severity { get; set; } = "Info";
+        public string Category { get; set; } = "System";
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

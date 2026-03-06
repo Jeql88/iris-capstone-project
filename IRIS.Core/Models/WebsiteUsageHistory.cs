@@ -12,13 +12,14 @@ namespace IRIS.Core.Models
         public int PCId { get; set; }
 
         [Required]
-        [MaxLength(500)]
-        public string Url { get; set; } = string.Empty;
-
+        [MaxLength(20)]
+        public string Browser { get; set; } = string.Empty;
+        
+        [Required]
         [MaxLength(200)]
-        public string? Domain { get; set; }
+        public string Domain { get; set; } = string.Empty;
 
-        public DateTime VisitedAt { get; set; } = DateTime.UtcNow;
+        public DateTime VisitedAt { get; set; }
 
         public int VisitCount { get; set; } = 1;
 

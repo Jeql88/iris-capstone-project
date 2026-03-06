@@ -1,0 +1,254 @@
+<UserControl x:Class="IRIS.UI.Views.Admin.UserManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="340"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- LEFT: User List Section -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="25,20">
+                <!-- Header -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
+                    <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
+                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Search and Filters Card -->
+                <ui:Card Margin="0,0,0,20">
+                    <StackPanel Margin="15">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <ui:SymbolIcon Symbol="Search24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Search Users" FontSize="18" FontWeight="Bold" 
+                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Search Box -->
+                            <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                            PlaceholderText="Search by name or username..."
+                                            Icon="{ui:SymbolIcon Search24}"/>
+                            </StackPanel>
+
+                            <!-- Role Filter -->
+                            <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                                <TextBlock Text="Roles" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
+                                             SelectedValuePath="Content">
+                                    <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Status Filter -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Status" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <ComboBox SelectedValue="{Binding SelectedStatus, Mode=TwoWay}" 
+                                             SelectedValuePath="Content">
+                                    <ComboBoxItem Content="All Status" IsSelected="True" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="Active" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="Inactive" Foreground="#1a1a1a"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- Users Table Card -->
+                <ui:Card>
+                    <Grid Margin="15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Table Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,20">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="PeopleList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="System Users" FontSize="18" FontWeight="Bold" 
+                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
+                                <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
+                                             ItemsSource="{Binding PageSizeOptions}"
+                                             Width="70" Margin="0,0,5,0"/>
+                                <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="#1a1a1a"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- DataGrid -->
+                        <ui:DataGrid Grid.Row="1" ItemsSource="{Binding Users}" 
+                                     SelectedItem="{Binding SelectedUser}"
+                                     AutoGenerateColumns="False" IsReadOnly="True"
+                                     MinHeight="350">
+                            <ui:DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#D6E9FF"/>
+                                            <Setter Property="Foreground" Value="#1a1a1a"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:DataGrid.RowStyle>
+                            <ui:DataGrid.Columns>
+                                <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
+                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
+                                <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <!-- Pagination Controls -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                            <ui:Button Command="{Binding PreviousPageCommand}" 
+                                       Content="Previous" 
+                                       Icon="{ui:SymbolIcon ChevronLeft24}"
+                                       Appearance="Primary"
+                                       Margin="0,0,10,0"/>
+                            
+                            <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                       VerticalAlignment="Center" Margin="15,0" Foreground="#1a1a1a"/>
+                            
+                            <ui:Button Command="{Binding NextPageCommand}" 
+                                       Content="Next" 
+                                       Icon="{ui:SymbolIcon ChevronRight24}"
+                                       Appearance="Primary"
+                                       Margin="10,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </ui:Card>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- RIGHT: Add/Edit User Sidebar -->
+        <Border Grid.Column="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+                CornerRadius="12,0,0,12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+                    <!-- Add New User Section -->
+                    <ui:Card Margin="0,0,0,20">
+                        <StackPanel Margin="15">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" 
+                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ui:TextBox x:Name="AddFullNameTextBox" 
+                                        PlaceholderText="Enter full name"
+                                        Icon="{ui:SymbolIcon Person24}"
+                                        Margin="0,0,0,15"/>
+                            
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ui:TextBox x:Name="AddUsernameTextBox" 
+                                        PlaceholderText="Enter username"
+                                        Icon="{ui:SymbolIcon PersonAccounts24}"
+                                        Margin="0,0,0,15"/>
+                            
+                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ComboBox x:Name="AddRoleComboBox" Margin="0,0,0,20">
+                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Faculty" IsSelected="True" Foreground="#1a1a1a"/>
+                            </ComboBox>
+                            
+                            <ui:Button x:Name="AddUserButton" 
+                                       Content="Add New User" 
+                                       Icon="{ui:SymbolIcon Add24}"
+                                       Appearance="Primary"
+                                       HorizontalAlignment="Stretch"
+                                       Click="AddUser_Click"/>
+                        </StackPanel>
+                    </ui:Card>
+
+                    <!-- Manage User Section -->
+                    <ui:Card>
+                        <StackPanel Margin="15">
+                            <Grid Margin="0,0,0,20">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Manage User" FontSize="18" FontWeight="Bold" 
+                                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                </StackPanel>
+                                <ui:Button x:Name="HelpIcon" 
+                                           Icon="{ui:SymbolIcon QuestionCircle24}"
+                                           Appearance="Secondary"
+                                           Click="HelpIcon_Click"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                            
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ui:TextBox x:Name="EditFullNameTextBox" 
+                                        PlaceholderText="Select a user..."
+                                        Icon="{ui:SymbolIcon Person24}"
+                                        IsEnabled="False"
+                                        Margin="0,0,0,15"/>
+                            
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ui:TextBox x:Name="EditUsernameTextBox" 
+                                        PlaceholderText="Select a user..."
+                                        Icon="{ui:SymbolIcon PersonAccounts24}"
+                                        IsEnabled="False"
+                                        Margin="0,0,0,15"/>
+                            
+                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <ComboBox x:Name="EditRoleComboBox" IsEnabled="False" Margin="0,0,0,15">
+                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
+                            </ComboBox>
+                            
+                            <!-- Clear Selection Button -->
+                            <ui:Button x:Name="ClearSelectionButton" 
+                                       Content="Clear Selection" 
+                                       Icon="{ui:SymbolIcon Dismiss24}"
+                                       Appearance="Secondary"
+                                       HorizontalAlignment="Stretch"
+                                       Click="ClearSelection_Click" 
+                                       Visibility="Collapsed"
+                                       Margin="0,0,0,10"/>
+                            
+                            <ui:Button x:Name="EditUserButton" 
+                                       Content="Edit User" 
+                                       Icon="{ui:SymbolIcon Edit24}"
+                                       Appearance="Secondary"
+                                       HorizontalAlignment="Stretch"
+                                       IsEnabled="False" 
+                                       Click="EditUser_Click"
+                                       Margin="0,0,0,10"/>
+                            
+                            <ui:Button x:Name="DeactivateUserButton" 
+                                       Content="Deactivate User" 
+                                       Icon="{ui:SymbolIcon Delete24}"
+                                       Appearance="Danger"
+                                       HorizontalAlignment="Stretch"
+                                       IsEnabled="False" 
+                                       Click="DeactivateUser_Click"/>
+                        </StackPanel>
+                    </ui:Card>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

@@ -33,10 +33,18 @@ namespace IRIS.Core.Migrations
                     b.Property<DateTime?>("AcknowledgedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("AlertKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsAcknowledged")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsResolved")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Message")
@@ -47,29 +55,78 @@ namespace IRIS.Core.Migrations
                     b.Property<int>("PCId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PCId");
-
                     b.HasIndex("UserId");
 
+                    b.HasIndex("IsResolved", "CreatedAt");
+
+                    b.HasIndex("PCId", "AlertKey", "IsResolved");
+
                     b.ToTable("Alerts");
+                });
+
+            modelBuilder.Entity("IRIS.Core.Models.DeploymentLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<string>("IPAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int?>("PCId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PCName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("PCId", "Timestamp");
+
+                    b.ToTable("DeploymentLogs");
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.HardwareMetric", b =>
@@ -293,20 +350,65 @@ namespace IRIS.Core.Migrations
                     b.Property<int?>("AutoShutdownIdleMinutes")
                         .HasColumnType("integer");
 
+                    b.Property<double>("CpuTemperatureCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CpuTemperatureWarningThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CpuUsageCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CpuUsageWarningThreshold")
+                        .HasColumnType("double precision");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CriticalSustainSeconds")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<double>("DiskUsageCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("DiskUsageWarningThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("GpuTemperatureCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("GpuTemperatureWarningThreshold")
+                        .HasColumnType("double precision");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<double>("LatencyCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("LatencyWarningThreshold")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<double>("PacketLossCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("PacketLossWarningThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("RamUsageCriticalThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("RamUsageWarningThreshold")
+                        .HasColumnType("double precision");
 
                     b.Property<bool>("ResetWallpaperOnStartup")
                         .HasColumnType("boolean");
@@ -320,6 +422,9 @@ namespace IRIS.Core.Migrations
                     b.Property<string>("WallpaperPath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int>("WarningSustainSeconds")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -678,20 +783,21 @@ namespace IRIS.Core.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Browser")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Domain")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
                     b.Property<int>("PCId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("VisitCount")
                         .HasColumnType("integer");
@@ -701,7 +807,8 @@ namespace IRIS.Core.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PCId", "VisitedAt");
+                    b.HasIndex("PCId", "Browser", "Domain", "VisitedAt")
+                        .IsUnique();
 
                     b.ToTable("WebsiteUsageHistory");
                 });
@@ -723,6 +830,16 @@ namespace IRIS.Core.Migrations
                     b.Navigation("PC");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IRIS.Core.Models.DeploymentLog", b =>
+                {
+                    b.HasOne("IRIS.Core.Models.PC", "PC")
+                        .WithMany()
+                        .HasForeignKey("PCId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("PC");
                 });
 
             modelBuilder.Entity("IRIS.Core.Models.HardwareMetric", b =>

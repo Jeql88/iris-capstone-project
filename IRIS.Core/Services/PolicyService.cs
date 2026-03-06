@@ -1,5 +1,6 @@
 using IRIS.Core.Data;
 using IRIS.Core.Models;
+using IRIS.Core.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace IRIS.Core.Services
@@ -63,7 +64,27 @@ namespace IRIS.Core.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Policy> CreateOrUpdatePolicyAsync(int roomId, bool resetWallpaperOnStartup, int? autoShutdownIdleMinutes, string? wallpaperPath = null)
+        public async Task<Policy> CreateOrUpdatePolicyAsync(
+            int roomId,
+            bool resetWallpaperOnStartup,
+            int? autoShutdownIdleMinutes,
+            string? wallpaperPath = null,
+            double? cpuUsageWarningThreshold = null,
+            double? cpuUsageCriticalThreshold = null,
+            double? ramUsageWarningThreshold = null,
+            double? ramUsageCriticalThreshold = null,
+            double? diskUsageWarningThreshold = null,
+            double? diskUsageCriticalThreshold = null,
+            double? cpuTemperatureWarningThreshold = null,
+            double? cpuTemperatureCriticalThreshold = null,
+            double? gpuTemperatureWarningThreshold = null,
+            double? gpuTemperatureCriticalThreshold = null,
+            double? latencyWarningThreshold = null,
+            double? latencyCriticalThreshold = null,
+            double? packetLossWarningThreshold = null,
+            double? packetLossCriticalThreshold = null,
+            int? warningSustainSeconds = null,
+            int? criticalSustainSeconds = null)
         {
             var existingPolicy = await _context.Policies
                 .FirstOrDefaultAsync(p => p.RoomId == roomId);
@@ -79,6 +100,23 @@ namespace IRIS.Core.Services
                 {
                     existingPolicy.WallpaperPath = wallpaperPath;
                 }
+
+                existingPolicy.CpuUsageWarningThreshold = cpuUsageWarningThreshold ?? existingPolicy.CpuUsageWarningThreshold;
+                existingPolicy.CpuUsageCriticalThreshold = cpuUsageCriticalThreshold ?? existingPolicy.CpuUsageCriticalThreshold;
+                existingPolicy.RamUsageWarningThreshold = ramUsageWarningThreshold ?? existingPolicy.RamUsageWarningThreshold;
+                existingPolicy.RamUsageCriticalThreshold = ramUsageCriticalThreshold ?? existingPolicy.RamUsageCriticalThreshold;
+                existingPolicy.DiskUsageWarningThreshold = diskUsageWarningThreshold ?? existingPolicy.DiskUsageWarningThreshold;
+                existingPolicy.DiskUsageCriticalThreshold = diskUsageCriticalThreshold ?? existingPolicy.DiskUsageCriticalThreshold;
+                existingPolicy.CpuTemperatureWarningThreshold = cpuTemperatureWarningThreshold ?? existingPolicy.CpuTemperatureWarningThreshold;
+                existingPolicy.CpuTemperatureCriticalThreshold = cpuTemperatureCriticalThreshold ?? existingPolicy.CpuTemperatureCriticalThreshold;
+                existingPolicy.GpuTemperatureWarningThreshold = gpuTemperatureWarningThreshold ?? existingPolicy.GpuTemperatureWarningThreshold;
+                existingPolicy.GpuTemperatureCriticalThreshold = gpuTemperatureCriticalThreshold ?? existingPolicy.GpuTemperatureCriticalThreshold;
+                existingPolicy.LatencyWarningThreshold = latencyWarningThreshold ?? existingPolicy.LatencyWarningThreshold;
+                existingPolicy.LatencyCriticalThreshold = latencyCriticalThreshold ?? existingPolicy.LatencyCriticalThreshold;
+                existingPolicy.PacketLossWarningThreshold = packetLossWarningThreshold ?? existingPolicy.PacketLossWarningThreshold;
+                existingPolicy.PacketLossCriticalThreshold = packetLossCriticalThreshold ?? existingPolicy.PacketLossCriticalThreshold;
+                existingPolicy.WarningSustainSeconds = warningSustainSeconds ?? existingPolicy.WarningSustainSeconds;
+                existingPolicy.CriticalSustainSeconds = criticalSustainSeconds ?? existingPolicy.CriticalSustainSeconds;
                 
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
@@ -98,6 +136,22 @@ namespace IRIS.Core.Services
                     ResetWallpaperOnStartup = resetWallpaperOnStartup,
                     AutoShutdownIdleMinutes = autoShutdownIdleMinutes,
                     WallpaperPath = wallpaperPath,
+                    CpuUsageWarningThreshold = cpuUsageWarningThreshold ?? 85,
+                    CpuUsageCriticalThreshold = cpuUsageCriticalThreshold ?? 95,
+                    RamUsageWarningThreshold = ramUsageWarningThreshold ?? 85,
+                    RamUsageCriticalThreshold = ramUsageCriticalThreshold ?? 95,
+                    DiskUsageWarningThreshold = diskUsageWarningThreshold ?? 90,
+                    DiskUsageCriticalThreshold = diskUsageCriticalThreshold ?? 98,
+                    CpuTemperatureWarningThreshold = cpuTemperatureWarningThreshold ?? 80,
+                    CpuTemperatureCriticalThreshold = cpuTemperatureCriticalThreshold ?? 90,
+                    GpuTemperatureWarningThreshold = gpuTemperatureWarningThreshold ?? 80,
+                    GpuTemperatureCriticalThreshold = gpuTemperatureCriticalThreshold ?? 90,
+                    LatencyWarningThreshold = latencyWarningThreshold ?? 150,
+                    LatencyCriticalThreshold = latencyCriticalThreshold ?? 300,
+                    PacketLossWarningThreshold = packetLossWarningThreshold ?? 3,
+                    PacketLossCriticalThreshold = packetLossCriticalThreshold ?? 10,
+                    WarningSustainSeconds = warningSustainSeconds ?? 30,
+                    CriticalSustainSeconds = criticalSustainSeconds ?? 20,
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };

@@ -4,14 +4,17 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using IRIS.Core.Models;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using IRIS.UI.Services;
+using System.Threading;
 
 namespace IRIS.UI.ViewModels
 {
-    public class UserManagementViewModel : INotifyPropertyChanged
+    public class UserManagementViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IUserManagementService _userManagementService;
+        private readonly SemaphoreSlim _loadUsersSemaphore = new(1, 1);
         private string _searchText = string.Empty;
         private string _selectedRole = "All Roles";
         private string _selectedStatus = "All Status";
@@ -20,6 +23,7 @@ namespace IRIS.UI.ViewModels
         private int _totalPages = 1;
         private int _totalCount = 0;
         private UserDisplayModel? _selectedUser;
+        private bool _isActive = true;
 
         public UserManagementViewModel(IUserManagementService userManagementService)
         {
@@ -92,8 +96,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadUsersAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadUsersSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 UserRole? roleFilter = null;
                 if (SelectedRole != "All Roles")
                 {
@@ -138,6 +157,10 @@ namespace IRIS.UI.ViewModels
             {
                 MessageBox.Show($"Failed to load users: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                _loadUsersSemaphore.Release();
+            }
         }
 
         private async Task PreviousPageAsync()
@@ -161,6 +184,11 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+        }
     }
 
     public class UserDisplayModel : INotifyPropertyChanged

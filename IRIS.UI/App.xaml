@@ -1,8 +1,41 @@
 ﻿<Application x:Class="IRIS.UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:local="clr-namespace:IRIS.UI">
     <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemesDictionary Theme="Light" />
+                <ui:ControlsDictionary />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- IRIS Red Theme Colors -->
+            <Color x:Key="IRISPrimary">#8B0000</Color>
+            <Color x:Key="IRISSecondary">#DC143C</Color>
+            <Color x:Key="IRISAccent">#FF4141</Color>
+            <Color x:Key="IRISDark">#620F1E</Color>
+            <Color x:Key="IRISLight">#FFF5F5</Color>
+            
+            <!-- Brush Resources -->
+            <SolidColorBrush x:Key="IRISPrimaryBrush" Color="{StaticResource IRISPrimary}" />
+            <SolidColorBrush x:Key="IRISSecondaryBrush" Color="{StaticResource IRISSecondary}" />
+            <SolidColorBrush x:Key="IRISAccentBrush" Color="{StaticResource IRISAccent}" />
+            <SolidColorBrush x:Key="IRISDarkBrush" Color="{StaticResource IRISDark}" />
+            <SolidColorBrush x:Key="IRISLightBrush" Color="{StaticResource IRISLight}" />
+            
+            <!-- Override WPF-UI accent colors with red theme (Brush overrides) -->
+            <SolidColorBrush x:Key="SystemAccentColorPrimaryBrush" Color="#DC143C" />
+            <SolidColorBrush x:Key="SystemAccentColorSecondaryBrush" Color="#8B0000" />
+            <SolidColorBrush x:Key="SystemAccentColorTertiaryBrush" Color="#FF4141" />
+            
+            <!-- Status Colors -->
+            <SolidColorBrush x:Key="OnlineStatusBrush" Color="#10B981" />
+            <SolidColorBrush x:Key="OfflineStatusBrush" Color="#EF4444" />
+            <SolidColorBrush x:Key="WarningStatusBrush" Color="#F59E0B" />
+            
+            <!-- Removed custom global styles (TextBlock/TextBox/PasswordBox/ComboBoxItem) to avoid setter init errors. -->
 
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

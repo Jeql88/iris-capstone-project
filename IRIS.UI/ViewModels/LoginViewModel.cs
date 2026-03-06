@@ -3,9 +3,12 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.UI.Helpers;
+using IRIS.UI.Views.Shared;
+using IRIS.UI.Views.Personnel;
+using IRIS.UI.Views.Faculty;
 
 namespace IRIS.UI.ViewModels
 {
@@ -53,8 +56,11 @@ namespace IRIS.UI.ViewModels
             {
                 _errorMessage = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasError));
             }
         }
+
+        public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
         public bool IsLoading
         {
@@ -91,8 +97,8 @@ namespace IRIS.UI.ViewModels
                         var app = (App)Application.Current;
                         var serviceProvider = app.GetServiceProvider();
                         var authService = serviceProvider.GetService<IAuthenticationService>();
-                        
-                        var changePasswordWindow = new Views.ChangePasswordWindow(authService!, user);
+
+                        var changePasswordWindow = new ChangePasswordWindow(authService!, user);
                         var result = changePasswordWindow.ShowDialog();
 
                         if (result != true)
@@ -110,10 +116,26 @@ namespace IRIS.UI.ViewModels
 
                     if (loginWindow != null)
                     {
-                        // Create and show main window
+                        // Create and show main window using root service provider
                         var app = (App)Application.Current;
                         var serviceProvider = app.GetServiceProvider();
-                        var mainWindow = serviceProvider.GetService<MainWindow>();
+
+                        Window? mainWindow = null;
+
+                        // Show appropriate window based on user role
+                        if (user.Role == UserRole.ITPersonnel)
+                        {
+                            mainWindow = serviceProvider.GetRequiredService<PersonnelMainWindow>();
+                        }
+                        else if (user.Role == UserRole.Faculty)
+                        {
+                            mainWindow = serviceProvider.GetRequiredService<FacultyMainWindow>();
+                        }
+                        else
+                        {
+                            mainWindow = serviceProvider.GetRequiredService<MainWindow>();
+                        }
+
                         if (mainWindow != null)
                         {
                             mainWindow.Show();

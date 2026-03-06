@@ -4,7 +4,8 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
-using IRIS.Core.Services;
+using IRIS.UI.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
 {
-    public class PolicyEnforcementViewModel : INotifyPropertyChanged
+    public class PolicyEnforcementViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IMonitoringService _monitoringService;
         private readonly IPolicyService _policyService;
@@ -22,17 +23,51 @@ namespace IRIS.UI.ViewModels
         private bool _wallpaperResetEnabled;
         private bool _autoShutdownEnabled;
         private int _autoShutdownMinutes = 30;
+        private double _cpuWarningThreshold = 85;
+        private double _cpuCriticalThreshold = 95;
+        private double _ramWarningThreshold = 85;
+        private double _ramCriticalThreshold = 95;
+        private double _diskWarningThreshold = 90;
+        private double _diskCriticalThreshold = 98;
+        private double _cpuTempWarningThreshold = 80;
+        private double _cpuTempCriticalThreshold = 90;
+        private double _gpuTempWarningThreshold = 80;
+        private double _gpuTempCriticalThreshold = 90;
+        private double _latencyWarningThreshold = 150;
+        private double _latencyCriticalThreshold = 300;
+        private double _packetLossWarningThreshold = 3;
+        private double _packetLossCriticalThreshold = 10;
+        private int _warningSustainSeconds = 30;
+        private int _criticalSustainSeconds = 20;
         private string _selectedWallpaperPath = "No wallpaper selected";
         private string _selectionStatusText = "No rooms selected";
         private string _lastAppliedText = "Never applied";
         private string _statusMessage = string.Empty;
         private string _statusMessageColor = "#10B981";
+        private readonly SemaphoreSlim _loadRoomDataSemaphore = new(1, 1);
+        private bool _isActive = true;
         
         // Original values for change tracking
         private bool _originalWallpaperResetEnabled;
         private bool _originalAutoShutdownEnabled;
         private int _originalAutoShutdownMinutes;
         private string _originalWallpaperPath = string.Empty;
+        private double _originalCpuWarningThreshold = 85;
+        private double _originalCpuCriticalThreshold = 95;
+        private double _originalRamWarningThreshold = 85;
+        private double _originalRamCriticalThreshold = 95;
+        private double _originalDiskWarningThreshold = 90;
+        private double _originalDiskCriticalThreshold = 98;
+        private double _originalCpuTempWarningThreshold = 80;
+        private double _originalCpuTempCriticalThreshold = 90;
+        private double _originalGpuTempWarningThreshold = 80;
+        private double _originalGpuTempCriticalThreshold = 90;
+        private double _originalLatencyWarningThreshold = 150;
+        private double _originalLatencyCriticalThreshold = 300;
+        private double _originalPacketLossWarningThreshold = 3;
+        private double _originalPacketLossCriticalThreshold = 10;
+        private int _originalWarningSustainSeconds = 30;
+        private int _originalCriticalSustainSeconds = 20;
 
         public ObservableCollection<RoomItem> Rooms { get; set; }
         public ObservableCollection<RoomPolicyDisplay> SelectedRoomPolicies { get; set; }
@@ -68,6 +103,102 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged();
                 ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
             }
+        }
+
+        public double CpuWarningThreshold
+        {
+            get => _cpuWarningThreshold;
+            set { _cpuWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double CpuCriticalThreshold
+        {
+            get => _cpuCriticalThreshold;
+            set { _cpuCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double RamWarningThreshold
+        {
+            get => _ramWarningThreshold;
+            set { _ramWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double RamCriticalThreshold
+        {
+            get => _ramCriticalThreshold;
+            set { _ramCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double DiskWarningThreshold
+        {
+            get => _diskWarningThreshold;
+            set { _diskWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double DiskCriticalThreshold
+        {
+            get => _diskCriticalThreshold;
+            set { _diskCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double CpuTempWarningThreshold
+        {
+            get => _cpuTempWarningThreshold;
+            set { _cpuTempWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double CpuTempCriticalThreshold
+        {
+            get => _cpuTempCriticalThreshold;
+            set { _cpuTempCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double GpuTempWarningThreshold
+        {
+            get => _gpuTempWarningThreshold;
+            set { _gpuTempWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double GpuTempCriticalThreshold
+        {
+            get => _gpuTempCriticalThreshold;
+            set { _gpuTempCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double LatencyWarningThreshold
+        {
+            get => _latencyWarningThreshold;
+            set { _latencyWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double LatencyCriticalThreshold
+        {
+            get => _latencyCriticalThreshold;
+            set { _latencyCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double PacketLossWarningThreshold
+        {
+            get => _packetLossWarningThreshold;
+            set { _packetLossWarningThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public double PacketLossCriticalThreshold
+        {
+            get => _packetLossCriticalThreshold;
+            set { _packetLossCriticalThreshold = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public int WarningSustainSeconds
+        {
+            get => _warningSustainSeconds;
+            set { _warningSustainSeconds = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public int CriticalSustainSeconds
+        {
+            get => _criticalSustainSeconds;
+            set { _criticalSustainSeconds = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
         }
 
         public string SelectedWallpaperPath
@@ -122,8 +253,11 @@ namespace IRIS.UI.ViewModels
             {
                 _statusMessage = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasStatusMessage));
             }
         }
+
+        public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
         
         public string StatusMessageColor
         {
@@ -140,8 +274,6 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseWallpaperCommand { get; }
         public ICommand LoadCurrentSettingsCommand { get; }
 
-        public PolicyEnforcementViewModel() : this(null!, null!, null!) { }
-
         public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext)
         {
             _monitoringService = monitoringService;
@@ -150,17 +282,10 @@ namespace IRIS.UI.ViewModels
             Rooms = new ObservableCollection<RoomItem>();
             SelectedRoomPolicies = new ObservableCollection<RoomPolicyDisplay>();
 
-            if (_monitoringService != null && _dbContext != null)
-            {
-                _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-                _refreshTimer.Tick += async (s, e) => await LoadRoomDataAsync();
-                _refreshTimer.Start();
-                _ = LoadRoomDataAsync();
-            }
-            else
-            {
-                LoadMockRoomData();
-            }
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            _refreshTimer.Tick += async (s, e) => await LoadRoomDataAsync();
+            _refreshTimer.Start();
+            _ = LoadRoomDataAsync();
 
             _messageTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _messageTimer.Tick += (s, e) => ClearStatusMessage();
@@ -173,8 +298,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadRoomDataAsync()
         {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _loadRoomDataSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
             try
             {
+                if (!_isActive)
+                {
+                    return;
+                }
+
                 var rooms = await _dbContext.Rooms
                     .Include(r => r.PCs)
                     .Include(r => r.Policies)
@@ -200,6 +340,8 @@ namespace IRIS.UI.ViewModels
                             activePolicies.Add("Wallpaper Reset");
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                             activePolicies.Add($"Auto-Shutdown ({policy.AutoShutdownIdleMinutes}min)");
+
+                        activePolicies.Add("Threshold Profile");
                     }
 
                     Rooms.Add(new RoomItem
@@ -221,6 +363,10 @@ namespace IRIS.UI.ViewModels
             {
                 LoadMockRoomData();
                 SelectionStatusText = "Error loading rooms: " + ex.Message;
+            }
+            finally
+            {
+                _loadRoomDataSemaphore.Release();
             }
         }
 
@@ -251,7 +397,23 @@ namespace IRIS.UI.ViewModels
                     selectedRoom.Id, 
                     WallpaperResetEnabled, 
                     AutoShutdownEnabled ? AutoShutdownMinutes : null,
-                    WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null
+                    WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null,
+                    CpuWarningThreshold,
+                    CpuCriticalThreshold,
+                    RamWarningThreshold,
+                    RamCriticalThreshold,
+                    DiskWarningThreshold,
+                    DiskCriticalThreshold,
+                    CpuTempWarningThreshold,
+                    CpuTempCriticalThreshold,
+                    GpuTempWarningThreshold,
+                    GpuTempCriticalThreshold,
+                    LatencyWarningThreshold,
+                    LatencyCriticalThreshold,
+                    PacketLossWarningThreshold,
+                    PacketLossCriticalThreshold,
+                    WarningSustainSeconds,
+                    CriticalSustainSeconds
                 );
 
                 StatusMessage = $"Policies successfully deployed to {selectedRoom.RoomNumber}";
@@ -267,6 +429,22 @@ namespace IRIS.UI.ViewModels
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
                 _originalAutoShutdownMinutes = AutoShutdownMinutes;
                 _originalWallpaperPath = SelectedWallpaperPath;
+                _originalCpuWarningThreshold = CpuWarningThreshold;
+                _originalCpuCriticalThreshold = CpuCriticalThreshold;
+                _originalRamWarningThreshold = RamWarningThreshold;
+                _originalRamCriticalThreshold = RamCriticalThreshold;
+                _originalDiskWarningThreshold = DiskWarningThreshold;
+                _originalDiskCriticalThreshold = DiskCriticalThreshold;
+                _originalCpuTempWarningThreshold = CpuTempWarningThreshold;
+                _originalCpuTempCriticalThreshold = CpuTempCriticalThreshold;
+                _originalGpuTempWarningThreshold = GpuTempWarningThreshold;
+                _originalGpuTempCriticalThreshold = GpuTempCriticalThreshold;
+                _originalLatencyWarningThreshold = LatencyWarningThreshold;
+                _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
+                _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
+                _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             catch (Exception ex)
             {
@@ -322,7 +500,23 @@ namespace IRIS.UI.ViewModels
             return WallpaperResetEnabled != _originalWallpaperResetEnabled ||
                    AutoShutdownEnabled != _originalAutoShutdownEnabled ||
                    AutoShutdownMinutes != _originalAutoShutdownMinutes ||
-                   SelectedWallpaperPath != _originalWallpaperPath;
+                   SelectedWallpaperPath != _originalWallpaperPath ||
+                   CpuWarningThreshold != _originalCpuWarningThreshold ||
+                   CpuCriticalThreshold != _originalCpuCriticalThreshold ||
+                   RamWarningThreshold != _originalRamWarningThreshold ||
+                   RamCriticalThreshold != _originalRamCriticalThreshold ||
+                   DiskWarningThreshold != _originalDiskWarningThreshold ||
+                   DiskCriticalThreshold != _originalDiskCriticalThreshold ||
+                   CpuTempWarningThreshold != _originalCpuTempWarningThreshold ||
+                   CpuTempCriticalThreshold != _originalCpuTempCriticalThreshold ||
+                   GpuTempWarningThreshold != _originalGpuTempWarningThreshold ||
+                   GpuTempCriticalThreshold != _originalGpuTempCriticalThreshold ||
+                   LatencyWarningThreshold != _originalLatencyWarningThreshold ||
+                   LatencyCriticalThreshold != _originalLatencyCriticalThreshold ||
+                   PacketLossWarningThreshold != _originalPacketLossWarningThreshold ||
+                   PacketLossCriticalThreshold != _originalPacketLossCriticalThreshold ||
+                   WarningSustainSeconds != _originalWarningSustainSeconds ||
+                   CriticalSustainSeconds != _originalCriticalSustainSeconds;
         }
         
         private bool ValidatePolicySettings()
@@ -334,8 +528,48 @@ namespace IRIS.UI.ViewModels
                 StartMessageTimer();
                 return false;
             }
+
+            if (!ValidateThresholdPair(CpuWarningThreshold, CpuCriticalThreshold, "CPU usage") ||
+                !ValidateThresholdPair(RamWarningThreshold, RamCriticalThreshold, "RAM usage") ||
+                !ValidateThresholdPair(DiskWarningThreshold, DiskCriticalThreshold, "Disk usage") ||
+                !ValidateThresholdPair(CpuTempWarningThreshold, CpuTempCriticalThreshold, "CPU temperature") ||
+                !ValidateThresholdPair(GpuTempWarningThreshold, GpuTempCriticalThreshold, "GPU temperature") ||
+                !ValidateThresholdPair(LatencyWarningThreshold, LatencyCriticalThreshold, "Latency") ||
+                !ValidateThresholdPair(PacketLossWarningThreshold, PacketLossCriticalThreshold, "Packet loss"))
+            {
+                return false;
+            }
+
+            if (WarningSustainSeconds < 0 || CriticalSustainSeconds < 0)
+            {
+                StatusMessage = "Sustain duration values must be non-negative.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
+                return false;
+            }
             
             StatusMessage = string.Empty;
+            return true;
+        }
+
+        private bool ValidateThresholdPair(double warning, double critical, string metricName)
+        {
+            if (warning < 0 || critical < 0)
+            {
+                StatusMessage = $"{metricName} thresholds must be non-negative.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
+                return false;
+            }
+
+            if (warning >= critical)
+            {
+                StatusMessage = $"{metricName} warning threshold must be lower than critical.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
+                return false;
+            }
+
             return true;
         }
 
@@ -372,12 +606,45 @@ namespace IRIS.UI.ViewModels
                 {
                     SelectedWallpaperPath = "No wallpaper selected";
                 }
+
+                CpuWarningThreshold = activePolicy.CpuUsageWarningThreshold;
+                CpuCriticalThreshold = activePolicy.CpuUsageCriticalThreshold;
+                RamWarningThreshold = activePolicy.RamUsageWarningThreshold;
+                RamCriticalThreshold = activePolicy.RamUsageCriticalThreshold;
+                DiskWarningThreshold = activePolicy.DiskUsageWarningThreshold;
+                DiskCriticalThreshold = activePolicy.DiskUsageCriticalThreshold;
+                CpuTempWarningThreshold = activePolicy.CpuTemperatureWarningThreshold;
+                CpuTempCriticalThreshold = activePolicy.CpuTemperatureCriticalThreshold;
+                GpuTempWarningThreshold = activePolicy.GpuTemperatureWarningThreshold;
+                GpuTempCriticalThreshold = activePolicy.GpuTemperatureCriticalThreshold;
+                LatencyWarningThreshold = activePolicy.LatencyWarningThreshold;
+                LatencyCriticalThreshold = activePolicy.LatencyCriticalThreshold;
+                PacketLossWarningThreshold = activePolicy.PacketLossWarningThreshold;
+                PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
+                WarningSustainSeconds = activePolicy.WarningSustainSeconds;
+                CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
                 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
                 _originalAutoShutdownMinutes = AutoShutdownMinutes;
                 _originalWallpaperPath = SelectedWallpaperPath;
+                _originalCpuWarningThreshold = CpuWarningThreshold;
+                _originalCpuCriticalThreshold = CpuCriticalThreshold;
+                _originalRamWarningThreshold = RamWarningThreshold;
+                _originalRamCriticalThreshold = RamCriticalThreshold;
+                _originalDiskWarningThreshold = DiskWarningThreshold;
+                _originalDiskCriticalThreshold = DiskCriticalThreshold;
+                _originalCpuTempWarningThreshold = CpuTempWarningThreshold;
+                _originalCpuTempCriticalThreshold = CpuTempCriticalThreshold;
+                _originalGpuTempWarningThreshold = GpuTempWarningThreshold;
+                _originalGpuTempCriticalThreshold = GpuTempCriticalThreshold;
+                _originalLatencyWarningThreshold = LatencyWarningThreshold;
+                _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
+                _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
+                _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             else
             {
@@ -391,12 +658,44 @@ namespace IRIS.UI.ViewModels
                 AutoShutdownEnabled = false;
                 AutoShutdownMinutes = 30;
                 SelectedWallpaperPath = "No wallpaper selected";
+                CpuWarningThreshold = 85;
+                CpuCriticalThreshold = 95;
+                RamWarningThreshold = 85;
+                RamCriticalThreshold = 95;
+                DiskWarningThreshold = 90;
+                DiskCriticalThreshold = 98;
+                CpuTempWarningThreshold = 80;
+                CpuTempCriticalThreshold = 90;
+                GpuTempWarningThreshold = 80;
+                GpuTempCriticalThreshold = 90;
+                LatencyWarningThreshold = 150;
+                LatencyCriticalThreshold = 300;
+                PacketLossWarningThreshold = 3;
+                PacketLossCriticalThreshold = 10;
+                WarningSustainSeconds = 30;
+                CriticalSustainSeconds = 20;
                 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
                 _originalAutoShutdownMinutes = AutoShutdownMinutes;
                 _originalWallpaperPath = SelectedWallpaperPath;
+                _originalCpuWarningThreshold = CpuWarningThreshold;
+                _originalCpuCriticalThreshold = CpuCriticalThreshold;
+                _originalRamWarningThreshold = RamWarningThreshold;
+                _originalRamCriticalThreshold = RamCriticalThreshold;
+                _originalDiskWarningThreshold = DiskWarningThreshold;
+                _originalDiskCriticalThreshold = DiskCriticalThreshold;
+                _originalCpuTempWarningThreshold = CpuTempWarningThreshold;
+                _originalCpuTempCriticalThreshold = CpuTempCriticalThreshold;
+                _originalGpuTempWarningThreshold = GpuTempWarningThreshold;
+                _originalGpuTempCriticalThreshold = GpuTempCriticalThreshold;
+                _originalLatencyWarningThreshold = LatencyWarningThreshold;
+                _originalLatencyCriticalThreshold = LatencyCriticalThreshold;
+                _originalPacketLossWarningThreshold = PacketLossWarningThreshold;
+                _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
+                _originalWarningSustainSeconds = WarningSustainSeconds;
+                _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
             
             OnPropertyChanged(nameof(CurrentWallpaperStatus));
@@ -486,6 +785,22 @@ namespace IRIS.UI.ViewModels
                     WallpaperResetEnabled = activePolicy.ResetWallpaperOnStartup;
                     AutoShutdownEnabled = activePolicy.AutoShutdownIdleMinutes.HasValue;
                     AutoShutdownMinutes = activePolicy.AutoShutdownIdleMinutes ?? 30;
+                    CpuWarningThreshold = activePolicy.CpuUsageWarningThreshold;
+                    CpuCriticalThreshold = activePolicy.CpuUsageCriticalThreshold;
+                    RamWarningThreshold = activePolicy.RamUsageWarningThreshold;
+                    RamCriticalThreshold = activePolicy.RamUsageCriticalThreshold;
+                    DiskWarningThreshold = activePolicy.DiskUsageWarningThreshold;
+                    DiskCriticalThreshold = activePolicy.DiskUsageCriticalThreshold;
+                    CpuTempWarningThreshold = activePolicy.CpuTemperatureWarningThreshold;
+                    CpuTempCriticalThreshold = activePolicy.CpuTemperatureCriticalThreshold;
+                    GpuTempWarningThreshold = activePolicy.GpuTemperatureWarningThreshold;
+                    GpuTempCriticalThreshold = activePolicy.GpuTemperatureCriticalThreshold;
+                    LatencyWarningThreshold = activePolicy.LatencyWarningThreshold;
+                    LatencyCriticalThreshold = activePolicy.LatencyCriticalThreshold;
+                    PacketLossWarningThreshold = activePolicy.PacketLossWarningThreshold;
+                    PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
+                    WarningSustainSeconds = activePolicy.WarningSustainSeconds;
+                    CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
                     
                     if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
                     {
@@ -498,10 +813,27 @@ namespace IRIS.UI.ViewModels
                     AutoShutdownEnabled = false;
                     AutoShutdownMinutes = 30;
                     SelectedWallpaperPath = "No wallpaper selected";
+                    CpuWarningThreshold = 85;
+                    CpuCriticalThreshold = 95;
+                    RamWarningThreshold = 85;
+                    RamCriticalThreshold = 95;
+                    DiskWarningThreshold = 90;
+                    DiskCriticalThreshold = 98;
+                    CpuTempWarningThreshold = 80;
+                    CpuTempCriticalThreshold = 90;
+                    GpuTempWarningThreshold = 80;
+                    GpuTempCriticalThreshold = 90;
+                    LatencyWarningThreshold = 150;
+                    LatencyCriticalThreshold = 300;
+                    PacketLossWarningThreshold = 3;
+                    PacketLossCriticalThreshold = 10;
+                    WarningSustainSeconds = 30;
+                    CriticalSustainSeconds = 20;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                // Silently handle errors when loading current settings
             }
         }
 
@@ -510,6 +842,13 @@ namespace IRIS.UI.ViewModels
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+            _refreshTimer.Stop();
+            _messageTimer.Stop();
         }
     }
 
@@ -649,5 +988,6 @@ namespace IRIS.UI.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
     }
 }

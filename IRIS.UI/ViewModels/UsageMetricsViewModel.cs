@@ -1,69 +1,405 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
-using IRIS.Core.Services;
+using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
+using Microsoft.Win32;
+using IRIS.UI.Services;
+using System.Threading;
 
 namespace IRIS.UI.ViewModels
 {
-    public class UsageMetricsViewModel : INotifyPropertyChanged
+    public class UsageMetricsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IUsageMetricsService _usageMetricsService;
-        private string _selectedTimeRange = "Last 7 Days";
+        private readonly RelayCommand _applyFilterRelayCommand;
+        private readonly RelayCommand _exportAppUsageRelayCommand;
+        private readonly RelayCommand _exportWebUsageRelayCommand;
+        private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _appPageSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _webPageSemaphore = new(1, 1);
+        private DateTime _startDate = DateTime.UtcNow.Date.AddDays(-7);
+        private DateTime _endDate = DateTime.UtcNow.Date;
+        private int _totalApplications;
+        private int _totalWebsites;
+        private double _totalHours;
+        private bool _isLoading;
+        private string _appSearchText = string.Empty;
+        private string _webSearchText = string.Empty;
+        private int _appCurrentPage = 1;
+        private int _appTotalPages = 1;
+        private int _appTotalCount = 0;
+        private int _webCurrentPage = 1;
+        private int _webTotalPages = 1;
+        private int _webTotalCount = 0;
+        private int _pageSize = 10;
+        private bool _isActive = true;
+        public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 
         public UsageMetricsViewModel(IUsageMetricsService usageMetricsService)
         {
             _usageMetricsService = usageMetricsService;
-            RefreshCommand = new RelayCommand(async () => await LoadDataAsync(), () => true);
+
+            _applyFilterRelayCommand = new RelayCommand(async () => await ApplyFilterAsync(), () => !IsLoading);
+            _exportAppUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
+            _exportWebUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
+
+            ApplyFilterCommand = _applyFilterRelayCommand;
+            ExportAppUsageCommand = _exportAppUsageRelayCommand;
+            ExportWebUsageCommand = _exportWebUsageRelayCommand;
+            AppPreviousPageCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => true);
+            AppNextPageCommand = new RelayCommand(async () => await AppNextPageAsync(), () => true);
+            WebPreviousPageCommand = new RelayCommand(async () => await WebPreviousPageAsync(), () => true);
+            WebNextPageCommand = new RelayCommand(async () => await WebNextPageAsync(), () => true);
             _ = LoadDataAsync();
         }
 
-        public ObservableCollection<ApplicationUsageModel> Applications { get; } = new();
-        public ObservableCollection<WebsiteUsageModel> Websites { get; } = new();
+        public ObservableCollection<AppUsageRow> FilteredApplicationUsage { get; } = new();
+        public ObservableCollection<WebUsageRow> FilteredWebsiteUsage { get; } = new();
 
-        public string SelectedTimeRange
+        public DateTime StartDate
         {
-            get => _selectedTimeRange;
-            set { _selectedTimeRange = value; OnPropertyChanged(); _ = LoadDataAsync(); }
+            get => _startDate;
+            set { _startDate = value; OnPropertyChanged(); }
         }
 
-        public ICommand RefreshCommand { get; }
+        public DateTime EndDate
+        {
+            get => _endDate;
+            set { _endDate = value; OnPropertyChanged(); }
+        }
+
+        public int TotalApplications
+        {
+            get => _totalApplications;
+            set { _totalApplications = value; OnPropertyChanged(); }
+        }
+
+        public double TotalHours
+        {
+            get => _totalHours;
+            set { _totalHours = value; OnPropertyChanged(); }
+        }
+
+        public int TotalWebsites
+        {
+            get => _totalWebsites;
+            set { _totalWebsites = value; OnPropertyChanged(); }
+        }
+
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set
+            {
+                _isLoading = value;
+                OnPropertyChanged();
+                _applyFilterRelayCommand.RaiseCanExecuteChanged();
+                _exportAppUsageRelayCommand.RaiseCanExecuteChanged();
+                _exportWebUsageRelayCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public string AppSearchText
+        {
+            get => _appSearchText;
+            set { _appSearchText = value; OnPropertyChanged(); _ = LoadAppPageAsync(1); }
+        }
+
+        public string WebSearchText
+        {
+            get => _webSearchText;
+            set { _webSearchText = value; OnPropertyChanged(); _ = LoadWebPageAsync(1); }
+        }
+
+        public int AppCurrentPage
+        {
+            get => _appCurrentPage;
+            set { _appCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int AppTotalPages
+        {
+            get => _appTotalPages;
+            set { _appTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int AppTotalCount
+        {
+            get => _appTotalCount;
+            set { _appTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+        }
+
+        public int WebCurrentPage
+        {
+            get => _webCurrentPage;
+            set { _webCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public int WebTotalPages
+        {
+            get => _webTotalPages;
+            set { _webTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public int WebTotalCount
+        {
+            get => _webTotalCount;
+            set { _webTotalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+        }
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set { _pageSize = value; OnPropertyChanged(); _ = LoadDataAsync(); }
+        }
+
+        public string AppPageInfo => $"Page {AppCurrentPage} of {AppTotalPages} ({AppTotalCount} total entries)";
+        public string WebPageInfo => $"Page {WebCurrentPage} of {WebTotalPages} ({WebTotalCount} total entries)";
+
+        public ICommand ApplyFilterCommand { get; }
+        public ICommand ExportAppUsageCommand { get; }
+        public ICommand ExportWebUsageCommand { get; }
+        public ICommand AppPreviousPageCommand { get; }
+        public ICommand AppNextPageCommand { get; }
+        public ICommand WebPreviousPageCommand { get; }
+        public ICommand WebNextPageCommand { get; }
+
+        private async Task ApplyFilterAsync()
+        {
+            if (EndDate.Date < StartDate.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            await LoadDataAsync();
+        }
 
         private async Task LoadDataAsync()
         {
-            var days = SelectedTimeRange switch
+            if (!_isActive)
             {
-                "Last 24 Hours" => 1,
-                "Last 7 Days" => 7,
-                "Last 30 Days" => 30,
-                "Last 90 Days" => 90,
-                _ => 7
-            };
-
-            var apps = await _usageMetricsService.GetMostUsedApplicationsAsync(days);
-            var websites = await _usageMetricsService.GetMostVisitedWebsitesAsync(days);
-
-            Applications.Clear();
-            foreach (var app in apps)
-            {
-                Applications.Add(new ApplicationUsageModel
-                {
-                    Name = app.ApplicationName,
-                    UsageCount = app.UsageCount,
-                    Percentage = app.Percentage
-                });
+                return;
             }
 
-            Websites.Clear();
-            foreach (var website in websites)
+            if (!await _loadDataSemaphore.WaitAsync(0))
             {
-                Websites.Add(new WebsiteUsageModel
+                return;
+            }
+
+            IsLoading = true;
+            try
+            {
+                if (!_isActive)
                 {
-                    Domain = website.Domain,
-                    VisitCount = website.VisitCount,
-                    Percentage = website.Percentage
-                });
+                    return;
+                }
+
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+
+                var summary = await _usageMetricsService.GetUsageSummaryAsync(startUtc, endUtc);
+                TotalApplications = summary.TotalApplications;
+                TotalWebsites = summary.TotalWebsites;
+                TotalHours = summary.TotalHours;
+
+                await LoadAppPageAsync(1);
+                await LoadWebPageAsync(1);
+            }
+            catch (Exception ex)
+            {
+                var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
+                var errorText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] USAGE METRICS LOAD ERROR\n" +
+                                $"  Type: {ex.GetType().FullName}\n" +
+                                $"  Message: {ex.Message}\n" +
+                                $"  Inner: {ex.InnerException?.Message}\n" +
+                                $"  InnerInner: {ex.InnerException?.InnerException?.Message}\n" +
+                                $"  StackTrace:\n{ex.StackTrace}\n\n";
+                System.IO.File.AppendAllText(logPath, errorText);
+            }
+            finally
+            {
+                IsLoading = false;
+                _loadDataSemaphore.Release();
+            }
+        }
+
+        private async Task LoadAppPageAsync(int pageNumber)
+        {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _appPageSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_isActive)
+                {
+                    return;
+                }
+
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+
+                var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
+                    startUtc, endUtc, pageNumber, _pageSize, AppSearchText);
+
+                FilteredApplicationUsage.Clear();
+                foreach (var item in result.Items)
+                {
+                    FilteredApplicationUsage.Add(new AppUsageRow
+                    {
+                        ApplicationName = item.ApplicationName,
+                        PCName = item.PCName,
+                        RoomNumber = item.RoomNumber,
+                        StartTime = item.StartTime,
+                        EndTime = item.EndTime,
+                        Duration = item.Duration
+                    });
+                }
+
+                AppCurrentPage = result.PageNumber;
+                AppTotalPages = result.TotalPages;
+                AppTotalCount = result.TotalCount;
+            }
+            catch { }
+            finally
+            {
+                _appPageSemaphore.Release();
+            }
+        }
+
+        private async Task AppPreviousPageAsync()
+        {
+            if (AppCurrentPage > 1)
+            {
+                await LoadAppPageAsync(AppCurrentPage - 1);
+            }
+        }
+
+        private async Task AppNextPageAsync()
+        {
+            if (AppCurrentPage < AppTotalPages)
+            {
+                await LoadAppPageAsync(AppCurrentPage + 1);
+            }
+        }
+
+        private async Task LoadWebPageAsync(int pageNumber)
+        {
+            if (!_isActive)
+            {
+                return;
+            }
+
+            if (!await _webPageSemaphore.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_isActive)
+                {
+                    return;
+                }
+
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+
+                var result = await _usageMetricsService.GetWebsiteUsageDetailsPaginatedAsync(
+                    startUtc, endUtc, pageNumber, _pageSize, WebSearchText);
+
+                FilteredWebsiteUsage.Clear();
+                foreach (var item in result.Items)
+                {
+                    FilteredWebsiteUsage.Add(new WebUsageRow
+                    {
+                        Domain = item.Domain,
+                        Browser = item.Browser,
+                        PCName = item.PCName,
+                        RoomNumber = item.RoomNumber,
+                        VisitTime = item.VisitTime,
+                        VisitCount = item.VisitCount
+                    });
+                }
+
+                WebCurrentPage = result.PageNumber;
+                WebTotalPages = result.TotalPages;
+                WebTotalCount = result.TotalCount;
+            }
+            catch { }
+            finally
+            {
+                _webPageSemaphore.Release();
+            }
+        }
+
+        public void OnNavigatedFrom()
+        {
+            _isActive = false;
+        }
+
+        private async Task WebPreviousPageAsync()
+        {
+            if (WebCurrentPage > 1)
+            {
+                await LoadWebPageAsync(WebCurrentPage - 1);
+            }
+        }
+
+        private async Task WebNextPageAsync()
+        {
+            if (WebCurrentPage < WebTotalPages)
+            {
+                await LoadWebPageAsync(WebCurrentPage + 1);
+            }
+        }
+
+        private async Task ExportUsageMetricsAsync()
+        {
+            try
+            {
+                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+
+                var bytes = await _usageMetricsService.ExportUsageMetricsToExcelAsync(startUtc, endUtc, AppSearchText, WebSearchText);
+
+                var saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                    DefaultExt = "xlsx",
+                    FileName = $"UsageMetrics_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+                };
+
+                if (saveFileDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                await File.WriteAllBytesAsync(saveFileDialog.FileName, bytes);
+                MessageBox.Show(
+                    "Usage metrics for both Application and Website tabs were exported to an Excel file.",
+                    "Export Complete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export usage metrics: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -72,28 +408,27 @@ namespace IRIS.UI.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class ApplicationUsageModel : INotifyPropertyChanged
+    public class AppUsageRow : INotifyPropertyChanged
     {
-        private string _name = string.Empty;
-        private int _usageCount;
-        private double _percentage;
+        public string ApplicationName { get; set; } = string.Empty;
+        public string PCName { get; set; } = string.Empty;
+        public string RoomNumber { get; set; } = string.Empty;
+        public DateTime StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public TimeSpan? Duration { get; set; }
 
-        public string Name
+        public string FormattedDuration
         {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
-        }
-
-        public int UsageCount
-        {
-            get => _usageCount;
-            set { _usageCount = value; OnPropertyChanged(); }
-        }
-
-        public double Percentage
-        {
-            get => _percentage;
-            set { _percentage = value; OnPropertyChanged(); }
+            get
+            {
+                if (Duration == null) return "Active";
+                var d = Duration.Value;
+                if (d.TotalHours >= 1)
+                    return $"{(int)d.TotalHours}h {d.Minutes}m";
+                if (d.TotalMinutes >= 1)
+                    return $"{d.Minutes}m {d.Seconds}s";
+                return $"{d.Seconds}s";
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -101,29 +436,14 @@ namespace IRIS.UI.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class WebsiteUsageModel : INotifyPropertyChanged
+    public class WebUsageRow : INotifyPropertyChanged
     {
-        private string _domain = string.Empty;
-        private int _visitCount;
-        private double _percentage;
-
-        public string Domain
-        {
-            get => _domain;
-            set { _domain = value; OnPropertyChanged(); }
-        }
-
-        public int VisitCount
-        {
-            get => _visitCount;
-            set { _visitCount = value; OnPropertyChanged(); }
-        }
-
-        public double Percentage
-        {
-            get => _percentage;
-            set { _percentage = value; OnPropertyChanged(); }
-        }
+        public string Domain { get; set; } = string.Empty;
+        public string Browser { get; set; } = string.Empty;
+        public string PCName { get; set; } = string.Empty;
+        public string RoomNumber { get; set; } = string.Empty;
+        public DateTime VisitTime { get; set; }
+        public int VisitCount { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>

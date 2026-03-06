@@ -19,6 +19,10 @@ namespace IRIS.Core.Models
         public string Title { get; set; } = string.Empty;
 
         [Required]
+        [MaxLength(200)]
+        public string AlertKey { get; set; } = string.Empty;
+
+        [Required]
         [MaxLength(1000)]
         public string Message { get; set; } = string.Empty;
 
@@ -28,9 +32,13 @@ namespace IRIS.Core.Models
 
         public bool IsAcknowledged { get; set; } = false;
 
+        public bool IsResolved { get; set; } = false;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? AcknowledgedAt { get; set; }
+
+        public DateTime? ResolvedAt { get; set; }
 
         // Navigation properties
         [ForeignKey("PCId")]

@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using IRIS.Core.Models;
 
 namespace IRIS.Core.Data
@@ -17,6 +18,9 @@ namespace IRIS.Core.Data
             {
                 // This will be overridden by DI configuration at runtime
             }
+            
+            // Suppress the pending model changes warning during migrations
+            optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         }
 
         // DbSets for all entities
@@ -34,7 +38,7 @@ namespace IRIS.Core.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<Policy> Policies { get; set; }
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
-        public DbSet<WallpaperAsset> WallpaperAssets { get; set; }
+        public DbSet<DeploymentLog> DeploymentLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -55,6 +59,7 @@ namespace IRIS.Core.Data
             ConfigureAlert(modelBuilder);
             ConfigurePolicy(modelBuilder);
             ConfigurePCHardwareConfig(modelBuilder);
+            ConfigureDeploymentLog(modelBuilder);
 
             // Seed test users with BCrypt hashed passwords (password: "admin")
             modelBuilder.Entity<User>().HasData(
@@ -164,19 +169,6 @@ namespace IRIS.Core.Data
             modelBuilder.Entity<Room>()
                 .HasIndex(r => r.RoomNumber)
                 .IsUnique();
-
-            // Seed a default room so agents can register PCs
-            modelBuilder.Entity<Room>().HasData(
-                new Room
-                {
-                    Id = 1,
-                    RoomNumber = "DEFAULT",
-                    Description = "Default room for unassigned PCs",
-                    Capacity = 0,
-                    IsActive = true,
-                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                }
-            );
         }
 
         private void ConfigureHardwareMetric(ModelBuilder modelBuilder)
@@ -274,8 +266,9 @@ namespace IRIS.Core.Data
                 .HasForeignKey(wuh => wuh.PCId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<WebsiteUsageHistory>()
-                .HasIndex(wuh => new { wuh.PCId, wuh.VisitedAt });
+           modelBuilder.Entity<WebsiteUsageHistory>()
+                .HasIndex(wuh => new { wuh.PCId, wuh.Browser, wuh.Domain, wuh.VisitedAt })
+                .IsUnique();
         }
 
         private void ConfigureUserLog(ModelBuilder modelBuilder)
@@ -310,13 +303,14 @@ namespace IRIS.Core.Data
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Alert>()
-                .Property(a => a.Severity)
-                .HasConversion<string>();
+            // Severity and Type stored as integer (enum default) — no HasConversion<string>()
+            // to match actual PostgreSQL column types.
 
             modelBuilder.Entity<Alert>()
-                .Property(a => a.Type)
-                .HasConversion<string>();
+                .HasIndex(a => new { a.PCId, a.AlertKey, a.IsResolved });
+
+            modelBuilder.Entity<Alert>()
+                .HasIndex(a => new { a.IsResolved, a.CreatedAt });
         }
 
         private void ConfigurePolicy(ModelBuilder modelBuilder)
@@ -340,5 +334,21 @@ namespace IRIS.Core.Data
                 .HasForeignKey(phc => phc.PCId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
+
+        private void ConfigureDeploymentLog(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<DeploymentLog>()
+                .HasOne(dl => dl.PC)
+                .WithMany()
+                .HasForeignKey(dl => dl.PCId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DeploymentLog>()
+                .HasIndex(dl => new { dl.PCId, dl.Timestamp });
+
+            modelBuilder.Entity<DeploymentLog>()
+                .HasIndex(dl => dl.Timestamp);
+        }
+
     }
 }
