@@ -10,10 +10,12 @@ namespace IRIS.Core.Services;
 public class UsageMetricsService : IUsageMetricsService
 {
     private readonly IRISDbContext _context;
+    private readonly IAuthenticationService _authService;
 
-    public UsageMetricsService(IRISDbContext context)
+    public UsageMetricsService(IRISDbContext context, IAuthenticationService authService)
     {
         _context = context;
+        _authService = authService;
     }
 
     public async Task<List<ApplicationUsageDto>> GetMostUsedApplicationsAsync(int days, int limit = 10)
@@ -302,6 +304,10 @@ public class UsageMetricsService : IUsageMetricsService
 
         appSheet.RangeUsed()?.SetAutoFilter();
         webSheet.RangeUsed()?.SetAutoFilter();
+
+        await _authService.LogUserActionAsync(
+            "Usage Metrics Exported",
+            $"Exported usage metrics from {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}. App rows: {appItems.Count}, Web rows: {webItems.Count}");
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);

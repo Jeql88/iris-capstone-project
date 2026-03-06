@@ -8,10 +8,12 @@ namespace IRIS.Core.Services
     public class PCAdminService : IPCAdminService
     {
         private readonly IRISDbContext _context;
+        private readonly IAuthenticationService _authService;
 
-        public PCAdminService(IRISDbContext context)
+        public PCAdminService(IRISDbContext context, IAuthenticationService authService)
         {
             _context = context;
+            _authService = authService;
         }
 
         public async Task<List<PCDto>> GetUnassignedPCsAsync(string defaultRoomNumber = "DEFAULT")
@@ -52,6 +54,16 @@ namespace IRIS.Core.Services
             }
 
             await _context.SaveChangesAsync();
+
+            var roomNumber = await _context.Rooms
+                .Where(r => r.Id == roomId)
+                .Select(r => r.RoomNumber)
+                .FirstOrDefaultAsync();
+
+            await _authService.LogUserActionAsync(
+                "PCs Assigned To Lab",
+                $"Assigned {pcs.Count} PC(s) to lab {roomNumber ?? roomId.ToString()} (RoomId: {roomId})");
+
             return true;
         }
     }

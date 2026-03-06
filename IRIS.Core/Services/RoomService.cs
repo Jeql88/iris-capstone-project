@@ -9,10 +9,12 @@ namespace IRIS.Core.Services
     public class RoomService : IRoomService
     {
         private readonly IRISDbContext _context;
+        private readonly IAuthenticationService _authService;
 
-        public RoomService(IRISDbContext context)
+        public RoomService(IRISDbContext context, IAuthenticationService authService)
         {
             _context = context;
+            _authService = authService;
         }
 
         public async Task<List<RoomDto>> GetRoomsAsync()
@@ -59,6 +61,10 @@ namespace IRIS.Core.Services
             _context.Rooms.Add(room);
             await _context.SaveChangesAsync();
 
+            await _authService.LogUserActionAsync(
+                "Lab Created",
+                $"Created lab {room.RoomNumber} (ID: {room.Id}, Capacity: {room.Capacity})");
+
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
 
@@ -88,6 +94,10 @@ namespace IRIS.Core.Services
 
             await _context.SaveChangesAsync();
 
+            await _authService.LogUserActionAsync(
+                "Lab Updated",
+                $"Updated lab {room.RoomNumber} (ID: {room.Id})");
+
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
 
@@ -110,6 +120,11 @@ namespace IRIS.Core.Services
 
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
+
+            await _authService.LogUserActionAsync(
+                "Lab Deleted",
+                $"Deleted lab {room.RoomNumber} (ID: {room.Id})");
+
             return true;
         }
 
