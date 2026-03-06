@@ -89,5 +89,33 @@ namespace IRIS.UI.Views.Common
                 Window.GetWindow(this)?.Close();
             }
         }
+
+        private void SaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            // Read values directly from NumberBox controls to bypass any binding issues
+            _viewModel.HardwareRetentionDays = HardwareRetentionBox.Value ?? _viewModel.HardwareRetentionDays;
+            _viewModel.NetworkRetentionDays = NetworkRetentionBox.Value ?? _viewModel.NetworkRetentionDays;
+            _viewModel.AlertRetentionDays = AlertRetentionBox.Value ?? _viewModel.AlertRetentionDays;
+            _viewModel.WebsiteUsageRetentionDays = WebsiteRetentionBox.Value ?? _viewModel.WebsiteUsageRetentionDays;
+            _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
+            _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
+
+            if (_viewModel.SaveRetentionCommand.CanExecute(null))
+                _viewModel.SaveRetentionCommand.Execute(null);
+        }
+
+        private void RunCleanupNow_Click(object sender, RoutedEventArgs e)
+        {
+            // Read values directly from NumberBox controls first
+            _viewModel.HardwareRetentionDays = HardwareRetentionBox.Value ?? _viewModel.HardwareRetentionDays;
+            _viewModel.NetworkRetentionDays = NetworkRetentionBox.Value ?? _viewModel.NetworkRetentionDays;
+            _viewModel.AlertRetentionDays = AlertRetentionBox.Value ?? _viewModel.AlertRetentionDays;
+            _viewModel.WebsiteUsageRetentionDays = WebsiteRetentionBox.Value ?? _viewModel.WebsiteUsageRetentionDays;
+            _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
+            _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
+
+            if (_viewModel.RunCleanupNowCommand.CanExecute(null))
+                _viewModel.RunCleanupNowCommand.Execute(null);
+        }
     }
 }

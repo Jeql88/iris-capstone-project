@@ -6,6 +6,64 @@
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <!-- Branded button style for custom-colored buttons that need proper hover states -->
+        <Style x:Key="DangerButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}" BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#B91C1C"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#991B1B"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BrandedLogoutButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#620F1E"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}" BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#7A1326"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#4A0B17"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
@@ -135,7 +193,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding HardwareRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="HardwareRetentionBox" Grid.Column="0" Value="{Binding HardwareRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -151,7 +209,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding NetworkRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="NetworkRetentionBox" Grid.Column="0" Value="{Binding NetworkRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -167,7 +225,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding AlertRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="730"
+                                <ui:NumberBox x:Name="AlertRetentionBox" Grid.Column="0" Value="{Binding AlertRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="730"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -183,7 +241,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding WebsiteUsageRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="WebsiteRetentionBox" Grid.Column="0" Value="{Binding WebsiteUsageRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -199,7 +257,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding SoftwareUsageRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="SoftwareRetentionBox" Grid.Column="0" Value="{Binding SoftwareUsageRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -215,7 +273,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox Grid.Column="0" Value="{Binding CleanupHourUtc, Mode=TwoWay}" Minimum="0" Maximum="23"
+                                <ui:NumberBox x:Name="CleanupHourBox" Grid.Column="0" Value="{Binding CleanupHourUtc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" Maximum="23"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text=":00" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -229,16 +287,11 @@
                                    Icon="{ui:SymbolIcon Save24}"
                                    Appearance="Primary"
                                    Padding="16,8"
-                                   Command="{Binding SaveRetentionCommand}"/>
-                        <ui:Button Content="Run Cleanup Now"
-                                   Icon="{ui:SymbolIcon Delete24}"
-                                   Padding="16,8" Margin="10,0,0,0"
-                                   Command="{Binding RunCleanupNowCommand}"
-                                   Foreground="White">
-                            <ui:Button.Background>
-                                <SolidColorBrush Color="#DC2626"/>
-                            </ui:Button.Background>
-                        </ui:Button>
+                                   Click="SaveSettings_Click"/>
+                        <Button Content="Run Cleanup Now"
+                               Style="{StaticResource DangerButtonStyle}"
+                               Margin="10,0,0,0"
+                               Click="RunCleanupNow_Click"/>
                     </StackPanel>
 
                     <TextBlock Text="{Binding RetentionStatusMessage}" FontSize="12"
@@ -273,17 +326,11 @@
                     </StackPanel>
                     <TextBlock Text="End your current session and return to the login screen."
                                FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,14" TextWrapping="Wrap"/>
-                    <ui:Button x:Name="LogoutButton"
-                               Content="Logout"
-                               Icon="{ui:SymbolIcon SignOut24}"
-                               HorizontalAlignment="Left"
-                               Padding="16,8"
-                               Click="Logout_Click"
-                               Foreground="White">
-                        <ui:Button.Background>
-                            <SolidColorBrush Color="#620F1E"/>
-                        </ui:Button.Background>
-                    </ui:Button>
+                    <Button x:Name="LogoutButton"
+                            Content="Logout"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource BrandedLogoutButtonStyle}"
+                            Click="Logout_Click"/>
                 </StackPanel>
             </Border>
 

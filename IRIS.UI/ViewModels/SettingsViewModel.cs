@@ -18,12 +18,12 @@ namespace IRIS.UI.ViewModels
         private string _confirmPassword = string.Empty;
 
         // Data retention properties
-        private int _hardwareRetentionDays = 30;
-        private int _networkRetentionDays = 30;
-        private int _alertRetentionDays = 90;
-        private int _websiteUsageRetentionDays = 60;
-        private int _softwareUsageRetentionDays = 60;
-        private int _cleanupHourUtc = 2;
+        private double _hardwareRetentionDays = 30;
+        private double _networkRetentionDays = 30;
+        private double _alertRetentionDays = 90;
+        private double _websiteUsageRetentionDays = 60;
+        private double _softwareUsageRetentionDays = 60;
+        private double _cleanupHourUtc = 2;
         private bool _isRetentionLoading;
         private string _retentionStatusMessage = string.Empty;
 
@@ -32,8 +32,8 @@ namespace IRIS.UI.ViewModels
             _authService = authService;
             _scopeFactory = scopeFactory;
             ChangePasswordCommand = new RelayCommand(async () => await ChangePasswordAsync(), () => true);
-            SaveRetentionCommand = new RelayCommand(async () => await SaveRetentionSettingsAsync(), () => !_isRetentionLoading);
-            RunCleanupNowCommand = new RelayCommand(async () => await RunCleanupNowAsync(), () => !_isRetentionLoading);
+            _saveRetentionCommand = new RelayCommand(async () => await SaveRetentionSettingsAsync(), () => !_isRetentionLoading);
+            _runCleanupNowCommand = new RelayCommand(async () => await RunCleanupNowAsync(), () => !_isRetentionLoading);
 
             _ = LoadRetentionSettingsAsync();
         }
@@ -67,37 +67,37 @@ namespace IRIS.UI.ViewModels
         public ICommand ChangePasswordCommand { get; }
 
         // --- Data Retention ---
-        public int HardwareRetentionDays
+        public double HardwareRetentionDays
         {
             get => _hardwareRetentionDays;
             set { _hardwareRetentionDays = value; OnPropertyChanged(); }
         }
 
-        public int NetworkRetentionDays
+        public double NetworkRetentionDays
         {
             get => _networkRetentionDays;
             set { _networkRetentionDays = value; OnPropertyChanged(); }
         }
 
-        public int AlertRetentionDays
+        public double AlertRetentionDays
         {
             get => _alertRetentionDays;
             set { _alertRetentionDays = value; OnPropertyChanged(); }
         }
 
-        public int WebsiteUsageRetentionDays
+        public double WebsiteUsageRetentionDays
         {
             get => _websiteUsageRetentionDays;
             set { _websiteUsageRetentionDays = value; OnPropertyChanged(); }
         }
 
-        public int SoftwareUsageRetentionDays
+        public double SoftwareUsageRetentionDays
         {
             get => _softwareUsageRetentionDays;
             set { _softwareUsageRetentionDays = value; OnPropertyChanged(); }
         }
 
-        public int CleanupHourUtc
+        public double CleanupHourUtc
         {
             get => _cleanupHourUtc;
             set { _cleanupHourUtc = value; OnPropertyChanged(); }
@@ -106,7 +106,13 @@ namespace IRIS.UI.ViewModels
         public bool IsRetentionLoading
         {
             get => _isRetentionLoading;
-            set { _isRetentionLoading = value; OnPropertyChanged(); }
+            set
+            {
+                _isRetentionLoading = value;
+                OnPropertyChanged();
+                _saveRetentionCommand.RaiseCanExecuteChanged();
+                _runCleanupNowCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public string RetentionStatusMessage
@@ -115,8 +121,10 @@ namespace IRIS.UI.ViewModels
             set { _retentionStatusMessage = value; OnPropertyChanged(); }
         }
 
-        public ICommand SaveRetentionCommand { get; }
-        public ICommand RunCleanupNowCommand { get; }
+        private readonly RelayCommand _saveRetentionCommand;
+        private readonly RelayCommand _runCleanupNowCommand;
+        public ICommand SaveRetentionCommand => _saveRetentionCommand;
+        public ICommand RunCleanupNowCommand => _runCleanupNowCommand;
 
         // --- Password Logic ---
         private async Task ChangePasswordAsync()
@@ -195,13 +203,20 @@ namespace IRIS.UI.ViewModels
 
         private async Task SaveRetentionSettingsAsync()
         {
-            if (HardwareRetentionDays < 1 || NetworkRetentionDays < 1 || AlertRetentionDays < 1)
+            var hwDays = (int)HardwareRetentionDays;
+            var netDays = (int)NetworkRetentionDays;
+            var alertDays = (int)AlertRetentionDays;
+            var webDays = (int)WebsiteUsageRetentionDays;
+            var swDays = (int)SoftwareUsageRetentionDays;
+            var cleanupHour = (int)CleanupHourUtc;
+
+            if (hwDays < 1 || netDays < 1 || alertDays < 1)
             {
                 MessageBox.Show("Retention days must be at least 1.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            if (CleanupHourUtc < 0 || CleanupHourUtc > 23)
+            if (cleanupHour < 0 || cleanupHour > 23)
             {
                 MessageBox.Show("Cleanup hour must be between 0 and 23.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -215,12 +230,12 @@ namespace IRIS.UI.ViewModels
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
 
-                await service.UpdateSettingAsync(SettingsKeys.HardwareMetricRetentionDays, HardwareRetentionDays);
-                await service.UpdateSettingAsync(SettingsKeys.NetworkMetricRetentionDays, NetworkRetentionDays);
-                await service.UpdateSettingAsync(SettingsKeys.AlertRetentionDays, AlertRetentionDays);
-                await service.UpdateSettingAsync(SettingsKeys.WebsiteUsageRetentionDays, WebsiteUsageRetentionDays);
-                await service.UpdateSettingAsync(SettingsKeys.SoftwareUsageRetentionDays, SoftwareUsageRetentionDays);
-                await service.UpdateSettingAsync(SettingsKeys.CleanupHourUtc, CleanupHourUtc);
+                await service.UpdateSettingAsync(SettingsKeys.HardwareMetricRetentionDays, hwDays);
+                await service.UpdateSettingAsync(SettingsKeys.NetworkMetricRetentionDays, netDays);
+                await service.UpdateSettingAsync(SettingsKeys.AlertRetentionDays, alertDays);
+                await service.UpdateSettingAsync(SettingsKeys.WebsiteUsageRetentionDays, webDays);
+                await service.UpdateSettingAsync(SettingsKeys.SoftwareUsageRetentionDays, swDays);
+                await service.UpdateSettingAsync(SettingsKeys.CleanupHourUtc, cleanupHour);
 
                 RetentionStatusMessage = "Settings saved successfully.";
             }
