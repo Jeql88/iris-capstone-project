@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.IO;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -49,9 +50,11 @@ namespace IRIS.Agent
             // Initialize monitoring components
             var pingHost = configuration["AgentSettings:PingHost"] ?? "8.8.8.8";
             var pingTimeout = int.TryParse(configuration["AgentSettings:PingTimeoutMs"], out var pto) ? pto : 1000;
-            var commandServerHost = configuration["AgentSettings:CommandServerHost"] ?? "127.0.0.1";
+            var commandServerHost = ResolveCommandServerHost(configuration);
             var commandServerPort = int.TryParse(configuration["AgentSettings:CommandServerPort"], out var csp) ? csp : 5091;
             var freezeAutoUnfreezeMinutes = int.TryParse(configuration["AgentSettings:FreezeAutoUnfreezeMinutes"], out var fum) ? fum : 10;
+
+            Log.Information("Power command polling endpoint configured as {CommandServerHost}:{CommandServerPort}", commandServerHost, commandServerPort);
 
             var monitoringLogic = new MonitoringLogic(
                 context,
@@ -364,6 +367,58 @@ namespace IRIS.Agent
             }
 
             return fullExpanded;
+        }
+
+        private static string ResolveCommandServerHost(IConfiguration configuration)
+        {
+            var configuredHost = (configuration["AgentSettings:CommandServerHost"] ?? string.Empty).Trim();
+
+            // Explicit non-loopback host wins.
+            if (!string.IsNullOrWhiteSpace(configuredHost) &&
+                !configuredHost.Equals("auto", StringComparison.OrdinalIgnoreCase) &&
+                !IsLoopbackHost(configuredHost))
+            {
+                return configuredHost;
+            }
+
+            var dbConnectionString = configuration.GetConnectionString("IRISDatabase");
+            if (!string.IsNullOrWhiteSpace(dbConnectionString))
+            {
+                try
+                {
+                    var builder = new NpgsqlConnectionStringBuilder(dbConnectionString);
+                    var dbHost = (builder.Host ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(dbHost))
+                    {
+                        var firstHost = dbHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .FirstOrDefault();
+
+                        if (!string.IsNullOrWhiteSpace(firstHost) && !IsLoopbackHost(firstHost))
+                        {
+                            Log.Information("Resolved command server host from IRIS database host: {ResolvedHost}", firstHost);
+                            return firstHost;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to parse IRIS database connection string for command server host resolution");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(configuredHost) && !configuredHost.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            {
+                return configuredHost;
+            }
+
+            return "127.0.0.1";
+        }
+
+        private static bool IsLoopbackHost(string host)
+        {
+            return host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                || host.Equals("::1", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

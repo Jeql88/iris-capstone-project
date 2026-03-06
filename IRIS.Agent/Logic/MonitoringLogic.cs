@@ -333,11 +333,11 @@ namespace IRIS.Agent.Logic
             }
             catch (OperationCanceledException)
             {
-                // Server timeout/unreachable; retry on next poll
+                Log.Debug("Power command poll timed out for PC {MacAddress} when connecting to {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
             }
-            catch (SocketException)
+            catch (SocketException ex)
             {
-                // Server unavailable; retry on next poll
+                Log.Debug(ex, "Power command server is unreachable for PC {MacAddress} at {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
             }
             catch (Exception ex)
             {

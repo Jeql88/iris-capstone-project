@@ -27,7 +27,12 @@ namespace IRIS.Core.Services
                 return Task.FromResult(false);
             }
 
-            var normalizedMacAddress = macAddress.Trim();
+            var normalizedMacAddress = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
+            {
+                return Task.FromResult(false);
+            }
+
             CleanupExpiredCommand(normalizedMacAddress);
 
             var finalCommand = normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase)
@@ -54,7 +59,12 @@ namespace IRIS.Core.Services
                 return Task.FromResult<string?>(null);
             }
 
-            var normalizedMacAddress = macAddress.Trim();
+            var normalizedMacAddress = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
+            {
+                return Task.FromResult<string?>(null);
+            }
+
             CleanupExpiredCommand(normalizedMacAddress);
 
             if (!_pendingCommands.TryRemove(normalizedMacAddress, out var pendingCommand))
@@ -76,6 +86,15 @@ namespace IRIS.Core.Services
             {
                 _pendingCommands.TryRemove(macAddress, out _);
             }
+        }
+
+        private static string NormalizeMacAddress(string macAddress)
+        {
+            var normalized = new string(macAddress
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+
+            return normalized.ToUpperInvariant();
         }
 
         private sealed record PendingCommandEntry(string CommandType, DateTime CreatedAtUtc);
