@@ -110,9 +110,21 @@ namespace IRIS.UI.Views.Admin
             var fullName = AddFullNameTextBox.Text.Trim();
             var roleItem = AddRoleComboBox.SelectedItem as ComboBoxItem;
 
+            if (string.IsNullOrWhiteSpace(username) && string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Username and Full Name are required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(username))
             {
                 MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -134,7 +146,7 @@ namespace IRIS.UI.Views.Admin
 
             try
             {
-                await _userService.CreateUserAsync(username, defaultPassword, role, string.IsNullOrWhiteSpace(fullName) ? null : fullName);
+                await _userService.CreateUserAsync(username, defaultPassword, role, fullName);
 
                 MessageBox.Show($"User '{username}' created successfully!\n\nDefault Password: {defaultPassword}\n\nUser must change password on first login.",
                     "User Created", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -163,9 +175,21 @@ namespace IRIS.UI.Views.Admin
             var fullName = EditFullNameTextBox.Text.Trim();
             var roleItem = EditRoleComboBox.SelectedItem as ComboBoxItem;
 
+            if (string.IsNullOrWhiteSpace(username) && string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Username and Full Name are required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(username))
             {
                 MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -188,7 +212,7 @@ namespace IRIS.UI.Views.Admin
                 await _userService.UpdateUserAsync(
                     _viewModel.SelectedUser.Id,
                     username,
-                    string.IsNullOrWhiteSpace(fullName) ? null : fullName,
+                    fullName,
                     role
                 );
 

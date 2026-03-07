@@ -61,7 +61,7 @@ namespace IRIS.Core.Services
             var policies = await _context.Policies
                 .Where(p => p.RoomId == roomId)
                 .ToListAsync();
-            
+
             _context.Policies.RemoveRange(policies);
             await _context.SaveChangesAsync();
         }
@@ -103,7 +103,7 @@ namespace IRIS.Core.Services
                 // Update existing policy
                 existingPolicy.ResetWallpaperOnStartup = resetWallpaperOnStartup;
                 existingPolicy.AutoShutdownIdleMinutes = autoShutdownIdleMinutes;
-                
+
                 // Update wallpaper path if provided
                 if (!string.IsNullOrEmpty(wallpaperPath))
                 {
@@ -126,10 +126,10 @@ namespace IRIS.Core.Services
                 existingPolicy.PacketLossCriticalThreshold = packetLossCriticalThreshold ?? existingPolicy.PacketLossCriticalThreshold;
                 existingPolicy.WarningSustainSeconds = warningSustainSeconds ?? existingPolicy.WarningSustainSeconds;
                 existingPolicy.CriticalSustainSeconds = criticalSustainSeconds ?? existingPolicy.CriticalSustainSeconds;
-                
+
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
-                
+
                 _context.Policies.Update(existingPolicy);
                 await _context.SaveChangesAsync();
 
@@ -169,7 +169,7 @@ namespace IRIS.Core.Services
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 _context.Policies.Add(newPolicy);
                 await _context.SaveChangesAsync();
 
