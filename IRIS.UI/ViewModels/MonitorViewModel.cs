@@ -456,9 +456,9 @@ namespace IRIS.UI.ViewModels
                     Rooms.Add(room);
                 }
 
-                if (SelectedRoom == null && Rooms.Any())
+                if (SelectedRoom == null && Rooms.Count > 1)
                 {
-                    SelectedRoom = Rooms.First();
+                    SelectedRoom = Rooms[1];
                 }
             }
             catch
