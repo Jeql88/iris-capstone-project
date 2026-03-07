@@ -28,9 +28,11 @@ namespace IRIS.UI.ViewModels
         {
             _accessLogsService = accessLogsService;
             RefreshCommand = new RelayCommand(async () => await LoadLogsAsync(), () => true);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
             PreviousPageCommand = new RelayCommand(async () => await PreviousPageAsync(), () => true);
             NextPageCommand = new RelayCommand(async () => await NextPageAsync(), () => true);
-            
+
             _ = LoadLogsAsync();
         }
 
@@ -40,25 +42,25 @@ namespace IRIS.UI.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _searchText = value; OnPropertyChanged(); }
         }
 
         public string SelectedAction
         {
             get => _selectedAction;
-            set { _selectedAction = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _selectedAction = value; OnPropertyChanged(); }
         }
 
         public string SelectedRole
         {
             get => _selectedRole;
-            set { _selectedRole = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _selectedRole = value; OnPropertyChanged(); }
         }
 
         public int PageSize
         {
             get => _pageSize;
-            set { _pageSize = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _pageSize = value; OnPropertyChanged(); }
         }
 
         public int CurrentPage
@@ -84,8 +86,26 @@ namespace IRIS.UI.ViewModels
         public bool HasNextPage => CurrentPage < TotalPages;
 
         public ICommand RefreshCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
         public ICommand PreviousPageCommand { get; }
         public ICommand NextPageCommand { get; }
+
+        private async Task ApplyFiltersAsync()
+        {
+            CurrentPage = 1;
+            await LoadLogsAsync();
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SearchText = string.Empty;
+            SelectedAction = "All Actions";
+            SelectedRole = "All Roles";
+            PageSize = 10;
+            CurrentPage = 1;
+            await LoadLogsAsync();
+        }
 
         private async Task LoadLogsAsync()
         {
@@ -119,8 +139,8 @@ namespace IRIS.UI.ViewModels
                 }
 
                 var result = await _accessLogsService.GetAccessLogsAsync(
-                    CurrentPage, PageSize, SearchText, 
-                    SelectedAction == "All Actions" ? null : SelectedAction, 
+                    CurrentPage, PageSize, SearchText,
+                    SelectedAction == "All Actions" ? null : SelectedAction,
                     roleFilter);
 
                 AccessLogs.Clear();

@@ -64,6 +64,16 @@
                             </ComboBox>
                         </StackPanel>
                     </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <ui:Button Content="Apply Filters"
+                                   Command="{Binding ApplyFiltersCommand}"
+                                   Appearance="Primary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button Content="Reset"
+                                   Command="{Binding ResetFiltersCommand}"
+                                   Appearance="Secondary"/>
+                    </StackPanel>
                 </StackPanel>
             </ui:Card>
 
