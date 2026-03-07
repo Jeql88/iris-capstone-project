@@ -25,7 +25,7 @@ namespace IRIS.UI.ViewModels
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
         private int _pcId;
         private bool _isActive;
-        private bool _isDetailsExpanded = true;
+        private bool _isDetailsExpanded = false;
         private string _pcName = string.Empty;
         private string _pcNumber = string.Empty;
         private string _roomName = string.Empty;
