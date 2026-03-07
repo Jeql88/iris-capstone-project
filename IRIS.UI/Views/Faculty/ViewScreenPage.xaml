@@ -13,7 +13,7 @@
         <Grid Margin="25,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="600"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -69,10 +69,31 @@
                 <Border CornerRadius="8" ClipToBounds="True">
                     <Grid>
                         <!-- Screen Image -->
-                        <Image x:Name="ScreenImage" 
-                               Source="{Binding ScreenImage}" 
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <!-- <Button Command="{Binding ExpandScreenCommand}" 
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                Cursor="Hand">
+                            <Image x:Name="ScreenImage" 
+                                   Source="{Binding ScreenImage}" 
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Button> -->
+                        <!-- <Button Command="{Binding ExpandScreenCommand}" 
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                Cursor="Hand">
+                            <Image x:Name="ScreenImage" 
+                                   Source="{Binding ScreenImage}" 
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Button> -->
+                        <!-- Screen Image Container -->
+                        <Button Command="{Binding ExpandScreenCommand}" 
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                Cursor="Hand" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image x:Name="ScreenImage" 
+                                   Source="{Binding ScreenImage}" 
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Button>
                         
                         <!-- Loading/Disconnected Overlay -->
                         <Border Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"

@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Faculty;
 using IRIS.Core.Services.Contracts;
 using Microsoft.Extensions.Configuration;
 
@@ -54,6 +55,7 @@ namespace IRIS.UI.ViewModels
         private bool _isFreezeActive;
         private DateTime _lastFrameUpdatedUtc = DateTime.MinValue;
         private ImageSource? _screenImage;
+        private ExpandedScreenWindow? _expandedWindow;
 
         public ViewScreenViewModel(
             INavigationService navigationService,
@@ -75,6 +77,7 @@ namespace IRIS.UI.ViewModels
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
+            ExpandScreenCommand = new RelayCommand(() => ExpandScreen(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
 
             _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -137,6 +140,7 @@ namespace IRIS.UI.ViewModels
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RefreshScreenCommand { get; }
         public ICommand RetryConnectionCommand { get; }
+        public ICommand ExpandScreenCommand { get; }
         public ICommand BackCommand { get; }
 
         public async void LoadPCData(PCDisplayModel pc)
@@ -390,6 +394,12 @@ namespace IRIS.UI.ViewModels
             await Task.CompletedTask;
             OnDeactivated();
             _navigationService.GoBack();
+        }
+
+        private void ExpandScreen()
+        {
+            _expandedWindow = new ExpandedScreenWindow { DataContext = this };
+            _expandedWindow.Show();
         }
 
         public async Task OnActivatedAsync()
