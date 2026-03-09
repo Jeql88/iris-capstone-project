@@ -19,7 +19,7 @@
         <ui:Card Grid.Row="1" Grid.Column="0">
             <StackPanel Margin="15">
                 <TextBlock Text="Rooms" FontSize="16" FontWeight="SemiBold"/>
-                <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" Height="220">
+                <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" Height="220" MouseDown="ListBox_MouseDown">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Vertical">

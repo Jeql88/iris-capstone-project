@@ -47,7 +47,14 @@ namespace IRIS.UI.ViewModels
             get => _selectedRoom;
             set
             {
-                _selectedRoom = value;
+                if (_selectedRoom?.Id == value?.Id)
+                {
+                    _selectedRoom = null;
+                }
+                else
+                {
+                    _selectedRoom = value;
+                }
                 OnPropertyChanged();
                 PopulateFormFromSelection();
             }
@@ -146,7 +153,7 @@ namespace IRIS.UI.ViewModels
 
             var rooms = await _roomService.GetRoomsAsync();
             Rooms.Clear();
-            foreach (var room in rooms)
+            foreach (var room in rooms.Where(r => r.RoomNumber != "DEFAULT"))
                 Rooms.Add(room);
 
             var targetId = selectedRoomId ?? SelectedRoom?.Id;
@@ -182,7 +189,7 @@ namespace IRIS.UI.ViewModels
 
             var pcs = await _pcAdminService.GetUnassignedPCsAsync();
             UnassignedPCs.Clear();
-            foreach (var pc in pcs)
+            foreach (var pc in pcs.Where(p => p.RoomId == 0))
             {
                 UnassignedPCs.Add(new SelectablePC
                 {
