@@ -60,17 +60,46 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        // Form fields
+        // Add New Laboratory fields
+        private string _addRoomNumber = string.Empty;
+        public string AddRoomNumber
+        {
+            get => _addRoomNumber;
+            set
+            {
+                _addRoomNumber = value;
+                OnPropertyChanged();
+                CreateCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string? _addDescription;
+        public string? AddDescription
+        {
+            get => _addDescription;
+            set { _addDescription = value; OnPropertyChanged(); }
+        }
+
+        private string _addCapacityText = "0";
+        public string AddCapacityText
+        {
+            get => _addCapacityText;
+            set { _addCapacityText = value; OnPropertyChanged(); }
+        }
+
+        private bool _addIsActive = true;
+        public bool AddIsActive
+        {
+            get => _addIsActive;
+            set { _addIsActive = value; OnPropertyChanged(); }
+        }
+
+        // Manage Laboratory fields
         private string _roomNumber = string.Empty;
         public string RoomNumber
         {
             get => _roomNumber;
-            set
-            {
-                _roomNumber = value;
-                OnPropertyChanged();
-                CreateCommand.RaiseCanExecuteChanged();
-            }
+            set { _roomNumber = value; OnPropertyChanged(); }
         }
 
         private string? _description;
@@ -118,7 +147,7 @@ namespace IRIS.UI.ViewModels
             _roomService = roomService;
             _pcAdminService = pcAdminService;
 
-            CreateCommand = new RelayCommand(async () => await CreateAsync(), () => !string.IsNullOrWhiteSpace(RoomNumber));
+            CreateCommand = new RelayCommand(async () => await CreateAsync(), () => !string.IsNullOrWhiteSpace(AddRoomNumber));
             UpdateCommand = new RelayCommand(async () => await UpdateAsync(), () => SelectedRoom != null);
             DeleteCommand = new RelayCommand(async () => await DeleteAsync(), () => SelectedRoom != null);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
@@ -189,7 +218,7 @@ namespace IRIS.UI.ViewModels
 
             var pcs = await _pcAdminService.GetUnassignedPCsAsync();
             UnassignedPCs.Clear();
-            foreach (var pc in pcs.Where(p => p.RoomId == 0))
+            foreach (var pc in pcs)
             {
                 UnassignedPCs.Add(new SelectablePC
                 {
@@ -230,7 +259,7 @@ namespace IRIS.UI.ViewModels
 
         private async Task CreateAsync()
         {
-            if (!TryBuildRequest(out var request, out var validationError))
+            if (!TryBuildRequest(AddRoomNumber, AddDescription, AddCapacityText, AddIsActive, out var request, out var validationError))
             {
                 SetStatus(validationError, true);
                 return;
@@ -239,6 +268,10 @@ namespace IRIS.UI.ViewModels
             try
             {
                 var created = await _roomService.CreateRoomAsync(request);
+                AddRoomNumber = string.Empty;
+                AddDescription = string.Empty;
+                AddCapacityText = "0";
+                AddIsActive = true;
                 await LoadRoomsAsync(created.Id);
                 SetStatus($"Room {created.RoomNumber} created.", false);
             }
@@ -252,7 +285,7 @@ namespace IRIS.UI.ViewModels
         {
             if (SelectedRoom == null) return;
 
-            if (!TryBuildRequest(out var request, out var validationError))
+            if (!TryBuildRequest(RoomNumber, Description, CapacityText, IsActive, out var request, out var validationError))
             {
                 SetStatus(validationError, true);
                 return;
@@ -276,7 +309,7 @@ namespace IRIS.UI.ViewModels
         private async Task DeleteAsync()
         {
             if (SelectedRoom == null) return;
-            if (SelectedRoom.RoomNumber == "DEFAULT") return; // safeguard
+            if (SelectedRoom.RoomNumber == "DEFAULT") return;
 
             try
             {
@@ -324,25 +357,25 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private bool TryBuildRequest(out RoomCreateUpdateDto request, out string error)
+        private bool TryBuildRequest(string roomNumber, string? description, string capacityText, bool isActive, out RoomCreateUpdateDto request, out string error)
         {
             request = new RoomCreateUpdateDto(string.Empty, null, 0, true);
             error = string.Empty;
 
-            var normalizedRoomNumber = RoomNumber?.Trim() ?? string.Empty;
+            var normalizedRoomNumber = roomNumber?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(normalizedRoomNumber))
             {
                 error = "Room number is required.";
                 return false;
             }
 
-            if (!int.TryParse(CapacityText, out var parsedCapacity) || parsedCapacity < 0)
+            if (!int.TryParse(capacityText, out var parsedCapacity) || parsedCapacity < 0)
             {
                 error = "Capacity must be a valid non-negative number.";
                 return false;
             }
 
-            request = new RoomCreateUpdateDto(normalizedRoomNumber, Description?.Trim(), parsedCapacity, IsActive);
+            request = new RoomCreateUpdateDto(normalizedRoomNumber, description?.Trim(), parsedCapacity, isActive);
             return true;
         }
 
