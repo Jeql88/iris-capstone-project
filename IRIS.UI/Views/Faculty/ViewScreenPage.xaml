@@ -168,18 +168,63 @@
                                        ToolTip="Refresh"
                                        Command="{Binding RefreshScreenCommand}"
                                        Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="42"/>
-                            <ui:Button Icon="{ui:SymbolIcon Power24}" 
-                                       Content="Shutdown"
-                                       Command="{Binding ShutdownPCCommand}"
-                                       Appearance="Danger" Margin="0,0,8,0" Height="34" MinWidth="110"/>
-                            <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" 
-                                       Content="Restart"
-                                       Command="{Binding RestartPCCommand}"
-                                       Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="100"/>
-                            <ui:Button Icon="{ui:SymbolIcon LockClosed24}"
-                                       Content="{Binding FreezeButtonText}"
-                                       Command="{Binding ToggleFreezeCommand}"
-                                       Appearance="Secondary" Height="34" MinWidth="105"/>
+                            <ui:Button Icon="{ui:SymbolIcon Desktop24}" 
+                                       Content="Control"
+                                       Command="{Binding RemoteDesktopCommand}"
+                                       Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="140"/>
+
+                            <!-- More Actions Button with Popup -->
+                            <Grid>
+                                <ui:Button x:Name="MoreActionsButton"
+                                           Icon="{ui:SymbolIcon MoreHorizontal24}"
+                                           Content="More"
+                                           Appearance="Secondary" Height="34" MinWidth="80"
+                                           Click="MoreActionsButton_Click"/>
+                                <Popup x:Name="MoreActionsPopup"
+                                       StaysOpen="False" AllowsTransparency="True"
+                                       Placement="Top" PlacementTarget="{Binding ElementName=MoreActionsButton}"
+                                       VerticalOffset="-4"
+                                       PopupAnimation="Fade">
+                                    <Border CornerRadius="8" Padding="4"
+                                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="12" Opacity="0.2" ShadowDepth="4"/>
+                                        </Border.Effect>
+                                        <StackPanel MinWidth="160">
+                                            <ui:Button Padding="10,7" Appearance="Secondary"
+                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                       Command="{Binding ShutdownPCCommand}"
+                                                       Click="MoreActionsMenuItem_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="Power24" FontSize="16" Margin="0,0,10,0"
+                                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"/>
+                                                    <TextBlock Text="Shutdown" FontSize="13" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </ui:Button>
+                                            <ui:Button Padding="10,7" Appearance="Secondary"
+                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                       Command="{Binding RestartPCCommand}"
+                                                       Click="MoreActionsMenuItem_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="Restart" FontSize="13" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </ui:Button>
+                                            <ui:Button Padding="10,7" Appearance="Secondary"
+                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                       Command="{Binding ToggleFreezeCommand}"
+                                                       Click="MoreActionsMenuItem_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="LockClosed24" FontSize="16" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="{Binding FreezeButtonText}" FontSize="13" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </ui:Button>
+                                        </StackPanel>
+                                    </Border>
+                                </Popup>
+                            </Grid>
                         </StackPanel>
                     </Grid>
 

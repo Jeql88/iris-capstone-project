@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using IRIS.UI.ViewModels;
 
 namespace IRIS.UI.Views.Faculty
@@ -19,6 +20,16 @@ namespace IRIS.UI.Views.Faculty
             {
                 vm.LoadPCData(pc);
             }
+        }
+
+        private void MoreActionsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            MoreActionsPopup.IsOpen = true;
+        }
+
+        private void MoreActionsMenuItem_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            MoreActionsPopup.IsOpen = false;
         }
 
         private async void ViewScreenPage_Loaded(object sender, System.Windows.RoutedEventArgs e)
