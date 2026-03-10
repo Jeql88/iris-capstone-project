@@ -5,12 +5,19 @@ namespace IRIS.UI.Helpers
     public class RelayCommand : ICommand
     {
         private readonly Func<Task>? _executeAsync;
+        private readonly Func<object?, Task>? _executeAsyncWithParam;
         private readonly Action? _executeSync;
         private readonly Func<bool> _canExecute;
 
         public RelayCommand(Func<Task> execute, Func<bool> canExecute)
         {
             _executeAsync = execute;
+            _canExecute = canExecute;
+        }
+
+        public RelayCommand(Func<object?, Task> execute, Func<bool> canExecute)
+        {
+            _executeAsyncWithParam = execute;
             _canExecute = canExecute;
         }
 
@@ -28,6 +35,8 @@ namespace IRIS.UI.Helpers
         {
             if (_executeAsync != null)
                 await _executeAsync();
+            else if (_executeAsyncWithParam != null)
+                await _executeAsyncWithParam(parameter);
             else
                 _executeSync?.Invoke();
         }

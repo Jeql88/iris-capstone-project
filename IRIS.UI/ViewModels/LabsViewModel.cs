@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
+using System.Windows.Controls;
 using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
@@ -40,6 +41,7 @@ namespace IRIS.UI.ViewModels
 
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<SelectablePC> UnassignedPCs { get; } = new();
+        public ObservableCollection<SelectablePC> AssignedPCs { get; } = new();
 
         private RoomDto? _selectedRoom;
         public RoomDto? SelectedRoom
@@ -137,10 +139,33 @@ namespace IRIS.UI.ViewModels
             set { _isStatusError = value; OnPropertyChanged(); }
         }
 
+        private bool _isAssignedPCsModalOpen;
+        public bool IsAssignedPCsModalOpen
+        {
+            get => _isAssignedPCsModalOpen;
+            set { _isAssignedPCsModalOpen = value; OnPropertyChanged(); }
+        }
+
+        private int _modalRoomId;
+        public int ModalRoomId
+        {
+            get => _modalRoomId;
+            set { _modalRoomId = value; OnPropertyChanged(); }
+        }
+
+        private string _modalRoomNumber = string.Empty;
+        public string ModalRoomNumber
+        {
+            get => _modalRoomNumber;
+            set { _modalRoomNumber = value; OnPropertyChanged(); }
+        }
+
         public RelayCommand CreateCommand { get; }
         public RelayCommand UpdateCommand { get; }
         public RelayCommand DeleteCommand { get; }
         public RelayCommand AssignCommand { get; }
+        public RelayCommand UnassignCommand { get; }
+        public RelayCommand ViewAssignedPCsCommand { get; }
 
         public LabsViewModel(IRoomService roomService, IPCAdminService pcAdminService)
         {
@@ -151,6 +176,8 @@ namespace IRIS.UI.ViewModels
             UpdateCommand = new RelayCommand(async () => await UpdateAsync(), () => SelectedRoom != null);
             DeleteCommand = new RelayCommand(async () => await DeleteAsync(), () => SelectedRoom != null);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
+            UnassignCommand = new RelayCommand(async () => await UnassignAsync(), () => true);
+            ViewAssignedPCsCommand = new RelayCommand(async (param) => await ViewAssignedPCsAsync(param), () => true);
 
             _ = InitializeAsync();
         }
@@ -244,6 +271,7 @@ namespace IRIS.UI.ViewModels
                 Description = string.Empty;
                 CapacityText = "0";
                 IsActive = true;
+                AssignedPCs.Clear();
             }
             else
             {
@@ -255,6 +283,64 @@ namespace IRIS.UI.ViewModels
             UpdateCommand.RaiseCanExecuteChanged();
             DeleteCommand.RaiseCanExecuteChanged();
             AssignCommand.RaiseCanExecuteChanged();
+        }
+
+        public async Task LoadAssignedPCsForRoomAsync(int roomId, ItemsControl itemsControl)
+        {
+            var pcs = await _pcAdminService.GetPCsByRoomAsync(roomId);
+            var selectablePCs = pcs.Select(pc => new SelectablePC
+            {
+                Id = pc.Id,
+                MacAddress = pc.MacAddress,
+                Hostname = pc.Hostname,
+                Room = pc.RoomId.ToString(),
+                IsSelected = false
+            }).ToList();
+            itemsControl.ItemsSource = selectablePCs;
+        }
+
+        private async Task LoadAssignedPCsAsync()
+        {
+            if (SelectedRoom == null) return;
+
+            var pcs = await _pcAdminService.GetPCsByRoomAsync(SelectedRoom.Id);
+            AssignedPCs.Clear();
+            foreach (var pc in pcs)
+            {
+                AssignedPCs.Add(new SelectablePC
+                {
+                    Id = pc.Id,
+                    MacAddress = pc.MacAddress,
+                    Hostname = pc.Hostname,
+                    Room = pc.RoomId.ToString(),
+                    IsSelected = false
+                });
+            }
+        }
+
+        private async Task ViewAssignedPCsAsync(object? param)
+        {
+            if (param is not int roomId) return;
+
+            ModalRoomId = roomId;
+            var room = Rooms.FirstOrDefault(r => r.Id == roomId);
+            if (room != null)
+                ModalRoomNumber = room.RoomNumber;
+
+            var pcs = await _pcAdminService.GetPCsByRoomAsync(roomId);
+            AssignedPCs.Clear();
+            foreach (var pc in pcs)
+            {
+                AssignedPCs.Add(new SelectablePC
+                {
+                    Id = pc.Id,
+                    MacAddress = pc.MacAddress,
+                    Hostname = pc.Hostname,
+                    Room = pc.RoomId.ToString(),
+                    IsSelected = false
+                });
+            }
+            IsAssignedPCsModalOpen = true;
         }
 
         private async Task CreateAsync()
@@ -349,6 +435,31 @@ namespace IRIS.UI.ViewModels
                 else
                 {
                     SetStatus("No PCs were assigned.", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
+            }
+        }
+
+        private async Task UnassignAsync()
+        {
+            var selectedIds = AssignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
+            if (!selectedIds.Any()) return;
+
+            try
+            {
+                var success = await _pcAdminService.UnassignPCsAsync(selectedIds);
+                if (success)
+                {
+                    await LoadUnassignedAsync();
+                    AssignedPCs.Clear();
+                    SetStatus($"Unassigned {selectedIds.Count} PC(s) from room.", false);
+                }
+                else
+                {
+                    SetStatus("No PCs were unassigned.", true);
                 }
             }
             catch (Exception ex)

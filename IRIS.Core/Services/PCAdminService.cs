@@ -40,6 +40,25 @@ namespace IRIS.Core.Services
                 .ToListAsync();
         }
 
+        public async Task<List<PCDto>> GetPCsByRoomAsync(int roomId)
+        {
+            return await _context.PCs
+                .AsNoTracking()
+                .Where(p => p.RoomId == roomId)
+                .Select(p => new PCDto(
+                    p.Id,
+                    p.MacAddress,
+                    p.IpAddress,
+                    p.SubnetMask,
+                    p.DefaultGateway,
+                    p.RoomId,
+                    p.Hostname,
+                    p.OperatingSystem,
+                    p.Status.ToString(),
+                    p.LastSeen))
+                .ToListAsync();
+        }
+
         public async Task<bool> AssignPCsToRoomAsync(IEnumerable<int> pcIds, int roomId)
         {
             var ids = pcIds.ToList();
@@ -63,6 +82,31 @@ namespace IRIS.Core.Services
             await _authService.LogUserActionAsync(
                 "PCs Assigned To Lab",
                 $"Assigned {pcs.Count} PC(s) to lab {roomNumber ?? roomId.ToString()} (RoomId: {roomId})");
+
+            return true;
+        }
+
+        public async Task<bool> UnassignPCsAsync(IEnumerable<int> pcIds)
+        {
+            var ids = pcIds.ToList();
+            if (!ids.Any()) return false;
+
+            var defaultRoom = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomNumber == "DEFAULT");
+            if (defaultRoom == null) return false;
+
+            var pcs = await _context.PCs.Where(p => ids.Contains(p.Id)).ToListAsync();
+            if (!pcs.Any()) return false;
+
+            foreach (var pc in pcs)
+            {
+                pc.RoomId = defaultRoom.Id;
+            }
+
+            await _context.SaveChangesAsync();
+
+            await _authService.LogUserActionAsync(
+                "PCs Unassigned From Lab",
+                $"Unassigned {pcs.Count} PC(s) from lab");
 
             return true;
         }

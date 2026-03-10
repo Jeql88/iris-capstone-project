@@ -30,7 +30,7 @@
                         <!-- Table Header -->
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
                             <ui:SymbolIcon Symbol="BuildingMultiple24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Rooms" FontSize="18" FontWeight="Bold" 
+                            <TextBlock Text="Laboratories" FontSize="18" FontWeight="Bold" 
                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
 
@@ -39,11 +39,25 @@
                                  MinHeight="250" MouseDown="ListBox_MouseDown">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Vertical" Margin="0,8">
-                                        <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,8">
+                                            <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="1" Content="View PCs" 
+                                                   Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding Id}"
+                                                   Icon="{ui:SymbolIcon Laptop24}"
+                                                   Appearance="Secondary"
+                                                   Padding="8,4"
+                                                   Margin="12,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                             <ListBox.ItemContainerStyle>
@@ -202,5 +216,66 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
+
+        <!-- Assigned PCs Modal -->
+        <Grid Grid.ColumnSpan="2" Background="#00000080" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+                    Width="800" 
+                    Height="600"
+                    Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Laptop24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Assigned PCs" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ModalRoomNumber, StringFormat='Room: {0}'}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,8,0,0"/>
+                    </StackPanel>
+
+                    <!-- PCs List -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding AssignedPCs}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Buttons -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Unassign Selected" 
+                                   Command="{Binding UnassignCommand}"
+                                   Icon="{ui:SymbolIcon Delete24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button Content="Close" 
+                                   Click="CloseModal_Click"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
     </Grid>
 </UserControl>

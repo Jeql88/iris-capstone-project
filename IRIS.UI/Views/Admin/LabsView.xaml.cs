@@ -41,5 +41,12 @@ namespace IRIS.UI.Views.Admin
                 }
             }
         }
+
+        private void CloseModal_Click(object sender, RoutedEventArgs e)
+        {
+            var viewModel = DataContext as LabsViewModel;
+            if (viewModel != null)
+                viewModel.IsAssignedPCsModalOpen = false;
+        }
     }
 }
