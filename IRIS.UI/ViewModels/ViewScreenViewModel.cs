@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
@@ -386,7 +387,26 @@ namespace IRIS.UI.ViewModels
         private async Task RemoteDesktopAsync()
         {
             await Task.CompletedTask;
-            MessageBox.Show("Remote Desktop functionality will be implemented.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            if (string.IsNullOrWhiteSpace(IP) || IP.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Cannot open Remote Desktop: missing target IP address.", "Remote Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "mstsc",
+                    Arguments = $"/v:{IP}",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open Remote Desktop. {ex.Message}", "Remote Desktop Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task BackAsync()

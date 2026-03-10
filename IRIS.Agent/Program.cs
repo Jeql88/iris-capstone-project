@@ -34,6 +34,9 @@ namespace IRIS.Agent
 
             Log.Information("IRIS Agent starting...");
 
+            var startupConfigurator = new AgentStartupConfigurator(configuration);
+            await startupConfigurator.EnsureInitialConfigurationAsync();
+
             // Build DbContext options
             var options = new DbContextOptionsBuilder<IRISDbContext>()
                 .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
