@@ -1111,8 +1111,9 @@ namespace IRIS.UI.ViewModels
             var failCount = 0;
             var skippedFiles = new List<string>();
 
-            // Use Desktop as default remote target folder parent
-            var remoteDesktop = @"C:\Users\Public\Desktop";
+            // Use the active logged-in user's desktop on each remote PC.
+            // The token is resolved by AgentFileManagementServer.
+            var remoteDesktop = "%ACTIVE_DESKTOP%";
             var remoteFolderPath = Path.Combine(remoteDesktop, BulkFolderName.Trim());
 
             BulkStatusMessage = $"Uploading {BulkPendingFiles.Count} file(s) to {targetPCs.Count} PC(s) into '{BulkFolderName}'...";
