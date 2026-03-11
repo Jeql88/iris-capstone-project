@@ -51,7 +51,7 @@ public class UsageMetricsService : IUsageMetricsService
     }
 
     public async Task<PaginatedResult<ApplicationUsageDetailDto>> GetApplicationUsageDetailsPaginatedAsync(
-        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null)
     {
         var query = _context.SoftwareUsageHistory
             .Include(s => s.PC)
@@ -63,6 +63,11 @@ public class UsageMetricsService : IUsageMetricsService
             query = query.Where(s =>
                 s.ApplicationName.Contains(searchText) ||
                 (s.PC.Hostname != null && s.PC.Hostname.Contains(searchText)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomFilter))
+        {
+            query = query.Where(s => s.PC.Room != null && s.PC.Room.RoomNumber == roomFilter);
         }
 
         var totalCount = await query.CountAsync();
@@ -90,6 +95,16 @@ public class UsageMetricsService : IUsageMetricsService
             PageNumber = pageNumber,
             PageSize = pageSize
         };
+    }
+
+    public async Task<List<string>> GetApplicationUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.SoftwareUsageHistory
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate && s.PC.Room != null)
+            .Select(s => s.PC.Room.RoomNumber)
+            .Distinct()
+            .OrderBy(room => room)
+            .ToListAsync();
     }
 
     public async Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate)
@@ -142,7 +157,7 @@ public class UsageMetricsService : IUsageMetricsService
     }
 
     public async Task<PaginatedResult<WebsiteUsageDetailDto>> GetWebsiteUsageDetailsPaginatedAsync(
-        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null)
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null)
     {
         var query = _context.WebsiteUsageHistory
             .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
@@ -154,6 +169,11 @@ public class UsageMetricsService : IUsageMetricsService
                 w.Browser.Contains(searchText) ||
                 (w.PC.Hostname != null && w.PC.Hostname.Contains(searchText)) ||
                 (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(searchText)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomFilter))
+        {
+            query = query.Where(w => w.PC.Room != null && w.PC.Room.RoomNumber == roomFilter);
         }
 
         var groupedQuery = query
@@ -193,7 +213,17 @@ public class UsageMetricsService : IUsageMetricsService
         };
     }
 
-    public async Task<byte[]> ExportUsageMetricsToExcelAsync(DateTime startDate, DateTime endDate, string? appSearchText = null, string? webSearchText = null)
+    public async Task<List<string>> GetWebsiteUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _context.WebsiteUsageHistory
+            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate && w.PC.Room != null)
+            .Select(w => w.PC.Room.RoomNumber)
+            .Distinct()
+            .OrderBy(room => room)
+            .ToListAsync();
+    }
+
+    public async Task<byte[]> ExportUsageMetricsToExcelAsync(DateTime startDate, DateTime endDate, string? appSearchText = null, string? webSearchText = null, string? appRoomFilter = null, string? webRoomFilter = null)
     {
         var appQuery = _context.SoftwareUsageHistory
             .Include(s => s.PC)
@@ -205,6 +235,11 @@ public class UsageMetricsService : IUsageMetricsService
             appQuery = appQuery.Where(s =>
                 s.ApplicationName.Contains(appSearchText) ||
                 (s.PC.Hostname != null && s.PC.Hostname.Contains(appSearchText)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(appRoomFilter))
+        {
+            appQuery = appQuery.Where(s => s.PC.Room != null && s.PC.Room.RoomNumber == appRoomFilter);
         }
 
         var appItems = await appQuery
@@ -231,6 +266,11 @@ public class UsageMetricsService : IUsageMetricsService
                 w.Browser.Contains(webSearchText) ||
                 (w.PC.Hostname != null && w.PC.Hostname.Contains(webSearchText)) ||
                 (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(webSearchText)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(webRoomFilter))
+        {
+            webQuery = webQuery.Where(w => w.PC.Room != null && w.PC.Room.RoomNumber == webRoomFilter);
         }
 
         var webItems = await webQuery

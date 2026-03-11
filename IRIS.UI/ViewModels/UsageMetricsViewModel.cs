@@ -15,7 +15,10 @@ namespace IRIS.UI.ViewModels
     public class UsageMetricsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IUsageMetricsService _usageMetricsService;
-        private readonly RelayCommand _applyFilterRelayCommand;
+        private readonly RelayCommand _applyAppFiltersRelayCommand;
+        private readonly RelayCommand _resetAppFiltersRelayCommand;
+        private readonly RelayCommand _applyWebFiltersRelayCommand;
+        private readonly RelayCommand _resetWebFiltersRelayCommand;
         private readonly RelayCommand _exportAppUsageRelayCommand;
         private readonly RelayCommand _exportWebUsageRelayCommand;
         private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
@@ -23,12 +26,20 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _webPageSemaphore = new(1, 1);
         private DateTime _startDate = DateTime.UtcNow.Date.AddDays(-7);
         private DateTime _endDate = DateTime.UtcNow.Date;
+        private DateTime _appliedStartDate = DateTime.UtcNow.Date.AddDays(-7);
+        private DateTime _appliedEndDate = DateTime.UtcNow.Date;
         private int _totalApplications;
         private int _totalWebsites;
         private double _totalHours;
         private bool _isLoading;
         private string _appSearchText = string.Empty;
+        private string _appliedAppSearchText = string.Empty;
+        private string _selectedAppLaboratory = "All Laboratories";
+        private string _appliedAppLaboratory = "All Laboratories";
         private string _webSearchText = string.Empty;
+        private string _appliedWebSearchText = string.Empty;
+        private string _selectedWebLaboratory = "All Laboratories";
+        private string _appliedWebLaboratory = "All Laboratories";
         private int _appCurrentPage = 1;
         private int _appTotalPages = 1;
         private int _appTotalCount = 0;
@@ -43,11 +54,17 @@ namespace IRIS.UI.ViewModels
         {
             _usageMetricsService = usageMetricsService;
 
-            _applyFilterRelayCommand = new RelayCommand(async () => await ApplyFilterAsync(), () => !IsLoading);
+            _applyAppFiltersRelayCommand = new RelayCommand(async () => await ApplyAppFiltersAsync(), () => !IsLoading);
+            _resetAppFiltersRelayCommand = new RelayCommand(async () => await ResetAppFiltersAsync(), () => !IsLoading);
+            _applyWebFiltersRelayCommand = new RelayCommand(async () => await ApplyWebFiltersAsync(), () => !IsLoading);
+            _resetWebFiltersRelayCommand = new RelayCommand(async () => await ResetWebFiltersAsync(), () => !IsLoading);
             _exportAppUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
             _exportWebUsageRelayCommand = new RelayCommand(async () => await ExportUsageMetricsAsync(), () => !IsLoading);
 
-            ApplyFilterCommand = _applyFilterRelayCommand;
+            ApplyAppFiltersCommand = _applyAppFiltersRelayCommand;
+            ResetAppFiltersCommand = _resetAppFiltersRelayCommand;
+            ApplyWebFiltersCommand = _applyWebFiltersRelayCommand;
+            ResetWebFiltersCommand = _resetWebFiltersRelayCommand;
             ExportAppUsageCommand = _exportAppUsageRelayCommand;
             ExportWebUsageCommand = _exportWebUsageRelayCommand;
             AppPreviousPageCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => true);
@@ -59,6 +76,8 @@ namespace IRIS.UI.ViewModels
 
         public ObservableCollection<AppUsageRow> FilteredApplicationUsage { get; } = new();
         public ObservableCollection<WebUsageRow> FilteredWebsiteUsage { get; } = new();
+        public ObservableCollection<string> AppLaboratoryOptions { get; } = new() { "All Laboratories" };
+        public ObservableCollection<string> WebLaboratoryOptions { get; } = new() { "All Laboratories" };
 
         public DateTime StartDate
         {
@@ -97,7 +116,10 @@ namespace IRIS.UI.ViewModels
             {
                 _isLoading = value;
                 OnPropertyChanged();
-                _applyFilterRelayCommand.RaiseCanExecuteChanged();
+                _applyAppFiltersRelayCommand.RaiseCanExecuteChanged();
+                _resetAppFiltersRelayCommand.RaiseCanExecuteChanged();
+                _applyWebFiltersRelayCommand.RaiseCanExecuteChanged();
+                _resetWebFiltersRelayCommand.RaiseCanExecuteChanged();
                 _exportAppUsageRelayCommand.RaiseCanExecuteChanged();
                 _exportWebUsageRelayCommand.RaiseCanExecuteChanged();
             }
@@ -106,13 +128,25 @@ namespace IRIS.UI.ViewModels
         public string AppSearchText
         {
             get => _appSearchText;
-            set { _appSearchText = value; OnPropertyChanged(); _ = LoadAppPageAsync(1); }
+            set { _appSearchText = value; OnPropertyChanged(); }
         }
 
         public string WebSearchText
         {
             get => _webSearchText;
-            set { _webSearchText = value; OnPropertyChanged(); _ = LoadWebPageAsync(1); }
+            set { _webSearchText = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedAppLaboratory
+        {
+            get => _selectedAppLaboratory;
+            set { _selectedAppLaboratory = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedWebLaboratory
+        {
+            get => _selectedWebLaboratory;
+            set { _selectedWebLaboratory = value; OnPropertyChanged(); }
         }
 
         public int AppCurrentPage
@@ -160,7 +194,10 @@ namespace IRIS.UI.ViewModels
         public string AppPageInfo => $"Page {AppCurrentPage} of {AppTotalPages} ({AppTotalCount} total entries)";
         public string WebPageInfo => $"Page {WebCurrentPage} of {WebTotalPages} ({WebTotalCount} total entries)";
 
-        public ICommand ApplyFilterCommand { get; }
+        public ICommand ApplyAppFiltersCommand { get; }
+        public ICommand ResetAppFiltersCommand { get; }
+        public ICommand ApplyWebFiltersCommand { get; }
+        public ICommand ResetWebFiltersCommand { get; }
         public ICommand ExportAppUsageCommand { get; }
         public ICommand ExportWebUsageCommand { get; }
         public ICommand AppPreviousPageCommand { get; }
@@ -168,7 +205,7 @@ namespace IRIS.UI.ViewModels
         public ICommand WebPreviousPageCommand { get; }
         public ICommand WebNextPageCommand { get; }
 
-        private async Task ApplyFilterAsync()
+        private async Task ApplyAppFiltersAsync()
         {
             if (EndDate.Date < StartDate.Date)
             {
@@ -180,6 +217,59 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            _appliedStartDate = StartDate.Date;
+            _appliedEndDate = EndDate.Date;
+            _appliedAppSearchText = AppSearchText;
+            _appliedAppLaboratory = SelectedAppLaboratory;
+
+            await LoadDataAsync();
+        }
+
+        private async Task ResetAppFiltersAsync()
+        {
+            StartDate = DateTime.UtcNow.Date.AddDays(-7);
+            EndDate = DateTime.UtcNow.Date;
+            AppSearchText = string.Empty;
+            SelectedAppLaboratory = "All Laboratories";
+
+            _appliedStartDate = StartDate.Date;
+            _appliedEndDate = EndDate.Date;
+            _appliedAppSearchText = AppSearchText;
+            _appliedAppLaboratory = SelectedAppLaboratory;
+
+            await LoadDataAsync();
+        }
+
+        private async Task ApplyWebFiltersAsync()
+        {
+            if (EndDate.Date < StartDate.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            _appliedStartDate = StartDate.Date;
+            _appliedEndDate = EndDate.Date;
+            _appliedWebSearchText = WebSearchText;
+            _appliedWebLaboratory = SelectedWebLaboratory;
+            await LoadDataAsync();
+        }
+
+        private async Task ResetWebFiltersAsync()
+        {
+            StartDate = DateTime.UtcNow.Date.AddDays(-7);
+            EndDate = DateTime.UtcNow.Date;
+            WebSearchText = string.Empty;
+            SelectedWebLaboratory = "All Laboratories";
+
+            _appliedStartDate = StartDate.Date;
+            _appliedEndDate = EndDate.Date;
+            _appliedWebSearchText = WebSearchText;
+            _appliedWebLaboratory = SelectedWebLaboratory;
             await LoadDataAsync();
         }
 
@@ -203,14 +293,16 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
                 var summary = await _usageMetricsService.GetUsageSummaryAsync(startUtc, endUtc);
                 TotalApplications = summary.TotalApplications;
                 TotalWebsites = summary.TotalWebsites;
                 TotalHours = summary.TotalHours;
 
+                await LoadAppLaboratoryOptionsAsync(startUtc, endUtc);
+                await LoadWebLaboratoryOptionsAsync(startUtc, endUtc);
                 await LoadAppPageAsync(1);
                 await LoadWebPageAsync(1);
             }
@@ -251,11 +343,16 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
-                    startUtc, endUtc, pageNumber, _pageSize, AppSearchText);
+                    startUtc,
+                    endUtc,
+                    pageNumber,
+                    _pageSize,
+                    _appliedAppSearchText,
+                    _appliedAppLaboratory == "All Laboratories" ? null : _appliedAppLaboratory);
 
                 FilteredApplicationUsage.Clear();
                 foreach (var item in result.Items)
@@ -317,11 +414,16 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetWebsiteUsageDetailsPaginatedAsync(
-                    startUtc, endUtc, pageNumber, _pageSize, WebSearchText);
+                    startUtc,
+                    endUtc,
+                    pageNumber,
+                    _pageSize,
+                    _appliedWebSearchText,
+                    _appliedWebLaboratory == "All Laboratories" ? null : _appliedWebLaboratory);
 
                 FilteredWebsiteUsage.Clear();
                 foreach (var item in result.Items)
@@ -345,6 +447,52 @@ namespace IRIS.UI.ViewModels
             finally
             {
                 _webPageSemaphore.Release();
+            }
+        }
+
+        private async Task LoadAppLaboratoryOptionsAsync(DateTime startUtc, DateTime endUtc)
+        {
+            var selectedBeforeReload = SelectedAppLaboratory;
+            var labs = await _usageMetricsService.GetApplicationUsageLaboratoriesAsync(startUtc, endUtc);
+
+            AppLaboratoryOptions.Clear();
+            AppLaboratoryOptions.Add("All Laboratories");
+
+            foreach (var lab in labs)
+            {
+                AppLaboratoryOptions.Add(lab);
+            }
+
+            SelectedAppLaboratory = AppLaboratoryOptions.Contains(selectedBeforeReload)
+                ? selectedBeforeReload
+                : "All Laboratories";
+
+            if (!AppLaboratoryOptions.Contains(_appliedAppLaboratory))
+            {
+                _appliedAppLaboratory = "All Laboratories";
+            }
+        }
+
+        private async Task LoadWebLaboratoryOptionsAsync(DateTime startUtc, DateTime endUtc)
+        {
+            var selectedBeforeReload = SelectedWebLaboratory;
+            var labs = await _usageMetricsService.GetWebsiteUsageLaboratoriesAsync(startUtc, endUtc);
+
+            WebLaboratoryOptions.Clear();
+            WebLaboratoryOptions.Add("All Laboratories");
+
+            foreach (var lab in labs)
+            {
+                WebLaboratoryOptions.Add(lab);
+            }
+
+            SelectedWebLaboratory = WebLaboratoryOptions.Contains(selectedBeforeReload)
+                ? selectedBeforeReload
+                : "All Laboratories";
+
+            if (!WebLaboratoryOptions.Contains(_appliedWebLaboratory))
+            {
+                _appliedWebLaboratory = "All Laboratories";
             }
         }
 
@@ -373,10 +521,16 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var startUtc = DateTime.SpecifyKind(StartDate.Date, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(EndDate.Date.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
 
-                var bytes = await _usageMetricsService.ExportUsageMetricsToExcelAsync(startUtc, endUtc, AppSearchText, WebSearchText);
+                var bytes = await _usageMetricsService.ExportUsageMetricsToExcelAsync(
+                    startUtc,
+                    endUtc,
+                    _appliedAppSearchText,
+                    _appliedWebSearchText,
+                    _appliedAppLaboratory == "All Laboratories" ? null : _appliedAppLaboratory,
+                    _appliedWebLaboratory == "All Laboratories" ? null : _appliedWebLaboratory);
 
                 var saveFileDialog = new SaveFileDialog
                 {

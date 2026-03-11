@@ -2,9 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             xmlns:vm="clr-namespace:IRIS.UI.ViewModels"
              xmlns:converters="clr-namespace:IRIS.UI.Converters">
-    
+
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </UserControl.Resources>
@@ -18,27 +17,10 @@
 
         <!-- Header Section -->
         <Grid Grid.Row="0" Margin="0,0,0,20">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal">
                 <ui:SymbolIcon Symbol="DataUsage24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                <TextBlock Text="Usage Metrics" FontSize="32" FontWeight="Bold" 
+                <TextBlock Text="Usage Metrics" FontSize="32" FontWeight="Bold"
                            Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-            </StackPanel>
-
-            <!-- Date Range Filter -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <TextBlock Text="From:" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                <DatePicker SelectedDate="{Binding StartDate}" Width="140"/>
-                <TextBlock Text="To:" FontSize="14" VerticalAlignment="Center" Margin="15,0,8,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                <DatePicker SelectedDate="{Binding EndDate}" Width="140"/>
-                <ui:Button Icon="{ui:SymbolIcon Filter24}" 
-                           Content="Apply Filter"
-                           Command="{Binding ApplyFilterCommand}"
-                           Appearance="Primary" Margin="15,0,0,0"/>
             </StackPanel>
         </Grid>
 
@@ -52,64 +34,58 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Total Applications Card -->
             <ui:Card Grid.Column="0">
                 <Grid Margin="20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
+                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
                             Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Apps24" FontSize="26" Foreground="White" 
+                        <ui:SymbolIcon Symbol="Apps24" FontSize="26" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Applications Used" FontSize="13" 
-                                   Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalApplications}" FontSize="32" FontWeight="Bold" 
+                        <TextBlock Text="Applications Used" FontSize="13" Foreground="#666666"/>
+                        <TextBlock Text="{Binding TotalApplications}" FontSize="32" FontWeight="Bold"
                                    Foreground="{DynamicResource IRISPrimaryBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
 
-            <!-- Total Websites Card -->
             <ui:Card Grid.Column="2">
                 <Grid Margin="20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
+                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
                             Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Globe24" FontSize="26" Foreground="White" 
+                        <ui:SymbolIcon Symbol="Globe24" FontSize="26" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Websites Visited" FontSize="13" 
-                                   Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold" 
+                        <TextBlock Text="Websites Visited" FontSize="13" Foreground="#666666"/>
+                        <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold"
                                    Foreground="{DynamicResource IRISSecondaryBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
 
-            <!-- Total Hours Card -->
             <ui:Card Grid.Column="4">
                 <Grid Margin="20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10" 
+                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
                             Background="{DynamicResource IRISAccentBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Timer24" FontSize="26" Foreground="White" 
+                        <ui:SymbolIcon Symbol="Timer24" FontSize="26" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Total Usage Hours" FontSize="13" 
-                                   Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalHours, StringFormat={}{0:F1}h}" FontSize="32" FontWeight="Bold" 
+                        <TextBlock Text="Total Usage Hours" FontSize="13" Foreground="#666666"/>
+                        <TextBlock Text="{Binding TotalHours, StringFormat={}{0:F1}h}" FontSize="32" FontWeight="Bold"
                                    Foreground="{DynamicResource IRISAccentBrush}"/>
                     </StackPanel>
                 </Grid>
@@ -124,7 +100,6 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Tab Header -->
                 <Grid Grid.Row="0" Margin="10,10,10,20">
                     <StackPanel Orientation="Horizontal">
                         <ui:Button x:Name="AppUsageTab" Content="Application Usage"
@@ -143,11 +118,11 @@
                 <Grid Grid.Row="1" x:Name="ApplicationUsagePanel">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Toolbar -->
                     <Grid Grid.Row="0" Margin="10,0,10,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -156,45 +131,91 @@
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="Apps24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Application Usage Data" FontSize="16" FontWeight="Bold" 
+                            <TextBlock Text="Application Usage Data" FontSize="16" FontWeight="Bold"
                                        Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox ItemsSource="{Binding PageSizeOptions}" 
+                            <ComboBox ItemsSource="{Binding PageSizeOptions}"
                                       SelectedItem="{Binding PageSize}"
                                       Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox PlaceholderText="Search applications..."
-                                       Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                       Width="220">
-                                <ui:TextBox.Icon>
-                                    <ui:SymbolIcon Symbol="Search24"/>
-                                </ui:TextBox.Icon>
-                            </ui:TextBox>
-                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" 
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}"
                                        Content="Export"
                                        Command="{Binding ExportAppUsageCommand}"
-                                       Appearance="Secondary" Margin="10,0,0,0"/>
+                                       Appearance="Secondary"/>
                         </StackPanel>
                     </Grid>
 
-                    <!-- Application Usage DataGrid -->
-                    <ui:DataGrid Grid.Row="1" 
-                                ItemsSource="{Binding FilteredApplicationUsage}"
-                                AutoGenerateColumns="False"
-                                IsReadOnly="True"
-                                CanUserAddRows="False"
-                                CanUserDeleteRows="False"
-                                SelectionMode="Single"
-                                Margin="10,0,10,0">
+                    <ui:Card Grid.Row="1" Margin="10,0,10,15">
+                        <StackPanel Margin="15">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Search and Filters" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}"/>
+                            </StackPanel>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                    <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <DatePicker SelectedDate="{Binding StartDate}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                                    <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <DatePicker SelectedDate="{Binding EndDate}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Margin="0,0,15,0">
+                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBox ItemsSource="{Binding AppLaboratoryOptions}"
+                                              SelectedItem="{Binding SelectedAppLaboratory}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3">
+                                    <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ui:TextBox PlaceholderText="Search applications..."
+                                                Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}">
+                                        <ui:TextBox.Icon>
+                                            <ui:SymbolIcon Symbol="Search24"/>
+                                        </ui:TextBox.Icon>
+                                    </ui:TextBox>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                <ui:Button Content="Apply Filters"
+                                           Command="{Binding ApplyAppFiltersCommand}"
+                                           Appearance="Primary"
+                                           Margin="0,0,8,0"/>
+                                <ui:Button Content="Reset"
+                                           Command="{Binding ResetAppFiltersCommand}"
+                                           Appearance="Secondary"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ui:Card>
+
+                    <ui:DataGrid Grid.Row="2"
+                                 ItemsSource="{Binding FilteredApplicationUsage}"
+                                 AutoGenerateColumns="False"
+                                 IsReadOnly="True"
+                                 CanUserAddRows="False"
+                                 CanUserDeleteRows="False"
+                                 SelectionMode="Single"
+                                 Margin="10,0,10,0">
                         <ui:DataGrid.Columns>
                             <DataGridTemplateColumn Header="Application" Width="*" SortMemberPath="ApplicationName">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="8" 
+                                            <Border Width="32" Height="32" CornerRadius="8"
                                                     Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0">
                                                 <ui:SymbolIcon Symbol="Apps24" FontSize="16" Foreground="White"/>
                                             </Border>
@@ -211,19 +232,16 @@
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>
 
-                    <!-- Pagination Controls -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                        <ui:Button Command="{Binding AppPreviousPageCommand}" 
-                                   Content="Previous" 
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                        <ui:Button Command="{Binding AppPreviousPageCommand}"
+                                   Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"
                                    Appearance="Primary"
                                    Margin="0,0,10,0"/>
-                        
-                        <TextBlock Text="{Binding AppPageInfo}" FontSize="13" 
+                        <TextBlock Text="{Binding AppPageInfo}" FontSize="13"
                                    VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        
-                        <ui:Button Command="{Binding AppNextPageCommand}" 
-                                   Content="Next" 
+                        <ui:Button Command="{Binding AppNextPageCommand}"
+                                   Content="Next"
                                    Icon="{ui:SymbolIcon ChevronRight24}"
                                    Appearance="Primary"
                                    Margin="10,0,0,0"/>
@@ -234,11 +252,11 @@
                 <Grid Grid.Row="1" x:Name="WebsiteUsagePanel" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Toolbar -->
                     <Grid Grid.Row="0" Margin="10,0,10,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -247,52 +265,98 @@
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="Globe24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Website Usage Data" FontSize="16" FontWeight="Bold" 
+                            <TextBlock Text="Website Usage Data" FontSize="16" FontWeight="Bold"
                                        Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox ItemsSource="{Binding PageSizeOptions}" 
+                            <ComboBox ItemsSource="{Binding PageSizeOptions}"
                                       SelectedItem="{Binding PageSize}"
                                       Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox PlaceholderText="Search websites..."
-                                       Text="{Binding WebSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                       Width="220">
-                                <ui:TextBox.Icon>
-                                    <ui:SymbolIcon Symbol="Search24"/>
-                                </ui:TextBox.Icon>
-                            </ui:TextBox>
-                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" 
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}"
                                        Content="Export"
                                        Command="{Binding ExportWebUsageCommand}"
-                                       Appearance="Secondary" Margin="10,0,0,0"/>
+                                       Appearance="Secondary"/>
                         </StackPanel>
                     </Grid>
 
-                    <!-- Website Usage DataGrid -->
-                    <ui:DataGrid Grid.Row="1" 
-                                ItemsSource="{Binding FilteredWebsiteUsage}"
-                                AutoGenerateColumns="False"
-                                IsReadOnly="True"
-                                CanUserAddRows="False"
-                                CanUserDeleteRows="False"
-                                SelectionMode="Single"
-                                Margin="10,0,10,0">
+                    <ui:Card Grid.Row="1" Margin="10,0,10,15">
+                        <StackPanel Margin="15">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Search and Filters" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                            </StackPanel>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                    <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <DatePicker SelectedDate="{Binding StartDate}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                                    <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <DatePicker SelectedDate="{Binding EndDate}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Margin="0,0,15,0">
+                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBox ItemsSource="{Binding WebLaboratoryOptions}"
+                                              SelectedItem="{Binding SelectedWebLaboratory}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3">
+                                    <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ui:TextBox PlaceholderText="Search websites..."
+                                                Text="{Binding WebSearchText, UpdateSourceTrigger=PropertyChanged}">
+                                        <ui:TextBox.Icon>
+                                            <ui:SymbolIcon Symbol="Search24"/>
+                                        </ui:TextBox.Icon>
+                                    </ui:TextBox>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                <ui:Button Content="Apply Filters"
+                                           Command="{Binding ApplyWebFiltersCommand}"
+                                           Appearance="Primary"
+                                           Margin="0,0,8,0"/>
+                                <ui:Button Content="Reset"
+                                           Command="{Binding ResetWebFiltersCommand}"
+                                           Appearance="Secondary"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ui:Card>
+
+                    <ui:DataGrid Grid.Row="2"
+                                 ItemsSource="{Binding FilteredWebsiteUsage}"
+                                 AutoGenerateColumns="False"
+                                 IsReadOnly="True"
+                                 CanUserAddRows="False"
+                                 CanUserDeleteRows="False"
+                                 SelectionMode="Single"
+                                 Margin="10,0,10,0">
                         <ui:DataGrid.Columns>
                             <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Domain">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="8" 
+                                            <Border Width="32" Height="32" CornerRadius="8"
                                                     Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,10,0">
                                                 <ui:SymbolIcon Symbol="Globe24" FontSize="16" Foreground="White"/>
                                             </Border>
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Domain}" FontWeight="SemiBold" 
+                                                <TextBlock Text="{Binding Domain}" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxWidth="300" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                <TextBlock Text="{Binding Browser}" FontSize="11" 
+                                                <TextBlock Text="{Binding Browser}" FontSize="11"
                                                            Foreground="#666666"
                                                            TextTrimming="CharacterEllipsis" MaxWidth="300"/>
                                             </StackPanel>
@@ -303,23 +367,19 @@
                             <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
                             <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
                             <DataGridTextColumn Header="Visits" Binding="{Binding VisitCount}" Width="120"/>
-                            <DataGridTextColumn Header="Visit Time" Binding="{Binding VisitTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>
 
-                    <!-- Pagination Controls -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                        <ui:Button Command="{Binding WebPreviousPageCommand}" 
-                                   Content="Previous" 
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                        <ui:Button Command="{Binding WebPreviousPageCommand}"
+                                   Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"
                                    Appearance="Primary"
                                    Margin="0,0,10,0"/>
-                        
-                        <TextBlock Text="{Binding WebPageInfo}" FontSize="13" 
+                        <TextBlock Text="{Binding WebPageInfo}" FontSize="13"
                                    VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        
-                        <ui:Button Command="{Binding WebNextPageCommand}" 
-                                   Content="Next" 
+                        <ui:Button Command="{Binding WebNextPageCommand}"
+                                   Content="Next"
                                    Icon="{ui:SymbolIcon ChevronRight24}"
                                    Appearance="Primary"
                                    Margin="10,0,0,0"/>
