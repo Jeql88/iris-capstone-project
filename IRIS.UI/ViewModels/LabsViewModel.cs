@@ -9,6 +9,8 @@ using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
+using System.Windows;
 
 namespace IRIS.UI.ViewModels
 {
@@ -351,6 +353,15 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            var dialog = new ConfirmationDialog(
+                "Create Laboratory",
+                $"Are you sure you want to create laboratory '{AddRoomNumber}'?",
+                "Add24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
+
             try
             {
                 var created = await _roomService.CreateRoomAsync(request);
@@ -377,6 +388,15 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            var dialog = new ConfirmationDialog(
+                "Update Laboratory",
+                $"Are you sure you want to update laboratory '{SelectedRoom.RoomNumber}'?",
+                "Edit24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
+
             try
             {
                 var updated = await _roomService.UpdateRoomAsync(SelectedRoom.Id, request);
@@ -396,6 +416,15 @@ namespace IRIS.UI.ViewModels
         {
             if (SelectedRoom == null) return;
             if (SelectedRoom.RoomNumber == "DEFAULT") return;
+
+            var dialog = new ConfirmationDialog(
+                "Delete Laboratory",
+                $"Are you sure you want to delete laboratory '{SelectedRoom.RoomNumber}'?\n\nAll PCs will be moved to the DEFAULT room and all policies will be deleted. This action cannot be undone.",
+                "Delete24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
 
             try
             {
@@ -424,6 +453,15 @@ namespace IRIS.UI.ViewModels
             var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
             if (!selectedIds.Any()) return;
 
+            var dialog = new ConfirmationDialog(
+                "Assign PCs",
+                $"Are you sure you want to assign {selectedIds.Count} PC(s) to laboratory '{SelectedRoom.RoomNumber}'?",
+                "Laptop24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
+
             try
             {
                 var success = await _pcAdminService.AssignPCsToRoomAsync(selectedIds, SelectedRoom.Id);
@@ -447,6 +485,15 @@ namespace IRIS.UI.ViewModels
         {
             var selectedIds = AssignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
             if (!selectedIds.Any()) return;
+
+            var dialog = new ConfirmationDialog(
+                "Unassign PCs",
+                $"Are you sure you want to unassign {selectedIds.Count} PC(s) from this laboratory?\n\nThey will be moved to the DEFAULT room.",
+                "Laptop24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
 
             try
             {
