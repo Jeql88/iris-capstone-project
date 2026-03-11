@@ -35,12 +35,14 @@
                         </StackPanel>
 
                         <!-- Rooms List -->
-                        <ListBox Grid.Row="1" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" 
-                                 MinHeight="250" MouseDown="ListBox_MouseDown">
+                        <Grid Grid.Row="1" MinHeight="250">
+                            <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" 
+                                     MouseDown="ListBox_MouseDown">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
@@ -49,7 +51,7 @@
                                             <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                             <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                                         </StackPanel>
-                                        <ui:Button Grid.Column="1" Content="View PCs" 
+                                        <ui:Button Grid.Column="2" Content="View PCs" 
                                                    Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                    CommandParameter="{Binding Id}"
                                                    Icon="{ui:SymbolIcon Laptop24}"
@@ -72,7 +74,25 @@
                                     </Style.Triggers>
                                 </Style>
                             </ListBox.ItemContainerStyle>
-                        </ListBox>
+                            </ListBox>
+                            
+                            <!-- Empty State -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Rooms.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <ui:SymbolIcon Symbol="BuildingMultiple24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No laboratories found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Add a new laboratory to get started" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </ui:Card>
 
@@ -84,7 +104,8 @@
                             <TextBlock Text="Unassigned PCs" FontSize="18" FontWeight="Bold" 
                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
-                        <ItemsControl ItemsSource="{Binding UnassignedPCs}" MinHeight="150">
+                        <Grid MinHeight="150">
+                            <ItemsControl ItemsSource="{Binding UnassignedPCs}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
@@ -102,7 +123,25 @@
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ItemsControl>
+                            
+                            <!-- Empty State -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UnassignedPCs.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No unassigned PCs" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="All PCs are assigned to laboratories" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </ui:Card>
             </StackPanel>
@@ -240,8 +279,9 @@
                     </StackPanel>
 
                     <!-- PCs List -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding AssignedPCs}">
+                    <Grid Grid.Row="1">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding AssignedPCs}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
@@ -259,8 +299,26 @@
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        
+                        <!-- Empty State -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AssignedPCs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                            <TextBlock Text="No PCs assigned" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="This laboratory has no assigned PCs" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Buttons -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
