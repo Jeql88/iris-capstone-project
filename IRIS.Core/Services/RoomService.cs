@@ -112,11 +112,17 @@ namespace IRIS.Core.Services
             }
 
             var defaultRoom = await EnsureDefaultRoomAsync();
+            
+            // Reassign PCs to default room
             var roomPcs = await _context.PCs.Where(p => p.RoomId == room.Id).ToListAsync();
             foreach (var pc in roomPcs)
             {
                 pc.RoomId = defaultRoom.Id;
             }
+
+            // Delete associated policies
+            var roomPolicies = await _context.Policies.Where(p => p.RoomId == room.Id).ToListAsync();
+            _context.Policies.RemoveRange(roomPolicies);
 
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
