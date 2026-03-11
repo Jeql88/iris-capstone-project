@@ -24,7 +24,6 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Search Box -->
@@ -36,24 +35,8 @@
                                         ToolTip="Search by username, action, details, or IP address"/>
                         </StackPanel>
 
-                        <!-- Action Filter -->
-                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox SelectedValue="{Binding SelectedAction, Mode=TwoWay}" 
-                                         SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Actions" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Login" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Logout" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Password Change" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="User Created" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="User Updated" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="User Deactivated" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="System Access" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            </ComboBox>
-                        </StackPanel>
-
                         <!-- Role Filter -->
-                        <StackPanel Grid.Column="2">
+                        <StackPanel Grid.Column="1">
                             <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                          SelectedValuePath="Content">

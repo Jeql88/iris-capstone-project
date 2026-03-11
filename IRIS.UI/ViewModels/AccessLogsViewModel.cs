@@ -16,7 +16,6 @@ namespace IRIS.UI.ViewModels
         private readonly IAccessLogsService _accessLogsService;
         private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
-        private string _selectedAction = "All Actions";
         private string _selectedRole = "All Roles";
         private int _currentPage = 1;
         private int _pageSize = 10;
@@ -43,12 +42,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _searchText;
             set { _searchText = value; OnPropertyChanged(); }
-        }
-
-        public string SelectedAction
-        {
-            get => _selectedAction;
-            set { _selectedAction = value; OnPropertyChanged(); }
         }
 
         public string SelectedRole
@@ -100,7 +93,6 @@ namespace IRIS.UI.ViewModels
         private async Task ResetFiltersAsync()
         {
             SearchText = string.Empty;
-            SelectedAction = "All Actions";
             SelectedRole = "All Roles";
             PageSize = 10;
             CurrentPage = 1;
@@ -140,7 +132,7 @@ namespace IRIS.UI.ViewModels
 
                 var result = await _accessLogsService.GetAccessLogsAsync(
                     CurrentPage, PageSize, SearchText,
-                    SelectedAction == "All Actions" ? null : SelectedAction,
+                    null,
                     roleFilter);
 
                 AccessLogs.Clear();
