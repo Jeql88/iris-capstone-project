@@ -202,35 +202,57 @@
                         </StackPanel>
                     </ui:Card>
 
-                    <ui:DataGrid Grid.Row="2"
-                                 ItemsSource="{Binding FilteredApplicationUsage}"
-                                 AutoGenerateColumns="False"
-                                 IsReadOnly="True"
-                                 CanUserAddRows="False"
-                                 CanUserDeleteRows="False"
-                                 SelectionMode="Single"
-                                 Margin="10,0,10,0">
-                        <ui:DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Application" Width="*" SortMemberPath="ApplicationName">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="8"
-                                                    Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0">
-                                                <ui:SymbolIcon Symbol="Apps24" FontSize="16" Foreground="White"/>
-                                            </Border>
-                                            <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
-                            <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
-                            <DataGridTextColumn Header="Duration" Binding="{Binding FormattedDuration}" Width="120"/>
-                            <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
-                            <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
-                        </ui:DataGrid.Columns>
-                    </ui:DataGrid>
+                    <Grid Grid.Row="2" Margin="10,0,10,0" MinHeight="280">
+                        <ui:DataGrid ItemsSource="{Binding FilteredApplicationUsage}"
+                                     AutoGenerateColumns="False"
+                                     IsReadOnly="True"
+                                     CanUserAddRows="False"
+                                     CanUserDeleteRows="False"
+                                     SelectionMode="Single">
+                            <ui:DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Application" Width="*" SortMemberPath="ApplicationName">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="10,5">
+                                                <Border Width="32" Height="32" CornerRadius="8"
+                                                        Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0">
+                                                    <ui:SymbolIcon Symbol="Apps24" FontSize="16" Foreground="White"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
+                                <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
+                                <DataGridTextColumn Header="Duration" Binding="{Binding FormattedDuration}" Width="120"/>
+                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
+                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <Border VerticalAlignment="Top"
+                                Margin="0,42,0,0"
+                                Height="220"
+                                Background="{DynamicResource LayerFillColorDefaultBrush}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilteredApplicationUsage.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Apps24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No applications found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Try adjusting the filters or date range" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
                         <ui:Button Command="{Binding AppPreviousPageCommand}"
@@ -336,39 +358,61 @@
                         </StackPanel>
                     </ui:Card>
 
-                    <ui:DataGrid Grid.Row="2"
-                                 ItemsSource="{Binding FilteredWebsiteUsage}"
-                                 AutoGenerateColumns="False"
-                                 IsReadOnly="True"
-                                 CanUserAddRows="False"
-                                 CanUserDeleteRows="False"
-                                 SelectionMode="Single"
-                                 Margin="10,0,10,0">
-                        <ui:DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Domain">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Margin="10,5">
-                                            <Border Width="32" Height="32" CornerRadius="8"
-                                                    Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,10,0">
-                                                <ui:SymbolIcon Symbol="Globe24" FontSize="16" Foreground="White"/>
-                                            </Border>
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Domain}" FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis" MaxWidth="300" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                <TextBlock Text="{Binding Browser}" FontSize="11"
-                                                           Foreground="#666666"
-                                                           TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                    <Grid Grid.Row="2" Margin="10,0,10,0" MinHeight="280">
+                        <ui:DataGrid ItemsSource="{Binding FilteredWebsiteUsage}"
+                                     AutoGenerateColumns="False"
+                                     IsReadOnly="True"
+                                     CanUserAddRows="False"
+                                     CanUserDeleteRows="False"
+                                     SelectionMode="Single">
+                            <ui:DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Website" Width="*" SortMemberPath="Domain">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="10,5">
+                                                <Border Width="32" Height="32" CornerRadius="8"
+                                                        Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,10,0">
+                                                    <ui:SymbolIcon Symbol="Globe24" FontSize="16" Foreground="White"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Domain}" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" MaxWidth="300" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <TextBlock Text="{Binding Browser}" FontSize="11"
+                                                               Foreground="#666666"
+                                                               TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                                                </StackPanel>
                                             </StackPanel>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
-                            <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
-                            <DataGridTextColumn Header="Visits" Binding="{Binding VisitCount}" Width="120"/>
-                        </ui:DataGrid.Columns>
-                    </ui:DataGrid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
+                                <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
+                                <DataGridTextColumn Header="Visits" Binding="{Binding VisitCount}" Width="120"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <Border VerticalAlignment="Top"
+                                Margin="0,42,0,0"
+                                Height="220"
+                                Background="{DynamicResource LayerFillColorDefaultBrush}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilteredWebsiteUsage.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Globe24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No websites found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Try adjusting the filters or date range" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
                         <ui:Button Command="{Binding WebPreviousPageCommand}"
