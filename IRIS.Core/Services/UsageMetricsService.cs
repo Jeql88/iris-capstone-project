@@ -60,9 +60,10 @@ public class UsageMetricsService : IUsageMetricsService
 
         if (!string.IsNullOrEmpty(searchText))
         {
+            var normalizedSearch = searchText.Trim().ToLower();
             query = query.Where(s =>
-                s.ApplicationName.Contains(searchText) ||
-                (s.PC.Hostname != null && s.PC.Hostname.Contains(searchText)));
+                s.ApplicationName.ToLower().Contains(normalizedSearch) ||
+                (s.PC.Hostname != null && s.PC.Hostname.ToLower().Contains(normalizedSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(roomFilter))
@@ -164,11 +165,12 @@ public class UsageMetricsService : IUsageMetricsService
 
         if (!string.IsNullOrEmpty(searchText))
         {
+            var normalizedSearch = searchText.Trim().ToLower();
             query = query.Where(w =>
-                w.Domain.Contains(searchText) ||
-                w.Browser.Contains(searchText) ||
-                (w.PC.Hostname != null && w.PC.Hostname.Contains(searchText)) ||
-                (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(searchText)));
+                w.Domain.ToLower().Contains(normalizedSearch) ||
+                w.Browser.ToLower().Contains(normalizedSearch) ||
+                (w.PC.Hostname != null && w.PC.Hostname.ToLower().Contains(normalizedSearch)) ||
+                (w.PC.Room != null && w.PC.Room.RoomNumber.ToLower().Contains(normalizedSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(roomFilter))
@@ -232,9 +234,10 @@ public class UsageMetricsService : IUsageMetricsService
 
         if (!string.IsNullOrWhiteSpace(appSearchText))
         {
+            var normalizedAppSearch = appSearchText.Trim().ToLower();
             appQuery = appQuery.Where(s =>
-                s.ApplicationName.Contains(appSearchText) ||
-                (s.PC.Hostname != null && s.PC.Hostname.Contains(appSearchText)));
+                s.ApplicationName.ToLower().Contains(normalizedAppSearch) ||
+                (s.PC.Hostname != null && s.PC.Hostname.ToLower().Contains(normalizedAppSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(appRoomFilter))
@@ -261,11 +264,12 @@ public class UsageMetricsService : IUsageMetricsService
 
         if (!string.IsNullOrWhiteSpace(webSearchText))
         {
+            var normalizedWebSearch = webSearchText.Trim().ToLower();
             webQuery = webQuery.Where(w =>
-                w.Domain.Contains(webSearchText) ||
-                w.Browser.Contains(webSearchText) ||
-                (w.PC.Hostname != null && w.PC.Hostname.Contains(webSearchText)) ||
-                (w.PC.Room != null && w.PC.Room.RoomNumber.Contains(webSearchText)));
+                w.Domain.ToLower().Contains(normalizedWebSearch) ||
+                w.Browser.ToLower().Contains(normalizedWebSearch) ||
+                (w.PC.Hostname != null && w.PC.Hostname.ToLower().Contains(normalizedWebSearch)) ||
+                (w.PC.Room != null && w.PC.Room.RoomNumber.ToLower().Contains(normalizedWebSearch)));
         }
 
         if (!string.IsNullOrWhiteSpace(webRoomFilter))

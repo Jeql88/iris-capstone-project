@@ -23,11 +23,12 @@ namespace IRIS.Core.Services
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(ul => 
-                    (ul.User != null && ul.User.Username.Contains(search)) ||
-                    ul.Action.Contains(search) ||
-                    (ul.Details != null && ul.Details.Contains(search)) ||
-                    (ul.IpAddress != null && ul.IpAddress.Contains(search)));
+                var normalizedSearch = search.Trim().ToLower();
+                query = query.Where(ul =>
+                    (ul.User != null && ul.User.Username.ToLower().Contains(normalizedSearch)) ||
+                    ul.Action.ToLower().Contains(normalizedSearch) ||
+                    (ul.Details != null && ul.Details.ToLower().Contains(normalizedSearch)) ||
+                    (ul.IpAddress != null && ul.IpAddress.ToLower().Contains(normalizedSearch)));
             }
 
             // Apply action filter

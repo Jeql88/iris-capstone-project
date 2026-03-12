@@ -117,8 +117,9 @@ namespace IRIS.Core.Services
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(u => u.Username.Contains(search) ||
-                                        (u.FullName != null && u.FullName.Contains(search)));
+                var normalizedSearch = search.Trim().ToLower();
+                query = query.Where(u => u.Username.ToLower().Contains(normalizedSearch) ||
+                                        (u.FullName != null && u.FullName.ToLower().Contains(normalizedSearch)));
             }
 
             // Apply role filter
