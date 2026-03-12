@@ -86,18 +86,41 @@
                     </Grid>
 
                     <!-- DataGrid -->
-                    <ui:DataGrid Grid.Row="1" ItemsSource="{Binding AccessLogs}" 
-                                 AutoGenerateColumns="False" IsReadOnly="True"
-                                 MinHeight="450">
-                        <ui:DataGrid.Columns>
-                            <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="1.5*"/>
-                            <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.2*"/>
-                            <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="1.2*"/>
-                            <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="1*"/>
-                            <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="2*"/>
-                            <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="1*"/>
-                        </ui:DataGrid.Columns>
-                    </ui:DataGrid>
+                    <Grid Grid.Row="1" MinHeight="450">
+                        <ui:DataGrid ItemsSource="{Binding AccessLogs}" 
+                                     AutoGenerateColumns="False" IsReadOnly="True">
+                            <ui:DataGrid.Columns>
+                                <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="1.5*"/>
+                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.2*"/>
+                                <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="1.2*"/>
+                                <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="1*"/>
+                                <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="2*"/>
+                                <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="1*"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <Border VerticalAlignment="Top"
+                                Margin="0,42,0,0"
+                                Height="390"
+                                Background="{DynamicResource LayerFillColorDefaultBrush}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AccessLogs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No access logs found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Try adjusting the filters" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Pagination Controls -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">

@@ -104,29 +104,52 @@
                         </Grid>
 
                         <!-- DataGrid -->
-                        <ui:DataGrid Grid.Row="1" ItemsSource="{Binding Users}" 
-                                     SelectedItem="{Binding SelectedUser}"
-                                     AutoGenerateColumns="False" IsReadOnly="True"
-                                     MinHeight="350">
-                            <ui:DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#D6E9FF"/>
-                                            <Setter Property="Foreground" Value="#1a1a1a"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ui:DataGrid.RowStyle>
-                            <ui:DataGrid.Columns>
-                                <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
-                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
-                                <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
-                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
-                            </ui:DataGrid.Columns>
-                        </ui:DataGrid>
+                        <Grid Grid.Row="1" MinHeight="350">
+                            <ui:DataGrid ItemsSource="{Binding Users}" 
+                                         SelectedItem="{Binding SelectedUser}"
+                                         AutoGenerateColumns="False" IsReadOnly="True">
+                                <ui:DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#D6E9FF"/>
+                                                <Setter Property="Foreground" Value="#1a1a1a"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:DataGrid.RowStyle>
+                                <ui:DataGrid.Columns>
+                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
+                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
+                                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
+                                </ui:DataGrid.Columns>
+                            </ui:DataGrid>
+
+                            <Border VerticalAlignment="Top"
+                                    Margin="0,42,0,0"
+                                    Height="290"
+                                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Users.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="People24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="No users found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Try adjusting the filters" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
                         <!-- Pagination Controls -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
