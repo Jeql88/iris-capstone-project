@@ -24,10 +24,10 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
         private readonly SemaphoreSlim _appPageSemaphore = new(1, 1);
         private readonly SemaphoreSlim _webPageSemaphore = new(1, 1);
-        private DateTime _startDate = DateTime.UtcNow.Date.AddDays(-7);
-        private DateTime _endDate = DateTime.UtcNow.Date;
-        private DateTime _appliedStartDate = DateTime.UtcNow.Date.AddDays(-7);
-        private DateTime _appliedEndDate = DateTime.UtcNow.Date;
+        private DateTime? _startDate;
+        private DateTime? _endDate;
+        private DateTime? _appliedStartDate;
+        private DateTime? _appliedEndDate;
         private int _totalApplications;
         private int _totalWebsites;
         private double _totalHours;
@@ -79,13 +79,13 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<string> AppLaboratoryOptions { get; } = new() { "All Laboratories" };
         public ObservableCollection<string> WebLaboratoryOptions { get; } = new() { "All Laboratories" };
 
-        public DateTime StartDate
+        public DateTime? StartDate
         {
             get => _startDate;
             set { _startDate = value; OnPropertyChanged(); }
         }
 
-        public DateTime EndDate
+        public DateTime? EndDate
         {
             get => _endDate;
             set { _endDate = value; OnPropertyChanged(); }
@@ -207,7 +207,7 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyAppFiltersAsync()
         {
-            if (EndDate.Date < StartDate.Date)
+            if (StartDate.HasValue && EndDate.HasValue && EndDate.Value.Date < StartDate.Value.Date)
             {
                 MessageBox.Show(
                     "'To' date cannot be earlier than 'From' date.",
@@ -217,8 +217,8 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            _appliedStartDate = StartDate.Date;
-            _appliedEndDate = EndDate.Date;
+            _appliedStartDate = StartDate?.Date;
+            _appliedEndDate = EndDate?.Date;
             _appliedAppSearchText = AppSearchText;
             _appliedAppLaboratory = SelectedAppLaboratory;
 
@@ -227,13 +227,13 @@ namespace IRIS.UI.ViewModels
 
         private async Task ResetAppFiltersAsync()
         {
-            StartDate = DateTime.UtcNow.Date.AddDays(-7);
-            EndDate = DateTime.UtcNow.Date;
+            StartDate = null;
+            EndDate = null;
             AppSearchText = string.Empty;
             SelectedAppLaboratory = "All Laboratories";
 
-            _appliedStartDate = StartDate.Date;
-            _appliedEndDate = EndDate.Date;
+            _appliedStartDate = null;
+            _appliedEndDate = null;
             _appliedAppSearchText = AppSearchText;
             _appliedAppLaboratory = SelectedAppLaboratory;
 
@@ -242,18 +242,6 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyWebFiltersAsync()
         {
-            if (EndDate.Date < StartDate.Date)
-            {
-                MessageBox.Show(
-                    "'To' date cannot be earlier than 'From' date.",
-                    "Invalid Date Range",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            _appliedStartDate = StartDate.Date;
-            _appliedEndDate = EndDate.Date;
             _appliedWebSearchText = WebSearchText;
             _appliedWebLaboratory = SelectedWebLaboratory;
             await LoadDataAsync();
@@ -261,13 +249,9 @@ namespace IRIS.UI.ViewModels
 
         private async Task ResetWebFiltersAsync()
         {
-            StartDate = DateTime.UtcNow.Date.AddDays(-7);
-            EndDate = DateTime.UtcNow.Date;
             WebSearchText = string.Empty;
             SelectedWebLaboratory = "All Laboratories";
 
-            _appliedStartDate = StartDate.Date;
-            _appliedEndDate = EndDate.Date;
             _appliedWebSearchText = WebSearchText;
             _appliedWebLaboratory = SelectedWebLaboratory;
             await LoadDataAsync();
@@ -293,8 +277,10 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate ?? DateTime.UnixEpoch, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind((_appliedEndDate?.AddDays(1).AddSeconds(-1)) ?? DateTime.UtcNow, DateTimeKind.Utc);
+                var webStartUtc = DateTime.SpecifyKind(DateTime.UnixEpoch, DateTimeKind.Utc);
+                var webEndUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
                 var summary = await _usageMetricsService.GetUsageSummaryAsync(startUtc, endUtc);
                 TotalApplications = summary.TotalApplications;
@@ -302,7 +288,7 @@ namespace IRIS.UI.ViewModels
                 TotalHours = summary.TotalHours;
 
                 await LoadAppLaboratoryOptionsAsync(startUtc, endUtc);
-                await LoadWebLaboratoryOptionsAsync(startUtc, endUtc);
+                await LoadWebLaboratoryOptionsAsync(webStartUtc, webEndUtc);
                 await LoadAppPageAsync(1);
                 await LoadWebPageAsync(1);
             }
@@ -343,8 +329,8 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate ?? DateTime.UnixEpoch, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind((_appliedEndDate?.AddDays(1).AddSeconds(-1)) ?? DateTime.UtcNow, DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
                     startUtc,
@@ -414,8 +400,8 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(DateTime.UnixEpoch, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
                 var result = await _usageMetricsService.GetWebsiteUsageDetailsPaginatedAsync(
                     startUtc,
@@ -521,8 +507,8 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var startUtc = DateTime.SpecifyKind(_appliedStartDate, DateTimeKind.Utc);
-                var endUtc = DateTime.SpecifyKind(_appliedEndDate.AddDays(1).AddSeconds(-1), DateTimeKind.Utc);
+                var startUtc = DateTime.SpecifyKind(_appliedStartDate ?? DateTime.UnixEpoch, DateTimeKind.Utc);
+                var endUtc = DateTime.SpecifyKind((_appliedEndDate?.AddDays(1).AddSeconds(-1)) ?? DateTime.UtcNow, DateTimeKind.Utc);
 
                 var bytes = await _usageMetricsService.ExportUsageMetricsToExcelAsync(
                     startUtc,

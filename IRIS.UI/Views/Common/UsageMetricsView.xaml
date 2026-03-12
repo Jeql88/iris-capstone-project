@@ -165,12 +165,48 @@
 
                                 <StackPanel Grid.Column="0" Margin="0,0,15,0">
                                     <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}"/>
+                                    <Grid>
+                                        <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
+                                        <TextBlock Text="dd/mm/yyyy"
+                                                   Margin="8,0,24,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                   IsHitTestVisible="False">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StartDate}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Margin="0,0,15,0">
                                     <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}"/>
+                                    <Grid>
+                                        <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
+                                        <TextBlock Text="dd/mm/yyyy"
+                                                   Margin="8,0,24,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                   IsHitTestVisible="False">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding EndDate}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Margin="0,0,15,0">
@@ -226,8 +262,8 @@
                                 <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
                                 <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
                                 <DataGridTextColumn Header="Duration" Binding="{Binding FormattedDuration}" Width="120"/>
-                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
-                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:MM/dd/yyyy HH:mm}'}" Width="150"/>
+                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="150"/>
+                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="150"/>
                             </ui:DataGrid.Columns>
                         </ui:DataGrid>
 
@@ -313,29 +349,17 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="1.2*"/>
                                     <ColumnDefinition Width="1*"/>
                                     <ColumnDefinition Width="2*"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                    <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                                    <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" Margin="0,0,15,0">
                                     <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ComboBox ItemsSource="{Binding WebLaboratoryOptions}"
                                               SelectedItem="{Binding SelectedWebLaboratory}"/>
                                 </StackPanel>
 
-                                <StackPanel Grid.Column="3">
+                                <StackPanel Grid.Column="1">
                                     <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ui:TextBox PlaceholderText="Search websites..."
                                                 Text="{Binding WebSearchText, UpdateSourceTrigger=PropertyChanged}">

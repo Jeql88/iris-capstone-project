@@ -257,7 +257,7 @@ public class UsageMetricsService : IUsageMetricsService
             .ToListAsync();
 
         var webQuery = _context.WebsiteUsageHistory
-            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate);
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(webSearchText))
         {
