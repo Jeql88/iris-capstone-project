@@ -143,17 +143,10 @@ public class UsageMetricsService : IUsageMetricsService
             .Distinct()
             .CountAsync();
 
-        var totalHours = (await _context.SoftwareUsageHistory
-            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate && s.Duration != null)
-            .Select(s => s.Duration)
-            .ToListAsync())
-            .Sum(d => d?.TotalHours ?? 0);
-
         return new UsageMetricsSummaryDto
         {
             TotalApplications = totalApps,
-            TotalWebsites = totalWebsites,
-            TotalHours = totalHours
+            TotalWebsites = totalWebsites
         };
     }
 

@@ -30,7 +30,6 @@ namespace IRIS.UI.ViewModels
         private DateTime? _appliedEndDate;
         private int _totalApplications;
         private int _totalWebsites;
-        private double _totalHours;
         private bool _isLoading;
         private string _appSearchText = string.Empty;
         private string _appliedAppSearchText = string.Empty;
@@ -95,12 +94,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _totalApplications;
             set { _totalApplications = value; OnPropertyChanged(); }
-        }
-
-        public double TotalHours
-        {
-            get => _totalHours;
-            set { _totalHours = value; OnPropertyChanged(); }
         }
 
         public int TotalWebsites
@@ -285,7 +278,6 @@ namespace IRIS.UI.ViewModels
                 var summary = await _usageMetricsService.GetUsageSummaryAsync(startUtc, endUtc);
                 TotalApplications = summary.TotalApplications;
                 TotalWebsites = summary.TotalWebsites;
-                TotalHours = summary.TotalHours;
 
                 await LoadAppLaboratoryOptionsAsync(startUtc, endUtc);
                 await LoadWebLaboratoryOptionsAsync(webStartUtc, webEndUtc);

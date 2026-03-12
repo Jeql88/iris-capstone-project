@@ -30,8 +30,6 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="15"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="15"/>
-                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <ui:Card Grid.Column="0">
@@ -68,25 +66,6 @@
                         <TextBlock Text="Websites Visited" FontSize="13" Foreground="#666666"/>
                         <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold"
                                    Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                    </StackPanel>
-                </Grid>
-            </ui:Card>
-
-            <ui:Card Grid.Column="4">
-                <Grid Margin="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
-                            Background="{DynamicResource IRISAccentBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Timer24" FontSize="26" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Total Usage Hours" FontSize="13" Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalHours, StringFormat={}{0:F1}h}" FontSize="32" FontWeight="Bold"
-                                   Foreground="{DynamicResource IRISAccentBrush}"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>

@@ -26,5 +26,4 @@ public class UsageMetricsSummaryDto
 {
     public int TotalApplications { get; set; }
     public int TotalWebsites { get; set; }
-    public double TotalHours { get; set; }
 }
