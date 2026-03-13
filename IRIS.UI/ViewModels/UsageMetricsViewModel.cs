@@ -21,6 +21,10 @@ namespace IRIS.UI.ViewModels
         private readonly RelayCommand _resetWebFiltersRelayCommand;
         private readonly RelayCommand _exportAppUsageRelayCommand;
         private readonly RelayCommand _exportWebUsageRelayCommand;
+        private readonly RelayCommand _appPreviousPageRelayCommand;
+        private readonly RelayCommand _appNextPageRelayCommand;
+        private readonly RelayCommand _webPreviousPageRelayCommand;
+        private readonly RelayCommand _webNextPageRelayCommand;
         private readonly SemaphoreSlim _loadDataSemaphore = new(1, 1);
         private readonly SemaphoreSlim _appPageSemaphore = new(1, 1);
         private readonly SemaphoreSlim _webPageSemaphore = new(1, 1);
@@ -66,10 +70,14 @@ namespace IRIS.UI.ViewModels
             ResetWebFiltersCommand = _resetWebFiltersRelayCommand;
             ExportAppUsageCommand = _exportAppUsageRelayCommand;
             ExportWebUsageCommand = _exportWebUsageRelayCommand;
-            AppPreviousPageCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => true);
-            AppNextPageCommand = new RelayCommand(async () => await AppNextPageAsync(), () => true);
-            WebPreviousPageCommand = new RelayCommand(async () => await WebPreviousPageAsync(), () => true);
-            WebNextPageCommand = new RelayCommand(async () => await WebNextPageAsync(), () => true);
+            _appPreviousPageRelayCommand = new RelayCommand(async () => await AppPreviousPageAsync(), () => AppCurrentPage > 1);
+            _appNextPageRelayCommand = new RelayCommand(async () => await AppNextPageAsync(), () => AppCurrentPage < AppTotalPages);
+            _webPreviousPageRelayCommand = new RelayCommand(async () => await WebPreviousPageAsync(), () => WebCurrentPage > 1);
+            _webNextPageRelayCommand = new RelayCommand(async () => await WebNextPageAsync(), () => WebCurrentPage < WebTotalPages);
+            AppPreviousPageCommand = _appPreviousPageRelayCommand;
+            AppNextPageCommand = _appNextPageRelayCommand;
+            WebPreviousPageCommand = _webPreviousPageRelayCommand;
+            WebNextPageCommand = _webNextPageRelayCommand;
             _ = LoadDataAsync();
         }
 
@@ -145,13 +153,27 @@ namespace IRIS.UI.ViewModels
         public int AppCurrentPage
         {
             get => _appCurrentPage;
-            set { _appCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+            set
+            {
+                _appCurrentPage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AppPageInfo));
+                _appPreviousPageRelayCommand.RaiseCanExecuteChanged();
+                _appNextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int AppTotalPages
         {
             get => _appTotalPages;
-            set { _appTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(AppPageInfo)); }
+            set
+            {
+                _appTotalPages = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AppPageInfo));
+                _appPreviousPageRelayCommand.RaiseCanExecuteChanged();
+                _appNextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int AppTotalCount
@@ -163,13 +185,27 @@ namespace IRIS.UI.ViewModels
         public int WebCurrentPage
         {
             get => _webCurrentPage;
-            set { _webCurrentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+            set
+            {
+                _webCurrentPage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(WebPageInfo));
+                _webPreviousPageRelayCommand.RaiseCanExecuteChanged();
+                _webNextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int WebTotalPages
         {
             get => _webTotalPages;
-            set { _webTotalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(WebPageInfo)); }
+            set
+            {
+                _webTotalPages = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(WebPageInfo));
+                _webPreviousPageRelayCommand.RaiseCanExecuteChanged();
+                _webNextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int WebTotalCount

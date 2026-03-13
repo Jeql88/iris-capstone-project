@@ -27,11 +27,16 @@ namespace IRIS.UI.ViewModels
         private string _typeFilter = "All";
         private string _stateFilter = "Open";
         private string _searchText = string.Empty;
+        private RoomDto? _appliedRoom;
+        private string _appliedSeverityFilter = "All";
+        private string _appliedTypeFilter = "All";
+        private string _appliedStateFilter = "Open";
+        private string _appliedSearchText = string.Empty;
         private bool _isLoading;
         private DateTime _lastUpdatedUtc = DateTime.MinValue;
         private AlertRow? _selectedAlert;
         private bool _isAllSelected;
-        private int _pageSize = 25;
+        private int _pageSize = 10;
         private int _currentPage = 1;
         private int _totalPages = 1;
 
@@ -46,6 +51,8 @@ namespace IRIS.UI.ViewModels
             AcknowledgeVisibleCommand = new RelayCommand(async () => await AcknowledgeVisibleAsync(), () => FilteredAlerts.Any(a => !a.IsAcknowledged && !a.IsResolved));
             ResolveVisibleCommand = new RelayCommand(async () => await ResolveVisibleAsync(), () => FilteredAlerts.Any(a => !a.IsResolved));
             ToggleSelectAllCommand = new RelayCommand(ToggleSelectAll, () => true);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
             NextPageCommand = new RelayCommand(() => GoToPage(_currentPage + 1), () => _currentPage < _totalPages);
             PreviousPageCommand = new RelayCommand(() => GoToPage(_currentPage - 1), () => _currentPage > 1);
             FirstPageCommand = new RelayCommand(() => GoToPage(1), () => _currentPage > 1);
@@ -73,7 +80,6 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedRoom = value;
                 OnPropertyChanged();
-                _ = LoadAlertsAsync();
             }
         }
 
@@ -84,7 +90,6 @@ namespace IRIS.UI.ViewModels
             {
                 _severityFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -95,7 +100,6 @@ namespace IRIS.UI.ViewModels
             {
                 _typeFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -106,7 +110,6 @@ namespace IRIS.UI.ViewModels
             {
                 _stateFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -117,7 +120,6 @@ namespace IRIS.UI.ViewModels
             {
                 _searchText = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -155,6 +157,8 @@ namespace IRIS.UI.ViewModels
         public ICommand AcknowledgeVisibleCommand { get; }
         public ICommand ResolveVisibleCommand { get; }
         public ICommand ToggleSelectAllCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
         public ICommand NextPageCommand { get; }
         public ICommand PreviousPageCommand { get; }
         public ICommand FirstPageCommand { get; }
@@ -186,15 +190,25 @@ namespace IRIS.UI.ViewModels
             set { _totalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
         }
 
-        public string PageInfo => $"Page {CurrentPage} of {TotalPages}  ({FilteredAlerts.Count} alerts)";
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({FilteredAlerts.Count} total entries)";
 
         public bool IsAllSelected
         {
             get => _isAllSelected;
             set
             {
+                if (_isAllSelected == value)
+                {
+                    return;
+                }
+
                 _isAllSelected = value;
+                foreach (var alert in PagedAlerts)
+                {
+                    alert.IsSelected = value;
+                }
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedCount));
             }
         }
 
@@ -202,13 +216,35 @@ namespace IRIS.UI.ViewModels
 
         private void ToggleSelectAll()
         {
-            var newValue = !IsAllSelected;
-            IsAllSelected = newValue;
-            foreach (var alert in FilteredAlerts)
-            {
-                alert.IsSelected = newValue;
-            }
-            OnPropertyChanged(nameof(SelectedCount));
+            IsAllSelected = !IsAllSelected;
+        }
+
+        private async Task ApplyFiltersAsync()
+        {
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
+
+            await LoadAlertsAsync();
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SelectedRoom = Rooms.FirstOrDefault();
+            SeverityFilter = "All";
+            TypeFilter = "All";
+            StateFilter = "Open";
+            SearchText = string.Empty;
+
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
+
+            await LoadAlertsAsync();
         }
 
         private async Task InitializeAsync()
@@ -227,6 +263,12 @@ namespace IRIS.UI.ViewModels
             {
                 SelectedRoom = Rooms.FirstOrDefault();
             }
+
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
 
             await LoadAlertsAsync();
             _refreshTimer.Start();
@@ -252,9 +294,9 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                int? roomId = SelectedRoom != null && SelectedRoom.Id > 0 ? SelectedRoom.Id : null;
-                var includeResolved = string.Equals(StateFilter, "Resolved", StringComparison.OrdinalIgnoreCase) ||
-                                      string.Equals(StateFilter, "All", StringComparison.OrdinalIgnoreCase);
+                int? roomId = _appliedRoom != null && _appliedRoom.Id > 0 ? _appliedRoom.Id : null;
+                var includeResolved = string.Equals(_appliedStateFilter, "Resolved", StringComparison.OrdinalIgnoreCase) ||
+                                      string.Equals(_appliedStateFilter, "All", StringComparison.OrdinalIgnoreCase);
 
                 using var scope = _scopeFactory.CreateScope();
                 var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
@@ -295,31 +337,31 @@ namespace IRIS.UI.ViewModels
         {
             var filtered = Alerts.AsEnumerable();
 
-            if (!string.Equals(SeverityFilter, "All", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(_appliedSeverityFilter, "All", StringComparison.OrdinalIgnoreCase))
             {
-                filtered = filtered.Where(a => a.Severity.Equals(SeverityFilter, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(a => a.Severity.Equals(_appliedSeverityFilter, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (!string.Equals(TypeFilter, "All", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(_appliedTypeFilter, "All", StringComparison.OrdinalIgnoreCase))
             {
-                filtered = filtered.Where(a => a.Type.Equals(TypeFilter, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(a => a.Type.Equals(_appliedTypeFilter, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (string.Equals(StateFilter, "Open", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_appliedStateFilter, "Open", StringComparison.OrdinalIgnoreCase))
             {
                 filtered = filtered.Where(a => !a.IsResolved);
             }
-            else if (string.Equals(StateFilter, "Resolved", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(_appliedStateFilter, "Resolved", StringComparison.OrdinalIgnoreCase))
             {
                 filtered = filtered.Where(a => a.IsResolved);
             }
 
-            if (!string.IsNullOrWhiteSpace(SearchText))
+            if (!string.IsNullOrWhiteSpace(_appliedSearchText))
             {
                 filtered = filtered.Where(a =>
-                    a.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    a.RoomName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    a.Message.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                    a.PCName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    a.RoomName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    a.Message.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase));
             }
 
             FilteredAlerts.Clear();
@@ -348,6 +390,8 @@ namespace IRIS.UI.ViewModels
             foreach (var row in FilteredAlerts.Skip((CurrentPage - 1) * _pageSize).Take(_pageSize))
                 PagedAlerts.Add(row);
 
+            _isAllSelected = false;
+            OnPropertyChanged(nameof(IsAllSelected));
             OnPropertyChanged(nameof(PageInfo));
             (NextPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (PreviousPageCommand as RelayCommand)?.RaiseCanExecuteChanged();

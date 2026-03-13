@@ -132,9 +132,9 @@
         </Grid>
 
         <!-- Filter bar -->
-        <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,12">
+        <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,6">
             <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                     <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                     <TextBlock Text="Filter Alerts" FontSize="18" FontWeight="Bold" 
                                Foreground="{DynamicResource IRISSecondaryBrush}"/>
@@ -146,7 +146,6 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="80"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Search -->
@@ -180,12 +179,17 @@
                         <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber"/>
                     </StackPanel>
 
-                    <!-- Per Page -->
-                    <StackPanel Grid.Column="5">
-                        <TextBlock Text="Per Page" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}"/>
-                    </StackPanel>
                 </Grid>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                    <ui:Button Content="Apply Filters"
+                               Command="{Binding ApplyFiltersCommand}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
+                    <ui:Button Content="Reset"
+                               Command="{Binding ResetFiltersCommand}"
+                               Appearance="Secondary"/>
+                </StackPanel>
             </StackPanel>
         </ui:Card>
 
@@ -193,11 +197,33 @@
         <ui:Card Grid.Row="3">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <DataGrid ItemsSource="{Binding PagedAlerts}"
+                <!-- Table Header -->
+                <Grid Grid.Row="0" Margin="12,12,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Alert24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="System Alerts" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
+                                  ItemsSource="{Binding PageSizeOptions}"
+                                  Width="70" Margin="0,0,5,0"/>
+                        <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <DataGrid Grid.Row="1" ItemsSource="{Binding PagedAlerts}"
                           SelectedItem="{Binding SelectedAlert}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
@@ -208,12 +234,11 @@
                           ColumnHeaderHeight="36"
                           RowHeight="34"
                           MinHeight="350"
-                          Margin="8,8,8,0">
+                          Margin="8,0,8,0">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="40">
                             <DataGridTemplateColumn.Header>
-                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                          Command="{Binding DataContext.ToggleSelectAllCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             </DataGridTemplateColumn.Header>
                             <DataGridTemplateColumn.CellTemplate>
@@ -234,7 +259,7 @@
                 </DataGrid>
 
                 <!-- Empty state -->
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -253,32 +278,22 @@
                 </StackPanel>
 
                 <!-- Pagination controls -->
-                <Grid Grid.Row="1" Margin="8,10,8,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,12">
+                    <ui:Button Command="{Binding PreviousPageCommand}"
+                               Content="Previous"
+                               Icon="{ui:SymbolIcon ChevronLeft24}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
 
-                    <TextBlock Grid.Column="0" Text="{Binding PageInfo}" FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PageInfo}" FontSize="13"
+                               VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleLeft20}" Appearance="Secondary"
-                                   Command="{Binding FirstPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="First page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronLeft24}" Appearance="Secondary"
-                                   Command="{Binding PreviousPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="Previous page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronRight24}" Appearance="Secondary"
-                                   Command="{Binding NextPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="Next page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleRight20}" Appearance="Secondary"
-                                   Command="{Binding LastPageCommand}"
-                                   Padding="6,4" ToolTip="Last page"/>
-                    </StackPanel>
-                </Grid>
+                    <ui:Button Command="{Binding NextPageCommand}"
+                               Content="Next"
+                               Icon="{ui:SymbolIcon ChevronRight24}"
+                               Appearance="Primary"
+                               Margin="10,0,0,0"/>
+                </StackPanel>
             </Grid>
         </ui:Card>
     </Grid>

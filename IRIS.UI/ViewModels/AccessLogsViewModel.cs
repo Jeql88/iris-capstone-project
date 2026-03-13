@@ -14,6 +14,8 @@ namespace IRIS.UI.ViewModels
     public class AccessLogsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IAccessLogsService _accessLogsService;
+        private readonly RelayCommand _previousPageRelayCommand;
+        private readonly RelayCommand _nextPageRelayCommand;
         private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
         private string _selectedRole = "All Roles";
@@ -29,8 +31,10 @@ namespace IRIS.UI.ViewModels
             RefreshCommand = new RelayCommand(async () => await LoadLogsAsync(), () => true);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
-            PreviousPageCommand = new RelayCommand(async () => await PreviousPageAsync(), () => true);
-            NextPageCommand = new RelayCommand(async () => await NextPageAsync(), () => true);
+            _previousPageRelayCommand = new RelayCommand(async () => await PreviousPageAsync(), () => HasPreviousPage);
+            _nextPageRelayCommand = new RelayCommand(async () => await NextPageAsync(), () => HasNextPage);
+            PreviousPageCommand = _previousPageRelayCommand;
+            NextPageCommand = _nextPageRelayCommand;
 
             _ = LoadLogsAsync();
         }
@@ -59,13 +63,31 @@ namespace IRIS.UI.ViewModels
         public int CurrentPage
         {
             get => _currentPage;
-            set { _currentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+            set
+            {
+                _currentPage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int TotalPages
         {
             get => _totalPages;
-            set { _totalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+            set
+            {
+                _totalPages = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int TotalCount
@@ -152,8 +174,6 @@ namespace IRIS.UI.ViewModels
 
                 TotalCount = result.TotalCount;
                 TotalPages = result.TotalPages;
-                OnPropertyChanged(nameof(HasPreviousPage));
-                OnPropertyChanged(nameof(HasNextPage));
             }
             catch (Exception ex)
             {

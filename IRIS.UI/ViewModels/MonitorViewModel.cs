@@ -462,9 +462,10 @@ namespace IRIS.UI.ViewModels
                     Rooms.Add(room);
                 }
 
-                if (SelectedRoom == null && Rooms.Count > 1)
+                // Default to "All Rooms" so the monitor shows all PCs immediately
+                if (SelectedRoom == null && Rooms.Count > 0)
                 {
-                    SelectedRoom = Rooms[1];
+                    SelectedRoom = Rooms[0];
                 }
             }
             catch
