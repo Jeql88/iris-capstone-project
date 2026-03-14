@@ -19,6 +19,10 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
         private string _selectedRole = "All Roles";
+        private DateTime? _startDate;
+        private DateTime? _endDate;
+        private DateTime? _appliedStartDate;
+        private DateTime? _appliedEndDate;
         private int _currentPage = 1;
         private int _pageSize = 10;
         private int _totalPages = 1;
@@ -52,6 +56,18 @@ namespace IRIS.UI.ViewModels
         {
             get => _selectedRole;
             set { _selectedRole = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? StartDate
+        {
+            get => _startDate;
+            set { _startDate = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? EndDate
+        {
+            get => _endDate;
+            set { _endDate = value; OnPropertyChanged(); }
         }
 
         public int PageSize
@@ -108,6 +124,18 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyFiltersAsync()
         {
+            if (StartDate.HasValue && EndDate.HasValue && EndDate.Value.Date < StartDate.Value.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            _appliedStartDate = StartDate?.Date;
+            _appliedEndDate = EndDate?.Date;
             CurrentPage = 1;
             await LoadLogsAsync();
         }
@@ -116,6 +144,10 @@ namespace IRIS.UI.ViewModels
         {
             SearchText = string.Empty;
             SelectedRole = "All Roles";
+            StartDate = null;
+            EndDate = null;
+            _appliedStartDate = null;
+            _appliedEndDate = null;
             PageSize = 10;
             CurrentPage = 1;
             await LoadLogsAsync();
@@ -155,7 +187,9 @@ namespace IRIS.UI.ViewModels
                 var result = await _accessLogsService.GetAccessLogsAsync(
                     CurrentPage, PageSize, SearchText,
                     null,
-                    roleFilter);
+                    roleFilter,
+                    _appliedStartDate.HasValue ? DateTime.SpecifyKind(_appliedStartDate.Value, DateTimeKind.Utc) : null,
+                    _appliedEndDate.HasValue ? DateTime.SpecifyKind(_appliedEndDate.Value.AddDays(1).AddSeconds(-1), DateTimeKind.Utc) : null);
 
                 AccessLogs.Clear();
                 foreach (var log in result.Items)

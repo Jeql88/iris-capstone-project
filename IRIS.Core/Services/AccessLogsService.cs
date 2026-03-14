@@ -14,11 +14,21 @@ namespace IRIS.Core.Services
             _context = context;
         }
 
-        public async Task<PaginatedResult<UserLog>> GetAccessLogsAsync(int pageNumber = 1, int pageSize = 10, string? search = null, string? action = null, UserRole? role = null)
+        public async Task<PaginatedResult<UserLog>> GetAccessLogsAsync(int pageNumber = 1, int pageSize = 10, string? search = null, string? action = null, UserRole? role = null, DateTime? startDate = null, DateTime? endDate = null)
         {
             var query = _context.UserLogs
                 .Include(ul => ul.User)
                 .AsQueryable();
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(ul => ul.Timestamp >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(ul => ul.Timestamp <= endDate.Value);
+            }
 
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(search))

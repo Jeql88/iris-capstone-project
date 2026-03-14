@@ -22,12 +22,62 @@
                     </StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Search Box -->
+                        <!-- From Date -->
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <Grid>
+                                <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
+                                <TextBlock Text="dd/mm/yyyy"
+                                           Margin="8,0,24,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StartDate}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- To Date -->
+                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                            <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <Grid>
+                                <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
+                                <TextBlock Text="dd/mm/yyyy"
+                                           Margin="8,0,24,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding EndDate}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Search Box -->
+                        <StackPanel Grid.Column="2" Margin="0,0,15,0">
                             <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                         PlaceholderText="Search by username, action, or IP..."
@@ -36,7 +86,7 @@
                         </StackPanel>
 
                         <!-- Role Filter -->
-                        <StackPanel Grid.Column="1">
+                        <StackPanel Grid.Column="3">
                             <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                          SelectedValuePath="Content">

@@ -59,7 +59,7 @@ namespace IRIS.UI.ViewModels
             LastPageCommand = new RelayCommand(() => GoToPage(_totalPages), () => _currentPage < _totalPages);
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            _refreshTimer.Tick += async (_, _) => await LoadAlertsAsync();
+            _refreshTimer.Tick += async (_, _) => await HandleAutoRefreshTickAsync();
 
             _ = InitializeAsync();
         }
@@ -272,6 +272,16 @@ namespace IRIS.UI.ViewModels
 
             await LoadAlertsAsync();
             _refreshTimer.Start();
+        }
+
+        private async Task HandleAutoRefreshTickAsync()
+        {
+            if (FilteredAlerts.Any(a => a.IsSelected))
+            {
+                return;
+            }
+
+            await LoadAlertsAsync();
         }
 
         private async Task LoadAlertsAsync()

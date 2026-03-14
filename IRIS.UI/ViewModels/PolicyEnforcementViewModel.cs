@@ -46,7 +46,7 @@ namespace IRIS.UI.ViewModels
         private string _statusMessageColor = "#10B981";
         private readonly SemaphoreSlim _loadRoomDataSemaphore = new(1, 1);
         private bool _isActive = true;
-        
+
         // Original values for change tracking
         private bool _originalWallpaperResetEnabled;
         private bool _originalAutoShutdownEnabled;
@@ -245,7 +245,7 @@ namespace IRIS.UI.ViewModels
         public string CurrentWallpaperStatusColor { get; private set; } = "#EF4444";
         public string CurrentShutdownStatus { get; private set; } = "OFF";
         public string CurrentShutdownStatusColor { get; private set; } = "#EF4444";
-        
+
         public string StatusMessage
         {
             get => _statusMessage;
@@ -258,7 +258,7 @@ namespace IRIS.UI.ViewModels
         }
 
         public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
-        
+
         public string StatusMessageColor
         {
             get => _statusMessageColor;
@@ -318,7 +318,7 @@ namespace IRIS.UI.ViewModels
                 var rooms = await _dbContext.Rooms
                     .Include(r => r.PCs)
                     .Include(r => r.Policies)
-                    .Where(r => r.IsActive)
+                    .Where(r => r.IsActive && r.RoomNumber != null && r.RoomNumber.ToUpper() != "DEFAULT")
                     .ToListAsync();
 
                 var roomsWithCounts = await _monitoringService.GetActiveLabPCsAsync();
@@ -331,9 +331,9 @@ namespace IRIS.UI.ViewModels
                 {
                     var onlineCount = roomsWithCounts.ContainsKey(room.RoomNumber) ? roomsWithCounts[room.RoomNumber] : 0;
                     var totalCount = room.PCs.Count();
-                    
+
                     var activePolicies = new List<string>();
-                    
+
                     foreach (var policy in room.Policies.Where(p => p.IsActive))
                     {
                         if (policy.ResetWallpaperOnStartup)
@@ -386,16 +386,16 @@ namespace IRIS.UI.ViewModels
             {
                 var selectedRoom = Rooms.FirstOrDefault(r => r.IsSelected);
                 if (selectedRoom == null) return;
-                
+
                 // Validate settings before applying
                 if (!ValidatePolicySettings())
                 {
                     return;
                 }
-                
+
                 await _policyService.CreateOrUpdatePolicyAsync(
-                    selectedRoom.Id, 
-                    WallpaperResetEnabled, 
+                    selectedRoom.Id,
+                    WallpaperResetEnabled,
                     AutoShutdownEnabled ? AutoShutdownMinutes : null,
                     WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null,
                     CpuWarningThreshold,
@@ -420,10 +420,10 @@ namespace IRIS.UI.ViewModels
                 StatusMessageColor = "#10B981";
                 StartMessageTimer();
                 LastAppliedText = $"Applied to {selectedRoom.RoomNumber} at {DateTime.Now:HH:mm:ss}";
-                
+
                 await LoadRoomDataAsync();
                 LoadCurrentPolicySettings();
-                
+
                 // Update original values after successful deployment
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
@@ -477,13 +477,13 @@ namespace IRIS.UI.ViewModels
                 {
                     r.IsSelected = false;
                 }
-                
+
                 // Select the clicked room
                 room.IsSelected = true;
-                
+
                 // Clear status messages when switching rooms
                 ClearStatusMessage();
-                
+
                 UpdateSelectionStatus();
                 LoadCurrentPolicySettings();
                 OnPropertyChanged(nameof(HasSelectedRoom));
@@ -495,7 +495,7 @@ namespace IRIS.UI.ViewModels
         private bool CanApplyPolicies()
         {
             if (!Rooms.Any(r => r.IsSelected)) return false;
-            
+
             // Check if any changes were made
             return WallpaperResetEnabled != _originalWallpaperResetEnabled ||
                    AutoShutdownEnabled != _originalAutoShutdownEnabled ||
@@ -518,7 +518,7 @@ namespace IRIS.UI.ViewModels
                    WarningSustainSeconds != _originalWarningSustainSeconds ||
                    CriticalSustainSeconds != _originalCriticalSustainSeconds;
         }
-        
+
         private bool ValidatePolicySettings()
         {
             if (WallpaperResetEnabled && (string.IsNullOrEmpty(SelectedWallpaperPath) || SelectedWallpaperPath == "No wallpaper selected"))
@@ -547,7 +547,7 @@ namespace IRIS.UI.ViewModels
                 StartMessageTimer();
                 return false;
             }
-            
+
             StatusMessage = string.Empty;
             return true;
         }
@@ -581,23 +581,23 @@ namespace IRIS.UI.ViewModels
             var roomData = _dbContext?.Rooms
                 .Include(r => r.Policies)
                 .FirstOrDefault(r => r.Id == selectedRoom.Id);
-                
+
             var activePolicy = roomData?.Policies?.FirstOrDefault(p => p.IsActive);
-            
+
             if (activePolicy != null)
             {
                 // Update current status display
                 CurrentWallpaperStatus = activePolicy.ResetWallpaperOnStartup ? "ON" : "OFF";
                 CurrentWallpaperStatusColor = activePolicy.ResetWallpaperOnStartup ? "#10B981" : "#EF4444";
-                
+
                 CurrentShutdownStatus = activePolicy.AutoShutdownIdleMinutes.HasValue ? $"{activePolicy.AutoShutdownIdleMinutes}min" : "OFF";
                 CurrentShutdownStatusColor = activePolicy.AutoShutdownIdleMinutes.HasValue ? "#F59E0B" : "#EF4444";
-                
+
                 // Load settings into form controls
                 WallpaperResetEnabled = activePolicy.ResetWallpaperOnStartup;
                 AutoShutdownEnabled = activePolicy.AutoShutdownIdleMinutes.HasValue;
                 AutoShutdownMinutes = activePolicy.AutoShutdownIdleMinutes ?? 30;
-                
+
                 if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
                 {
                     SelectedWallpaperPath = activePolicy.WallpaperPath;
@@ -623,7 +623,7 @@ namespace IRIS.UI.ViewModels
                 PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
                 WarningSustainSeconds = activePolicy.WarningSustainSeconds;
                 CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
-                
+
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
@@ -653,7 +653,7 @@ namespace IRIS.UI.ViewModels
                 CurrentWallpaperStatusColor = "#EF4444";
                 CurrentShutdownStatus = "OFF";
                 CurrentShutdownStatusColor = "#EF4444";
-                
+
                 WallpaperResetEnabled = false;
                 AutoShutdownEnabled = false;
                 AutoShutdownMinutes = 30;
@@ -674,7 +674,7 @@ namespace IRIS.UI.ViewModels
                 PacketLossCriticalThreshold = 10;
                 WarningSustainSeconds = 30;
                 CriticalSustainSeconds = 20;
-                
+
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
                 _originalAutoShutdownEnabled = AutoShutdownEnabled;
@@ -697,7 +697,7 @@ namespace IRIS.UI.ViewModels
                 _originalWarningSustainSeconds = WarningSustainSeconds;
                 _originalCriticalSustainSeconds = CriticalSustainSeconds;
             }
-            
+
             OnPropertyChanged(nameof(CurrentWallpaperStatus));
             OnPropertyChanged(nameof(CurrentWallpaperStatusColor));
             OnPropertyChanged(nameof(CurrentShutdownStatus));
@@ -707,24 +707,24 @@ namespace IRIS.UI.ViewModels
         private void UpdateSelectionStatus()
         {
             var selectedCount = Rooms.Count(r => r.IsSelected);
-            SelectionStatusText = selectedCount == 0 ? "No rooms selected" : 
-                                selectedCount == 1 ? "1 room selected" : 
+            SelectionStatusText = selectedCount == 0 ? "No rooms selected" :
+                                selectedCount == 1 ? "1 room selected" :
                                 $"{selectedCount} rooms selected";
         }
 
         private void UpdateSelectedRoomPolicies()
         {
             SelectedRoomPolicies.Clear();
-            
+
             var selectedRooms = Rooms.Where(r => r.IsSelected).ToList();
             foreach (var room in selectedRooms)
             {
                 var roomData = _dbContext?.Rooms
                     .Include(r => r.Policies)
                     .FirstOrDefault(r => r.Id == room.Id);
-                    
+
                 var activePolicy = roomData?.Policies?.FirstOrDefault(p => p.IsActive);
-                
+
                 var policyDisplay = new RoomPolicyDisplay
                 {
                     RoomNumber = room.RoomNumber,
@@ -732,10 +732,10 @@ namespace IRIS.UI.ViewModels
                     WallpaperEnabled = activePolicy?.ResetWallpaperOnStartup ?? false,
                     AutoShutdownEnabled = activePolicy?.AutoShutdownIdleMinutes.HasValue ?? false,
                     AutoShutdownMinutes = activePolicy?.AutoShutdownIdleMinutes,
-                    LastUpdated = activePolicy?.UpdatedAt?.ToString("MMM dd, HH:mm") ?? 
+                    LastUpdated = activePolicy?.UpdatedAt?.ToString("MMM dd, HH:mm") ??
                                  activePolicy?.CreatedAt.ToString("MMM dd, HH:mm") ?? "Never"
                 };
-                
+
                 SelectedRoomPolicies.Add(policyDisplay);
             }
         }
@@ -779,7 +779,7 @@ namespace IRIS.UI.ViewModels
                     .FirstOrDefaultAsync(r => r.Id == selectedRoom.Id);
 
                 var activePolicy = roomData?.Policies?.FirstOrDefault(p => p.IsActive);
-                
+
                 if (activePolicy != null)
                 {
                     WallpaperResetEnabled = activePolicy.ResetWallpaperOnStartup;
@@ -801,7 +801,7 @@ namespace IRIS.UI.ViewModels
                     PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
                     WarningSustainSeconds = activePolicy.WarningSustainSeconds;
                     CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
-                    
+
                     if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
                     {
                         SelectedWallpaperPath = activePolicy.WallpaperPath;
@@ -975,10 +975,10 @@ namespace IRIS.UI.ViewModels
 
         public string StatusText => HasActivePolicy ? "Active" : "No Policies";
         public string StatusColor => HasActivePolicy ? "#10B981" : "#6B7280";
-        
+
         public string WallpaperStatus => WallpaperEnabled ? "ON" : "OFF";
         public string WallpaperStatusColor => WallpaperEnabled ? "#10B981" : "#EF4444";
-        
+
         public string ShutdownStatus => AutoShutdownEnabled ? $"{AutoShutdownMinutes}min" : "OFF";
         public string ShutdownStatusColor => AutoShutdownEnabled ? "#F59E0B" : "#EF4444";
 
