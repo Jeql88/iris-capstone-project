@@ -32,7 +32,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left Panel: Room Selection -->
-            <ui:Card Grid.Column="0">
+            <ui:Card Grid.Column="0" VerticalAlignment="Top">
                 <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -134,7 +134,7 @@
             </ui:Card>
 
             <!-- Right Panel: Policy Controls -->
-            <ui:Card Grid.Column="2">
+            <ui:Card Grid.Column="2" VerticalAlignment="Top">
                 <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
