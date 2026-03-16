@@ -4,20 +4,23 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="340"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- LEFT: Rooms and Unassigned PCs Section -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+        <!-- Main Content -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="25,20">
                 <!-- Header -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                    <ui:SymbolIcon Symbol="Building24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                    <TextBlock Text="Laboratories" FontSize="32" FontWeight="Bold" 
-                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid Margin="0,0,0,25">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <ui:SymbolIcon Symbol="Building24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                        <TextBlock Text="Laboratories" FontSize="32" FontWeight="Bold" 
+                                   Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ui:Button Content="Add New Laboratory" 
+                               Command="{Binding OpenAddModalCommand}"
+                               Icon="{ui:SymbolIcon Add24}"
+                               Appearance="Primary"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center"/>
+                </Grid>
 
                 <!-- Rooms Card -->
                 <ui:Card Margin="0,0,0,20">
@@ -36,8 +39,7 @@
 
                         <!-- Rooms List -->
                         <Grid Grid.Row="1" MinHeight="250">
-                            <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" 
-                                     MouseDown="ListBox_MouseDown">
+                            <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                         <Grid HorizontalAlignment="Stretch">
@@ -51,14 +53,21 @@
                                             <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                             <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                                         </StackPanel>
-                                        <ui:Button Grid.Column="2" Content="View PCs" 
-                                                   Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                   CommandParameter="{Binding Id}"
-                                                   Icon="{ui:SymbolIcon Laptop24}"
-                                                   Appearance="Secondary"
-                                                   Padding="8,4"
-                                                   VerticalAlignment="Center"
-                                                   HorizontalAlignment="Right"/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <ui:Button Content="Edit" 
+                                                       Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}"
+                                                       Icon="{ui:SymbolIcon Edit24}"
+                                                       Appearance="Secondary"
+                                                       Padding="8,4"
+                                                       Margin="0,0,8,0"/>
+                                            <ui:Button Content="View PCs" 
+                                                       Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding Id}"
+                                                       Icon="{ui:SymbolIcon Laptop24}"
+                                                       Appearance="Secondary"
+                                                       Padding="8,4"/>
+                                        </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -148,117 +157,147 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- RIGHT: Add/Manage Laboratory Sidebar -->
-        <Border Grid.Column="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                CornerRadius="12,0,0,12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="20">
-                    <!-- Add New Laboratory Section -->
-                    <ui:Card Margin="0,0,0,20">
-                        <StackPanel Margin="15">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <ui:SymbolIcon Symbol="Add24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Add New Laboratory" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding AddRoomNumber, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Enter room number"
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding AddDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Enter description"
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding AddCapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Enter capacity"
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <CheckBox Content="Active" IsChecked="{Binding AddIsActive}" Margin="0,0,0,20" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            
-                            <ui:Button Content="Add New Laboratory" 
-                                       Command="{Binding CreateCommand}"
-                                       Icon="{ui:SymbolIcon Add24}"
-                                       Appearance="Primary"
-                                       HorizontalAlignment="Stretch"/>
-                        </StackPanel>
-                    </ui:Card>
+        <!-- Add Laboratory Modal -->
+        <Grid Background="#00000080" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+                    Width="500" 
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Manage Laboratory Section -->
-                    <ui:Card>
-                        <StackPanel Margin="15">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <ui:SymbolIcon Symbol="Edit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Manage Laboratory" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Select a room..."
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Select a room..."
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Select a room..."
-                                        Icon="{ui:SymbolIcon Settings24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <CheckBox Content="Active" IsChecked="{Binding IsActive}" Margin="0,0,0,20" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            
-                            <TextBlock Margin="0,0,0,15" Text="{Binding StatusMessage}" FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#0B6A0B"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                                                <Setter Property="Foreground" Value="#B00020"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            
-                            <ui:Button Content="Update" 
-                                       Command="{Binding UpdateCommand}"
-                                       Icon="{ui:SymbolIcon Edit24}"
-                                       Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"
-                                       Margin="0,0,0,10"/>
-                            
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="Add24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Add New Laboratory" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding AddRoomNumber, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter room number"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding AddDescription, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter description"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding AddCapacityText, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter capacity"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <CheckBox Content="Active" IsChecked="{Binding AddIsActive}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel" 
+                                   Command="{Binding CloseAddModalCommand}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button Content="Add Laboratory" 
+                                   Command="{Binding CreateCommand}"
+                                   Icon="{ui:SymbolIcon Add24}"
+                                   Appearance="Primary"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
+
+        <!-- Edit Laboratory Modal -->
+        <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+                    Width="500" 
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="Edit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Edit Laboratory" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter room number"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter description"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="Enter capacity"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <CheckBox Content="Active" IsChecked="{Binding IsActive}" Margin="0,0,0,15" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,0,0,15">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#0B6A0B"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                            <Setter Property="Foreground" Value="#B00020"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Margin="0,20,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,10">
                             <ui:Button Content="Delete" 
                                        Command="{Binding DeleteCommand}"
                                        Icon="{ui:SymbolIcon Delete24}"
                                        Appearance="Danger"
-                                       HorizontalAlignment="Stretch"
-                                       Margin="0,0,0,10"/>
-                            
+                                       Margin="0,0,10,0"/>
                             <ui:Button Content="Assign PCs" 
                                        Command="{Binding AssignCommand}"
                                        Icon="{ui:SymbolIcon Laptop24}"
                                        Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"/>
+                                       Margin="0,0,10,0"/>
                         </StackPanel>
-                    </ui:Card>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button Content="Cancel" 
+                                       Command="{Binding CloseEditModalCommand}"
+                                       Icon="{ui:SymbolIcon Dismiss24}"
+                                       Appearance="Secondary"
+                                       Margin="0,0,10,0"/>
+                            <ui:Button Content="Update" 
+                                       Command="{Binding UpdateCommand}"
+                                       Icon="{ui:SymbolIcon Edit24}"
+                                       Appearance="Primary"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
 
         <!-- Assigned PCs Modal -->
-        <Grid Grid.ColumnSpan="2" Background="#00000080" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <Grid Background="#00000080" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
                     Width="800" 
                     Height="600"
