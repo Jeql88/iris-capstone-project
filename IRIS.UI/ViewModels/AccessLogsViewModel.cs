@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -7,6 +8,7 @@ using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using Microsoft.Win32;
 using System.Threading;
 
 namespace IRIS.UI.ViewModels
@@ -33,6 +35,7 @@ namespace IRIS.UI.ViewModels
         {
             _accessLogsService = accessLogsService;
             RefreshCommand = new RelayCommand(async () => await LoadLogsAsync(), () => true);
+            ExportCommand = new RelayCommand(async () => await ExportLogsAsync(), () => true);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
             _previousPageRelayCommand = new RelayCommand(async () => await PreviousPageAsync(), () => HasPreviousPage);
@@ -117,6 +120,7 @@ namespace IRIS.UI.ViewModels
         public bool HasNextPage => CurrentPage < TotalPages;
 
         public ICommand RefreshCommand { get; }
+        public ICommand ExportCommand { get; }
         public ICommand ApplyFiltersCommand { get; }
         public ICommand ResetFiltersCommand { get; }
         public ICommand PreviousPageCommand { get; }
@@ -172,17 +176,7 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                UserRole? roleFilter = null;
-                if (SelectedRole != "All Roles")
-                {
-                    roleFilter = SelectedRole switch
-                    {
-                        "System Administrator" => UserRole.SystemAdministrator,
-                        "IT Personnel" => UserRole.ITPersonnel,
-                        "Faculty" => UserRole.Faculty,
-                        _ => null
-                    };
-                }
+                UserRole? roleFilter = GetRoleFilter();
 
                 var result = await _accessLogsService.GetAccessLogsAsync(
                     CurrentPage, PageSize, SearchText,
@@ -235,6 +229,88 @@ namespace IRIS.UI.ViewModels
                 CurrentPage++;
                 await LoadLogsAsync();
             }
+        }
+
+        private async Task ExportLogsAsync()
+        {
+            if (StartDate.HasValue && EndDate.HasValue && EndDate.Value.Date < StartDate.Value.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var hasFilters = !string.IsNullOrWhiteSpace(SearchText)
+                             || SelectedRole != "All Roles"
+                             || StartDate.HasValue
+                             || EndDate.HasValue;
+
+            var confirmationMessage = hasFilters
+                ? "This will export all access logs that match the full filter set (Search, Role, From, and To), not just the current page. Continue?"
+                : "No filters are set. This will export all access logs, not just the current page. Continue?";
+
+            var confirmed = MessageBox.Show(
+                confirmationMessage,
+                "Confirm Export",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (confirmed != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var saveDialog = new SaveFileDialog
+            {
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                FileName = $"IRIS_AccessLogs_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                var roleFilter = GetRoleFilter();
+                var startDate = StartDate?.Date;
+                var endDate = EndDate?.Date.AddDays(1).AddSeconds(-1);
+
+                var bytes = await _accessLogsService.ExportAccessLogsToExcelAsync(
+                    SearchText,
+                    null,
+                    roleFilter,
+                    startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : null,
+                    endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : null);
+
+                await File.WriteAllBytesAsync(saveDialog.FileName, bytes);
+                MessageBox.Show("Access logs were exported to an Excel file.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export access logs: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private UserRole? GetRoleFilter()
+        {
+            if (SelectedRole == "All Roles")
+            {
+                return null;
+            }
+
+            return SelectedRole switch
+            {
+                "System Administrator" => UserRole.SystemAdministrator,
+                "IT Personnel" => UserRole.ITPersonnel,
+                "Faculty" => UserRole.Faculty,
+                _ => null
+            };
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

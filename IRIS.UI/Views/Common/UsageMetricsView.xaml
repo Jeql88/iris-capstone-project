@@ -163,7 +163,7 @@
                                     <Grid>
                                         <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
                                         <TextBlock Text="dd/mm/yyyy"
-                                                   Margin="8,0,24,0"
+                                                   Margin="12,0,36,0"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                    IsHitTestVisible="False">
@@ -186,7 +186,7 @@
                                     <Grid>
                                         <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
                                         <TextBlock Text="dd/mm/yyyy"
-                                                   Margin="8,0,24,0"
+                                                   Margin="12,0,36,0"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                    IsHitTestVisible="False">

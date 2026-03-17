@@ -232,7 +232,7 @@ namespace IRIS.UI.ViewModels
             set { _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
         }
 
-        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalCount} total laboratories)";
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalCount} total entries)";
         public bool HasPreviousPage => CurrentPage > 1;
         public bool HasNextPage => CurrentPage < TotalPages;
 

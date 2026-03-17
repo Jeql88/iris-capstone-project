@@ -535,6 +535,28 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
+                var hasFilters = _appliedStartDate.HasValue
+                                 || _appliedEndDate.HasValue
+                                 || !string.IsNullOrWhiteSpace(_appliedAppSearchText)
+                                 || !string.IsNullOrWhiteSpace(_appliedWebSearchText)
+                                 || _appliedAppLaboratory != "All Laboratories"
+                                 || _appliedWebLaboratory != "All Laboratories";
+
+                var confirmationMessage = hasFilters
+                    ? "This will export BOTH Application and Website usage data based on the current applied filters for each tab (including search, laboratory, and date range where applicable), not just the current page. Continue?"
+                    : "No filters are applied. This will export ALL Application and Website usage data, not just the current page. Continue?";
+
+                var confirmed = MessageBox.Show(
+                    confirmationMessage,
+                    "Confirm Export",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (confirmed != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
                 var startUtc = DateTime.SpecifyKind(_appliedStartDate ?? DateTime.UnixEpoch, DateTimeKind.Utc);
                 var endUtc = DateTime.SpecifyKind((_appliedEndDate?.AddDays(1).AddSeconds(-1)) ?? DateTime.UtcNow, DateTimeKind.Utc);
 
