@@ -617,7 +617,13 @@ namespace IRIS.Core.Services
                 .AsNoTracking()
                 .Include(a => a.PC)
                 .ThenInclude(pc => pc.Room)
-                .Where(a => roomId == null || a.PC.RoomId == roomId.Value);
+                .AsQueryable();
+
+            if (roomId.HasValue)
+            {
+                var roomIdValue = roomId.Value;
+                query = query.Where(a => a.PC.RoomId == roomIdValue);
+            }
 
             if (!includeResolved)
             {

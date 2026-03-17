@@ -175,7 +175,12 @@ namespace IRIS.UI.ViewModels
                 _selectedRangePreset = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsCustomRange));
-                _ = ApplyPresetAsync();
+                OnPropertyChanged(nameof(ActiveRangeDescription));
+                // Only auto-apply preset if not already in custom mode
+                if (!string.Equals(value, "Custom", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = ApplyPresetAsync();
+                }
             }
         }
 
@@ -313,8 +318,11 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyDateFilterAsync()
         {
-            SelectedRangePreset = "Custom";
             _useRolling24HourDefault = false;
+            _selectedRangePreset = "Custom";
+            OnPropertyChanged(nameof(SelectedRangePreset));
+            OnPropertyChanged(nameof(IsCustomRange));
+            OnPropertyChanged(nameof(ActiveRangeDescription));
             _cache.CurrentRoomFilter = _selectedRoomId;
             await LoadDataAsync();
         }
