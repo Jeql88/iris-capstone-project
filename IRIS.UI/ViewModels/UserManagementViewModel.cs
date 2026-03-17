@@ -26,6 +26,7 @@ namespace IRIS.UI.ViewModels
         private int _totalCount = 0;
         private UserDisplayModel? _selectedUser;
         private bool _isActive = true;
+        private bool _isAddModalOpen = false;
 
         public UserManagementViewModel(IUserManagementService userManagementService)
         {
@@ -37,6 +38,8 @@ namespace IRIS.UI.ViewModels
             _nextPageRelayCommand = new RelayCommand(async () => await NextPageAsync(), () => HasNextPage);
             PreviousPageCommand = _previousPageRelayCommand;
             NextPageCommand = _nextPageRelayCommand;
+            OpenAddModalCommand = new RelayCommand(() => IsAddModalOpen = true, () => true);
+            CloseAddModalCommand = new RelayCommand(() => IsAddModalOpen = false, () => true);
 
             _ = LoadUsersAsync();
         }
@@ -114,11 +117,19 @@ namespace IRIS.UI.ViewModels
         public bool HasPreviousPage => CurrentPage > 1;
         public bool HasNextPage => CurrentPage < TotalPages;
 
+        public bool IsAddModalOpen
+        {
+            get => _isAddModalOpen;
+            set { _isAddModalOpen = value; OnPropertyChanged(); }
+        }
+
         public ICommand RefreshCommand { get; }
         public ICommand ApplyFiltersCommand { get; }
         public ICommand ResetFiltersCommand { get; }
         public ICommand PreviousPageCommand { get; }
         public ICommand NextPageCommand { get; }
+        public ICommand OpenAddModalCommand { get; }
+        public ICommand CloseAddModalCommand { get; }
 
         private async Task ApplyFiltersAsync()
         {

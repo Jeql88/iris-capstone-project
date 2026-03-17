@@ -4,20 +4,23 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="340"/>
-        </Grid.ColumnDefinitions>
-
         <!-- LEFT: User List Section -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="25,20">
                 <!-- Header -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                    <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                    <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
-                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid Margin="0,0,0,25">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                        <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
+                                   Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ui:Button Content="Add New User" 
+                               Command="{Binding OpenAddModalCommand}"
+                               Icon="{ui:SymbolIcon Add24}"
+                               Appearance="Primary"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center"/>
+                </Grid>
 
                 <!-- Search and Filters Card -->
                 <ui:Card Margin="0,0,0,20">
@@ -173,115 +176,61 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- RIGHT: Add/Edit User Sidebar -->
-        <Border Grid.Column="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                CornerRadius="12,0,0,12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="20">
-                    <!-- Add New User Section -->
-                    <ui:Card Margin="0,0,0,20">
-                        <StackPanel Margin="15">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox x:Name="AddFullNameTextBox" 
-                                        PlaceholderText="Enter full name"
-                                        Icon="{ui:SymbolIcon Person24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox x:Name="AddUsernameTextBox" 
-                                        PlaceholderText="Enter username"
-                                        Icon="{ui:SymbolIcon PersonAccounts24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox x:Name="AddRoleComboBox" Margin="0,0,0,20">
-                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Faculty" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            </ComboBox>
-                            
-                            <ui:Button x:Name="AddUserButton" 
-                                       Content="Add New User" 
-                                       Icon="{ui:SymbolIcon Add24}"
-                                       Appearance="Primary"
-                                       HorizontalAlignment="Stretch"
-                                       Click="AddUser_Click"/>
-                        </StackPanel>
-                    </ui:Card>
+        <!-- Add User Modal -->
+        <Grid Background="#00000080" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="White" 
+                    Width="1000"
+                    MaxWidth="1000"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid Width="400">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Manage User Section -->
-                    <ui:Card>
-                        <StackPanel Margin="15">
-                            <Grid Margin="0,0,0,20">
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Manage User" FontSize="18" FontWeight="Bold" 
-                                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                                </StackPanel>
-                                <ui:Button x:Name="HelpIcon" 
-                                           Icon="{ui:SymbolIcon QuestionCircle24}"
-                                           Appearance="Secondary"
-                                           Click="HelpIcon_Click"
-                                           HorizontalAlignment="Right"/>
-                            </Grid>
-                            
-                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox x:Name="EditFullNameTextBox" 
-                                        PlaceholderText="Select a user..."
-                                        Icon="{ui:SymbolIcon Person24}"
-                                        IsEnabled="False"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox x:Name="EditUsernameTextBox" 
-                                        PlaceholderText="Select a user..."
-                                        Icon="{ui:SymbolIcon PersonAccounts24}"
-                                        IsEnabled="False"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox x:Name="EditRoleComboBox" IsEnabled="False" Margin="0,0,0,15">
-                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            </ComboBox>
-                            
-                            <!-- Clear Selection Button -->
-                            <ui:Button x:Name="ClearSelectionButton" 
-                                       Content="Clear Selection" 
-                                       Icon="{ui:SymbolIcon Dismiss24}"
-                                       Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"
-                                       Click="ClearSelection_Click" 
-                                       Visibility="Collapsed"
-                                       Margin="0,0,0,10"/>
-                            
-                            <ui:Button x:Name="EditUserButton" 
-                                       Content="Edit User" 
-                                       Icon="{ui:SymbolIcon Edit24}"
-                                       Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"
-                                       IsEnabled="False" 
-                                       Click="EditUser_Click"
-                                       Margin="0,0,0,10"/>
-                            
-                            <ui:Button x:Name="DeactivateUserButton" 
-                                       Content="Deactivate User" 
-                                       Icon="{ui:SymbolIcon Delete24}"
-                                       Appearance="Danger"
-                                       HorizontalAlignment="Stretch"
-                                       IsEnabled="False" 
-                                       Click="DeactivateUser_Click"/>
-                        </StackPanel>
-                    </ui:Card>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox x:Name="AddFullNameTextBox" 
+                                    PlaceholderText="Enter full name"
+                                    Icon="{ui:SymbolIcon Person24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox x:Name="AddUsernameTextBox" 
+                                    PlaceholderText="Enter username"
+                                    Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox x:Name="AddRoleComboBox" Margin="0,0,0,15">
+                            <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="Faculty" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel" 
+                                   Command="{Binding CloseAddModalCommand}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button x:Name="AddUserButton" 
+                                   Content="Add User" 
+                                   Icon="{ui:SymbolIcon Add24}"
+                                   Appearance="Primary"
+                                   Click="AddUser_Click"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
     </Grid>
 </UserControl>
