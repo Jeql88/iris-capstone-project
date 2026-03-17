@@ -718,6 +718,13 @@ namespace IRIS.UI.ViewModels
             IsStatusError = isError;
         }
 
+        public void OnNavigatedTo()
+        {
+            _isViewActive = true;
+            _ = LoadRoomsAsync();
+            _ = LoadUnassignedAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isViewActive = false;

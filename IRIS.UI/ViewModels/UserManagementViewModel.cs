@@ -298,6 +298,12 @@ namespace IRIS.UI.ViewModels
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _ = LoadUsersAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;

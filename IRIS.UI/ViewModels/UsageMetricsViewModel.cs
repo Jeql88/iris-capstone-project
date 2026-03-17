@@ -510,6 +510,12 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _ = LoadDataAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;

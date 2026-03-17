@@ -525,6 +525,13 @@ namespace IRIS.UI.ViewModels
             return value;
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadAlertsAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;

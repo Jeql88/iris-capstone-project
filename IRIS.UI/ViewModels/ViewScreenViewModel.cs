@@ -440,6 +440,11 @@ namespace IRIS.UI.ViewModels
             _screenRefreshTimer.Stop();
         }
 
+        public void OnNavigatedTo()
+        {
+            _ = OnActivatedAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             OnDeactivated();

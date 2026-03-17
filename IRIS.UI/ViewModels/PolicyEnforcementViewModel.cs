@@ -844,6 +844,13 @@ namespace IRIS.UI.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadRoomDataAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;

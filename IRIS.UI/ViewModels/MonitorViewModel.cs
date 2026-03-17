@@ -339,6 +339,13 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadPCDataAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;

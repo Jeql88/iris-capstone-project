@@ -315,6 +315,7 @@ namespace IRIS.UI.ViewModels
         {
             SelectedRangePreset = "Custom";
             _useRolling24HourDefault = false;
+            _cache.CurrentRoomFilter = _selectedRoomId;
             await LoadDataAsync();
         }
 
@@ -526,6 +527,13 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadDataAsync();
+        }
 
         public void OnNavigatedFrom()
         {

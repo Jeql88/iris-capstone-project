@@ -79,6 +79,7 @@ namespace IRIS.UI.Services
 
                     _navigationStack.Push((viewKey, parameter));
                     _navigationFrame.Content = userControl;
+                    NotifyCurrentViewNavigatedTo(userControl);
                 }
             }
             catch (Exception ex)
@@ -129,6 +130,7 @@ namespace IRIS.UI.Services
                     }
 
                     _navigationFrame.Content = userControl;
+                    NotifyCurrentViewNavigatedTo(userControl);
                 }
             }
             catch (Exception ex)
@@ -165,6 +167,26 @@ namespace IRIS.UI.Services
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error while notifying current view of navigation away.");
+            }
+        }
+
+        private void NotifyCurrentViewNavigatedTo(FrameworkElement view)
+        {
+            try
+            {
+                if (view.DataContext is INavigationAware navigationAware)
+                {
+                    navigationAware.OnNavigatedTo();
+                }
+
+                if (view is INavigationAware viewNavigationAware)
+                {
+                    viewNavigationAware.OnNavigatedTo();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while notifying view of navigation to.");
             }
         }
 
