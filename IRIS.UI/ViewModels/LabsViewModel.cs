@@ -141,6 +141,20 @@ namespace IRIS.UI.ViewModels
             set { _isStatusError = value; OnPropertyChanged(); }
         }
 
+        private bool _isAddModalOpen;
+        public bool IsAddModalOpen
+        {
+            get => _isAddModalOpen;
+            set { _isAddModalOpen = value; OnPropertyChanged(); }
+        }
+
+        private bool _isEditModalOpen;
+        public bool IsEditModalOpen
+        {
+            get => _isEditModalOpen;
+            set { _isEditModalOpen = value; OnPropertyChanged(); }
+        }
+
         private bool _isAssignedPCsModalOpen;
         public bool IsAssignedPCsModalOpen
         {
@@ -162,6 +176,10 @@ namespace IRIS.UI.ViewModels
             set { _modalRoomNumber = value; OnPropertyChanged(); }
         }
 
+        public RelayCommand OpenAddModalCommand { get; }
+        public RelayCommand CloseAddModalCommand { get; }
+        public RelayCommand OpenEditModalCommand { get; }
+        public RelayCommand CloseEditModalCommand { get; }
         public RelayCommand CreateCommand { get; }
         public RelayCommand UpdateCommand { get; }
         public RelayCommand DeleteCommand { get; }
@@ -174,9 +192,13 @@ namespace IRIS.UI.ViewModels
             _roomService = roomService;
             _pcAdminService = pcAdminService;
 
+            OpenAddModalCommand = new RelayCommand(() => { IsAddModalOpen = true; return Task.CompletedTask; }, () => true);
+            CloseAddModalCommand = new RelayCommand(() => { IsAddModalOpen = false; return Task.CompletedTask; }, () => true);
+            OpenEditModalCommand = new RelayCommand((param) => { OpenEditModal(param); return Task.CompletedTask; }, () => true);
+            CloseEditModalCommand = new RelayCommand(() => { IsEditModalOpen = false; return Task.CompletedTask; }, () => true);
             CreateCommand = new RelayCommand(async () => await CreateAsync(), () => !string.IsNullOrWhiteSpace(AddRoomNumber));
             UpdateCommand = new RelayCommand(async () => await UpdateAsync(), () => SelectedRoom != null);
-            DeleteCommand = new RelayCommand(async () => await DeleteAsync(), () => SelectedRoom != null);
+            DeleteCommand = new RelayCommand(async (param) => await DeleteAsync(param), () => true);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
             UnassignCommand = new RelayCommand(async () => await UnassignAsync(), () => true);
             ViewAssignedPCsCommand = new RelayCommand(async (param) => await ViewAssignedPCsAsync(param), () => true);
@@ -262,6 +284,15 @@ namespace IRIS.UI.ViewModels
             finally
             {
                 _loadUnassignedSemaphore.Release();
+            }
+        }
+
+        private void OpenEditModal(object? param)
+        {
+            if (param is RoomDto room)
+            {
+                SelectedRoom = room;
+                IsEditModalOpen = true;
             }
         }
 
@@ -369,6 +400,7 @@ namespace IRIS.UI.ViewModels
                 AddDescription = string.Empty;
                 AddCapacityText = "0";
                 AddIsActive = true;
+                IsAddModalOpen = false;
                 await LoadRoomsAsync(created.Id);
                 SetStatus($"Room {created.RoomNumber} created.", false);
             }
@@ -402,6 +434,7 @@ namespace IRIS.UI.ViewModels
                 var updated = await _roomService.UpdateRoomAsync(SelectedRoom.Id, request);
                 if (updated != null)
                 {
+                    IsEditModalOpen = false;
                     await LoadRoomsAsync(updated.Id);
                     SetStatus($"Room {updated.RoomNumber} updated.", false);
                 }
@@ -412,14 +445,14 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private async Task DeleteAsync()
+        private async Task DeleteAsync(object? param)
         {
-            if (SelectedRoom == null) return;
-            if (SelectedRoom.RoomNumber == "DEFAULT") return;
+            if (param is not RoomDto room) return;
+            if (room.RoomNumber == "DEFAULT") return;
 
             var dialog = new ConfirmationDialog(
                 "Delete Laboratory",
-                $"Are you sure you want to delete laboratory '{SelectedRoom.RoomNumber}'?\n\nAll PCs will be moved to the DEFAULT room and all policies will be deleted. This action cannot be undone.",
+                $"Are you sure you want to delete laboratory '{room.RoomNumber}'?\n\nAll PCs will be moved to the DEFAULT room and all policies will be deleted. This action cannot be undone.",
                 "Delete24");
             dialog.Owner = Application.Current.MainWindow;
             
@@ -428,10 +461,14 @@ namespace IRIS.UI.ViewModels
 
             try
             {
-                var deleted = await _roomService.DeleteRoomAsync(SelectedRoom.Id);
+                var deleted = await _roomService.DeleteRoomAsync(room.Id);
                 if (deleted)
                 {
-                    SelectedRoom = null;
+                    if (SelectedRoom?.Id == room.Id)
+                    {
+                        SelectedRoom = null;
+                        IsEditModalOpen = false;
+                    }
                     await LoadRoomsAsync();
                     await LoadUnassignedAsync();
                     SetStatus("Room deleted.", false);

@@ -54,6 +54,13 @@
                                             <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <ui:Button Content="View PCs" 
+                                                       Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding Id}"
+                                                       Icon="{ui:SymbolIcon Laptop24}"
+                                                       Appearance="Secondary"
+                                                       Padding="8,4"
+                                                       Margin="0,0,8,0"/>
                                             <ui:Button Content="Edit" 
                                                        Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                        CommandParameter="{Binding}"
@@ -61,11 +68,11 @@
                                                        Appearance="Secondary"
                                                        Padding="8,4"
                                                        Margin="0,0,8,0"/>
-                                            <ui:Button Content="View PCs" 
-                                                       Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                       CommandParameter="{Binding Id}"
-                                                       Icon="{ui:SymbolIcon Laptop24}"
-                                                       Appearance="Secondary"
+                                            <ui:Button Content="Delete" 
+                                                       Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}"
+                                                       Icon="{ui:SymbolIcon Delete24}"
+                                                       Appearance="Danger"
                                                        Padding="8,4"/>
                                         </StackPanel>
                                     </Grid>
@@ -269,11 +276,6 @@
 
                     <StackPanel Grid.Row="2" Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,10">
-                            <ui:Button Content="Delete" 
-                                       Command="{Binding DeleteCommand}"
-                                       Icon="{ui:SymbolIcon Delete24}"
-                                       Appearance="Danger"
-                                       Margin="0,0,10,0"/>
                             <ui:Button Content="Assign PCs" 
                                        Command="{Binding AssignCommand}"
                                        Icon="{ui:SymbolIcon Laptop24}"
