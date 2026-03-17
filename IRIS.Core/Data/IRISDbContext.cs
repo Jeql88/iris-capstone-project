@@ -305,16 +305,15 @@ namespace IRIS.Core.Data
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Severity and Type stored as text in the database (string representation).
-            // Configure enum properties to use string conversion so EF reads/writes
-            // the existing "text" columns instead of attempting integer mapping.
-            modelBuilder.Entity<Alert>()
-                .Property(a => a.Severity)
-                .HasConversion<string>();
-
-            modelBuilder.Entity<Alert>()
-                .Property(a => a.Type)
-                .HasConversion<string>();
+            // Severity and Type stored as integers in the database (enum values)
+            // Remove string conversion to match PostgreSQL integer columns
+            // modelBuilder.Entity<Alert>()
+            //     .Property(a => a.Severity)
+            //     .HasConversion<string>();
+            //
+            // modelBuilder.Entity<Alert>()
+            //     .Property(a => a.Type)
+            //     .HasConversion<string>();
 
             modelBuilder.Entity<Alert>()
                 .HasIndex(a => new { a.PCId, a.AlertKey, a.IsResolved });

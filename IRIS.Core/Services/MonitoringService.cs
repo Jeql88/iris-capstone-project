@@ -613,33 +613,29 @@ namespace IRIS.Core.Services
             var liveAlerts = await GetLiveAlertsAsync(roomId, 500);
             await SyncLiveAlertsAsync(liveAlerts, roomId);
 
+            // Build query with efficient database-side filtering
             var query = _context.Alerts
                 .AsNoTracking()
                 .Include(a => a.PC)
-                .ThenInclude(pc => pc.Room)
+                .ThenInclude(p => p.Room)
                 .AsQueryable();
-
-            if (roomId.HasValue)
-            {
-                var roomIdValue = roomId.Value;
-                query = query.Where(a => a.PC.RoomId == roomIdValue);
-            }
 
             if (!includeResolved)
             {
                 query = query.Where(a => !a.IsResolved);
             }
 
-            var alerts = await query
-                .OrderByDescending(a => a.CreatedAt)
-                .Take(Math.Max(1, maxItems))
-                .ToListAsync();
+            if (roomId.HasValue)
+            {
+                query = query.Where(a => a.PC.RoomId == roomId.Value);
+            }
 
-            // Sort by severity in-memory to avoid Npgsql enum/string cast issues
-            alerts = alerts
-                .OrderByDescending(a => (int)a.Severity)
+            // Get alerts with database-side ordering and limiting
+            var alerts = await query
+                .OrderByDescending(a => a.Severity)
                 .ThenByDescending(a => a.CreatedAt)
-                .ToList();
+                .Take(maxItems)
+                .ToListAsync();
 
             return alerts.Select(a => new PersistedAlertItem
             {
