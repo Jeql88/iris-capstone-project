@@ -281,10 +281,10 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            await LoadAlertsAsync();
+            await LoadAlertsAsync(preserveCurrentPage: true);
         }
 
-        private async Task LoadAlertsAsync()
+        private async Task LoadAlertsAsync(bool preserveCurrentPage = false)
         {
             if (!_isActive)
             {
@@ -334,7 +334,7 @@ namespace IRIS.UI.ViewModels
 
                 _lastUpdatedUtc = DateTime.UtcNow;
                 OnPropertyChanged(nameof(LastUpdatedText));
-                ApplyFilters();
+                ApplyFilters(preserveCurrentPage);
             }
             finally
             {
@@ -343,7 +343,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void ApplyFilters()
+        private void ApplyFilters(bool preserveCurrentPage = false)
         {
             var filtered = Alerts.AsEnumerable();
 
@@ -388,7 +388,7 @@ namespace IRIS.UI.ViewModels
             IsAllSelected = false;
             (AcknowledgeVisibleCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ResolveVisibleCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            GoToPage(1);
+            GoToPage(preserveCurrentPage ? CurrentPage : 1);
         }
 
         private void GoToPage(int page)
