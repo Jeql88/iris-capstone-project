@@ -21,6 +21,7 @@ namespace IRIS.Core.Services
         {
             return await _context.Rooms
                 .AsNoTracking()
+                .Where(r => r.RoomNumber != "DEFAULT")
                 .OrderBy(r => r.RoomNumber)
                 .Select(r => new RoomDto(r.Id, r.RoomNumber, r.Description, r.Capacity, r.IsActive, r.CreatedAt))
                 .ToListAsync();
@@ -28,7 +29,7 @@ namespace IRIS.Core.Services
 
         public async Task<PaginatedResult<RoomDto>> GetRoomsPagedAsync(int pageNumber, int pageSize)
         {
-            var query = _context.Rooms.AsNoTracking().OrderBy(r => r.RoomNumber);
+            var query = _context.Rooms.AsNoTracking().Where(r => r.RoomNumber != "DEFAULT").OrderBy(r => r.RoomNumber);
             var totalCount = await query.CountAsync();
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
@@ -131,7 +132,7 @@ namespace IRIS.Core.Services
             }
 
             var defaultRoom = await EnsureDefaultRoomAsync();
-            
+
             // Reassign PCs to default room
             var roomPcs = await _context.PCs.Where(p => p.RoomId == room.Id).ToListAsync();
             foreach (var pc in roomPcs)

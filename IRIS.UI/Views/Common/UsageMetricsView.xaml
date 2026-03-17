@@ -136,13 +136,29 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="1*"/>
                                     <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1.2*"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                    <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ui:TextBox PlaceholderText="Search applications..."
+                                                Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}">
+                                        <ui:TextBox.Icon>
+                                            <ui:SymbolIcon Symbol="Search24"/>
+                                        </ui:TextBox.Icon>
+                                    </ui:TextBox>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBox ItemsSource="{Binding AppLaboratoryOptions}"
+                                              SelectedItem="{Binding SelectedAppLaboratory}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Margin="0,0,15,0">
                                     <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <Grid>
                                         <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
@@ -165,7 +181,7 @@
                                     </Grid>
                                 </StackPanel>
 
-                                <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                                <StackPanel Grid.Column="3" Margin="0,0,0,0">
                                     <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <Grid>
                                         <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
@@ -186,22 +202,6 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </Grid>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" Margin="0,0,15,0">
-                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBox ItemsSource="{Binding AppLaboratoryOptions}"
-                                              SelectedItem="{Binding SelectedAppLaboratory}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="3">
-                                    <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ui:TextBox PlaceholderText="Search applications..."
-                                                Text="{Binding AppSearchText, UpdateSourceTrigger=PropertyChanged}">
-                                        <ui:TextBox.Icon>
-                                            <ui:SymbolIcon Symbol="Search24"/>
-                                        </ui:TextBox.Icon>
-                                    </ui:TextBox>
                                 </StackPanel>
                             </Grid>
 
@@ -328,17 +328,11 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1*"/>
                                     <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="1*"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBox ItemsSource="{Binding WebLaboratoryOptions}"
-                                              SelectedItem="{Binding SelectedWebLaboratory}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1">
                                     <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ui:TextBox PlaceholderText="Search websites..."
                                                 Text="{Binding WebSearchText, UpdateSourceTrigger=PropertyChanged}">
@@ -346,6 +340,12 @@
                                             <ui:SymbolIcon Symbol="Search24"/>
                                         </ui:TextBox.Icon>
                                     </ui:TextBox>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBox ItemsSource="{Binding WebLaboratoryOptions}"
+                                              SelectedItem="{Binding SelectedWebLaboratory}"/>
                                 </StackPanel>
                             </Grid>
 

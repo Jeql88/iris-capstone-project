@@ -49,59 +49,62 @@
 
                         <!-- Rooms List -->
                         <Grid Grid.Row="1" MinHeight="250">
-                            <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                        <Grid HorizontalAlignment="Stretch">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,8" HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                            <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                            <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                            <ui:Button Content="View PCs" 
-                                                       Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                       CommandParameter="{Binding Id}"
-                                                       Icon="{ui:SymbolIcon Laptop24}"
-                                                       Appearance="Secondary"
-                                                       Padding="8,4"
-                                                       Margin="0,0,12,0"/>
-                                            <ui:Button Content="Edit" 
-                                                       Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                       CommandParameter="{Binding}"
-                                                       Icon="{ui:SymbolIcon Edit24}"
-                                                       Appearance="Secondary"
-                                                       Padding="8,4"
-                                                       Margin="0,0,12,0"/>
-                                            <ui:Button Content="Delete" 
-                                                       Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                       CommandParameter="{Binding}"
-                                                       Icon="{ui:SymbolIcon Delete24}"
-                                                       Appearance="Danger"
-                                                       Padding="8,4"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="24,2"/>
-                                        <Setter Property="Margin" Value="0,2"/>
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Background" Value="#D6E9FF"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                            </ListBox>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Rooms}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="24,8" Margin="0,4" CornerRadius="6" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="Transparent">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource IRISSecondaryBrush}"/>
+                                                                <Setter Property="BorderThickness" Value="1"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid HorizontalAlignment="Stretch">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0" HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding RoomNumber}" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding Capacity, StringFormat='Capacity: {0}'}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                        <ui:Button Content="View PCs" 
+                                                                   Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding Id}"
+                                                                   Icon="{ui:SymbolIcon Laptop24}"
+                                                                   Appearance="Secondary"
+                                                                   Padding="8,4"
+                                                                   Margin="0,0,12,0"/>
+                                                        <ui:Button Content="Edit" 
+                                                                   Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}"
+                                                                   Icon="{ui:SymbolIcon Edit24}"
+                                                                   Appearance="Secondary"
+                                                                   Padding="8,4"
+                                                                   Margin="0,0,12,0"/>
+                                                        <ui:Button Content="Delete" 
+                                                                   Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}"
+                                                                   Icon="{ui:SymbolIcon Delete24}"
+                                                                   Appearance="Danger"
+                                                                   Padding="8,4"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                             
                             <!-- Empty State -->
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

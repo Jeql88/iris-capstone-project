@@ -22,14 +22,35 @@
                     </StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.2*"/>
-                            <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1.2*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- From Date -->
+                        <!-- Search Box -->
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                        PlaceholderText="Search by username, action, or IP..."
+                                        Icon="{ui:SymbolIcon Search24}"
+                                        ToolTip="Search by username, action, details, or IP address"/>
+                        </StackPanel>
+
+                        <!-- Role Filter -->
+                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
+                                         SelectedValuePath="Content">
+                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- From Date -->
+                        <StackPanel Grid.Column="2" Margin="0,0,15,0">
                             <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <Grid>
                                 <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
@@ -53,7 +74,7 @@
                         </StackPanel>
 
                         <!-- To Date -->
-                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                        <StackPanel Grid.Column="3" Margin="0,0,0,0">
                             <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <Grid>
                                 <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
@@ -74,27 +95,6 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Grid>
-                        </StackPanel>
-
-                        <!-- Search Box -->
-                        <StackPanel Grid.Column="2" Margin="0,0,15,0">
-                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Search by username, action, or IP..."
-                                        Icon="{ui:SymbolIcon Search24}"
-                                        ToolTip="Search by username, action, details, or IP address"/>
-                        </StackPanel>
-
-                        <!-- Role Filter -->
-                        <StackPanel Grid.Column="3">
-                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
-                                         SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            </ComboBox>
                         </StackPanel>
                     </Grid>
 

@@ -363,6 +363,7 @@ namespace IRIS.Core.Services
         {
             return await _context.Rooms
                 .AsNoTracking()
+                .Where(r => r.RoomNumber != "DEFAULT")
                 .OrderBy(r => r.RoomNumber)
                 .Select(r => new RoomDto(
                     r.Id,

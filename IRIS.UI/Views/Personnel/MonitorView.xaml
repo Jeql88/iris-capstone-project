@@ -39,6 +39,12 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                    <ComboBox Width="160" Height="32" Margin="0,0,8,0"
+                              SelectedValue="{Binding SelectedPcStatus, Mode=TwoWay}" SelectedValuePath="Content">
+                        <ComboBoxItem Content="All Statuses" IsSelected="True"/>
+                        <ComboBoxItem Content="Online Only" />
+                        <ComboBoxItem Content="Offline Only" />
+                    </ComboBox>
                     <ui:TextBox Width="200"
                                 Height="32"
                                 PlaceholderText="Search PCs..."

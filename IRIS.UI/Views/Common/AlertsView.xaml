@@ -248,12 +248,12 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="160"/>
-                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90"/>
-                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="100"/>
-                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="100"/>
-                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="140"/>
-                        <DataGridTextColumn Header="Room" Binding="{Binding RoomName}" Width="100"/>
+                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
+                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="140"/>
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="140"/>
+                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="140"/>
+                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="190"/>
+                        <DataGridTextColumn Header="Room" Binding="{Binding RoomName}" Width="120"/>
                         <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>

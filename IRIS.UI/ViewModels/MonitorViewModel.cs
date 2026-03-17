@@ -31,6 +31,7 @@ namespace IRIS.UI.ViewModels
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
         private int? _selectedRoomId = null;
+        private string _selectedPcStatus = "All Statuses";
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
@@ -97,6 +98,17 @@ namespace IRIS.UI.ViewModels
             set
             {
                 _searchText = value;
+                OnPropertyChanged();
+                ApplyFilter();
+            }
+        }
+
+        public string SelectedPcStatus
+        {
+            get => _selectedPcStatus;
+            set
+            {
+                _selectedPcStatus = value;
                 OnPropertyChanged();
                 ApplyFilter();
             }
@@ -483,7 +495,11 @@ namespace IRIS.UI.ViewModels
                     pc.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                     pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
 
-                if (matchesSearch)
+                bool matchesStatus = SelectedPcStatus.StartsWith("All", StringComparison.OrdinalIgnoreCase)
+                    || (SelectedPcStatus.StartsWith("Online", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    || (SelectedPcStatus.StartsWith("Offline", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Offline", StringComparison.OrdinalIgnoreCase));
+
+                if (matchesSearch && matchesStatus)
                 {
                     desired.Add(pc);
                 }
