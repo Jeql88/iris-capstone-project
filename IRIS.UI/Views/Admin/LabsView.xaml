@@ -11,7 +11,7 @@
                 <Grid Margin="0,0,0,25">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <ui:SymbolIcon Symbol="Building24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                        <TextBlock Text="Laboratories" FontSize="32" FontWeight="Bold" 
+                        <TextBlock Text="Laboratories Management" FontSize="32" FontWeight="Bold" 
                                    Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <ui:Button Content="Add New Laboratory" 
@@ -144,12 +144,13 @@
 
         <!-- Add Laboratory Modal -->
         <Grid Background="#00000080" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                    Width="500" 
+            <ui:Card Background="White" 
+                    Width="1000"
+                    MaxWidth="1000"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Padding="20">
-                <Grid>
+                <Grid Width="400">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -200,12 +201,13 @@
 
         <!-- Edit Laboratory Modal -->
         <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                    Width="800" 
+            <ui:Card Background="White" 
+                    Width="1600"
+                    MaxWidth="1600"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Padding="20">
-                <Grid>
+                <Grid Width="400">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -271,7 +273,7 @@
 
         <!-- Assigned PCs Modal -->
         <Grid Background="#00000080" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+            <ui:Card Background="White" 
                     Width="800" 
                     Height="600"
                     Padding="20">
