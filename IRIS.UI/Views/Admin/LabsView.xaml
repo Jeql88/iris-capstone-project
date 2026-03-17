@@ -28,14 +28,24 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- Table Header -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
-                            <ui:SymbolIcon Symbol="BuildingMultiple24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Laboratories" FontSize="18" FontWeight="Bold" 
-                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                        </StackPanel>
+                        <Grid Grid.Row="0" Margin="0,0,0,20">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="BuildingMultiple24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Laboratories" FontSize="18" FontWeight="Bold" 
+                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
+                                             ItemsSource="{Binding PageSizeOptions}"
+                                             Width="70" Margin="0,0,5,0"/>
+                                <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </StackPanel>
+                        </Grid>
 
                         <!-- Rooms List -->
                         <Grid Grid.Row="1" MinHeight="250">
@@ -60,14 +70,14 @@
                                                        Icon="{ui:SymbolIcon Laptop24}"
                                                        Appearance="Secondary"
                                                        Padding="8,4"
-                                                       Margin="0,0,8,0"/>
+                                                       Margin="0,0,12,0"/>
                                             <ui:Button Content="Edit" 
                                                        Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                        CommandParameter="{Binding}"
                                                        Icon="{ui:SymbolIcon Edit24}"
                                                        Appearance="Secondary"
                                                        Padding="8,4"
-                                                       Margin="0,0,8,0"/>
+                                                       Margin="0,0,12,0"/>
                                             <ui:Button Content="Delete" 
                                                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                        CommandParameter="{Binding}"
@@ -80,8 +90,8 @@
                             </ListBox.ItemTemplate>
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="24,8"/>
-                                        <Setter Property="Margin" Value="0,4"/>
+                                        <Setter Property="Padding" Value="24,2"/>
+                                        <Setter Property="Margin" Value="0,2"/>
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                         <Style.Triggers>
@@ -110,6 +120,23 @@
                                 <TextBlock Text="Add a new laboratory to get started" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
+                        <!-- Pagination Controls -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                            <ui:Button Command="{Binding PreviousPageCommand}" 
+                                       Content="Previous" 
+                                       Icon="{ui:SymbolIcon ChevronLeft24}"
+                                       Appearance="Primary"
+                                       Margin="0,0,10,0"/>
+                            
+                            <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                       VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            
+                            <ui:Button Command="{Binding NextPageCommand}" 
+                                       Content="Next" 
+                                       Icon="{ui:SymbolIcon ChevronRight24}"
+                                       Appearance="Primary"
+                                       Margin="10,0,0,0"/>
+                        </StackPanel>
                     </Grid>
                 </ui:Card>
             </StackPanel>

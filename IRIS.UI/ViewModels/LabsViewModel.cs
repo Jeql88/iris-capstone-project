@@ -39,11 +39,18 @@ namespace IRIS.UI.ViewModels
         private readonly IPCAdminService _pcAdminService;
         private readonly SemaphoreSlim _loadRoomsSemaphore = new(1, 1);
         private readonly SemaphoreSlim _loadUnassignedSemaphore = new(1, 1);
+        private readonly RelayCommand _previousPageRelayCommand;
+        private readonly RelayCommand _nextPageRelayCommand;
         private bool _isViewActive = true;
+        private int _currentPage = 1;
+        private int _pageSize = 10;
+        private int _totalPages = 1;
+        private int _totalCount = 0;
 
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<SelectablePC> UnassignedPCs { get; } = new();
         public ObservableCollection<SelectablePC> AssignedPCs { get; } = new();
+        public List<int> PageSizeOptions { get; } = new() { 10, 25, 50 };
 
         private RoomDto? _selectedRoom;
         public RoomDto? SelectedRoom
@@ -183,6 +190,52 @@ namespace IRIS.UI.ViewModels
             set { _modalRoomNumber = value; OnPropertyChanged(); }
         }
 
+        public int PageSize
+        {
+            get => _pageSize;
+            set { _pageSize = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadRoomsAsync(); }
+        }
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            set
+            {
+                _currentPage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public int TotalPages
+        {
+            get => _totalPages;
+            set
+            {
+                _totalPages = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public int TotalCount
+        {
+            get => _totalCount;
+            set { _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+        }
+
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalCount} total laboratories)";
+        public bool HasPreviousPage => CurrentPage > 1;
+        public bool HasNextPage => CurrentPage < TotalPages;
+
         public RelayCommand OpenAddModalCommand { get; }
         public RelayCommand CloseAddModalCommand { get; }
         public RelayCommand OpenEditModalCommand { get; }
@@ -194,11 +247,18 @@ namespace IRIS.UI.ViewModels
         public RelayCommand AssignPCsToModalRoomCommand { get; }
         public RelayCommand UnassignCommand { get; }
         public RelayCommand ViewAssignedPCsCommand { get; }
+        public RelayCommand PreviousPageCommand { get; }
+        public RelayCommand NextPageCommand { get; }
 
         public LabsViewModel(IRoomService roomService, IPCAdminService pcAdminService)
         {
             _roomService = roomService;
             _pcAdminService = pcAdminService;
+
+            _previousPageRelayCommand = new RelayCommand(async () => await PreviousPageAsync(), () => HasPreviousPage);
+            _nextPageRelayCommand = new RelayCommand(async () => await NextPageAsync(), () => HasNextPage);
+            PreviousPageCommand = _previousPageRelayCommand;
+            NextPageCommand = _nextPageRelayCommand;
 
             OpenAddModalCommand = new RelayCommand(() => { IsAddModalOpen = true; return Task.CompletedTask; }, () => true);
             CloseAddModalCommand = new RelayCommand(() => { IsAddModalOpen = false; return Task.CompletedTask; }, () => true);
@@ -240,20 +300,41 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-            var rooms = await _roomService.GetRoomsAsync();
-            Rooms.Clear();
-            foreach (var room in rooms.Where(r => r.RoomNumber != "DEFAULT"))
-                Rooms.Add(room);
+                var result = await _roomService.GetRoomsPagedAsync(CurrentPage, PageSize);
+                Rooms.Clear();
+                foreach (var room in result.Items.Where(r => r.RoomNumber != "DEFAULT"))
+                    Rooms.Add(room);
 
-            var targetId = selectedRoomId ?? SelectedRoom?.Id;
-            if (targetId.HasValue)
-            {
-                SelectedRoom = Rooms.FirstOrDefault(r => r.Id == targetId.Value);
-            }
+                TotalCount = result.TotalCount;
+                TotalPages = result.TotalPages;
+
+                var targetId = selectedRoomId ?? SelectedRoom?.Id;
+                if (targetId.HasValue)
+                {
+                    SelectedRoom = Rooms.FirstOrDefault(r => r.Id == targetId.Value);
+                }
             }
             finally
             {
                 _loadRoomsSemaphore.Release();
+            }
+        }
+
+        private async Task PreviousPageAsync()
+        {
+            if (HasPreviousPage)
+            {
+                CurrentPage--;
+                await LoadRoomsAsync();
+            }
+        }
+
+        private async Task NextPageAsync()
+        {
+            if (HasNextPage)
+            {
+                CurrentPage++;
+                await LoadRoomsAsync();
             }
         }
 
@@ -413,6 +494,7 @@ namespace IRIS.UI.ViewModels
                 AddCapacityText = "0";
                 AddIsActive = true;
                 IsAddModalOpen = false;
+                CurrentPage = 1;
                 await LoadRoomsAsync(created.Id);
                 SetStatus($"Room {created.RoomNumber} created.", false);
             }
@@ -447,6 +529,7 @@ namespace IRIS.UI.ViewModels
                 if (updated != null)
                 {
                     IsEditModalOpen = false;
+                    CurrentPage = 1;
                     await LoadRoomsAsync(updated.Id);
                     SetStatus($"Room {updated.RoomNumber} updated.", false);
                 }
@@ -481,6 +564,7 @@ namespace IRIS.UI.ViewModels
                         SelectedRoom = null;
                         IsEditModalOpen = false;
                     }
+                    CurrentPage = 1;
                     await LoadRoomsAsync();
                     await LoadUnassignedAsync();
                     SetStatus("Room deleted.", false);

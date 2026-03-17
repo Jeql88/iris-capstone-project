@@ -26,6 +26,25 @@ namespace IRIS.Core.Services
                 .ToListAsync();
         }
 
+        public async Task<PaginatedResult<RoomDto>> GetRoomsPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _context.Rooms.AsNoTracking().OrderBy(r => r.RoomNumber);
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => new RoomDto(r.Id, r.RoomNumber, r.Description, r.Capacity, r.IsActive, r.CreatedAt))
+                .ToListAsync();
+
+            return new PaginatedResult<RoomDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<RoomDto?> GetRoomAsync(int id)
         {
             var room = await _context.Rooms.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
