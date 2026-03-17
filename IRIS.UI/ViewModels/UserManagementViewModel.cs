@@ -27,6 +27,11 @@ namespace IRIS.UI.ViewModels
         private UserDisplayModel? _selectedUser;
         private bool _isActive = true;
         private bool _isAddModalOpen = false;
+        private bool _isEditModalOpen = false;
+        private int _editUserId = 0;
+        private string _editFullName = string.Empty;
+        private string _editUsername = string.Empty;
+        private string _editRole = string.Empty;
 
         public UserManagementViewModel(IUserManagementService userManagementService)
         {
@@ -40,6 +45,9 @@ namespace IRIS.UI.ViewModels
             NextPageCommand = _nextPageRelayCommand;
             OpenAddModalCommand = new RelayCommand(() => IsAddModalOpen = true, () => true);
             CloseAddModalCommand = new RelayCommand(() => IsAddModalOpen = false, () => true);
+            OpenEditModalCommand = new RelayCommand<UserDisplayModel>(user => OpenEditModal(user), _ => true);
+            CloseEditModalCommand = new RelayCommand(() => IsEditModalOpen = false, () => true);
+            DeleteUserCommand = new RelayCommand<UserDisplayModel>(user => DeleteUserClick(user), _ => true);
 
             _ = LoadUsersAsync();
         }
@@ -123,6 +131,36 @@ namespace IRIS.UI.ViewModels
             set { _isAddModalOpen = value; OnPropertyChanged(); }
         }
 
+        public bool IsEditModalOpen
+        {
+            get => _isEditModalOpen;
+            set { _isEditModalOpen = value; OnPropertyChanged(); }
+        }
+
+        public int EditUserId
+        {
+            get => _editUserId;
+            set { _editUserId = value; OnPropertyChanged(); }
+        }
+
+        public string EditFullName
+        {
+            get => _editFullName;
+            set { _editFullName = value; OnPropertyChanged(); }
+        }
+
+        public string EditUsername
+        {
+            get => _editUsername;
+            set { _editUsername = value; OnPropertyChanged(); }
+        }
+
+        public string EditRole
+        {
+            get => _editRole;
+            set { _editRole = value; OnPropertyChanged(); }
+        }
+
         public ICommand RefreshCommand { get; }
         public ICommand ApplyFiltersCommand { get; }
         public ICommand ResetFiltersCommand { get; }
@@ -130,6 +168,9 @@ namespace IRIS.UI.ViewModels
         public ICommand NextPageCommand { get; }
         public ICommand OpenAddModalCommand { get; }
         public ICommand CloseAddModalCommand { get; }
+        public ICommand OpenEditModalCommand { get; }
+        public ICommand CloseEditModalCommand { get; }
+        public ICommand DeleteUserCommand { get; }
 
         private async Task ApplyFiltersAsync()
         {
@@ -220,6 +261,50 @@ namespace IRIS.UI.ViewModels
             {
                 CurrentPage--;
                 await LoadUsersAsync();
+            }
+        }
+
+        private void OpenEditModal(UserDisplayModel user)
+        {
+            if (user != null)
+            {
+                EditUserId = user.Id;
+                EditFullName = user.FullName;
+                EditUsername = user.Username;
+                EditRole = user.Role;
+                IsEditModalOpen = true;
+            }
+        }
+
+        private void DeleteUserClick(UserDisplayModel user)
+        {
+            if (user == null) return;
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete user '{user.Username}'?\n\nThis action cannot be undone.",
+                "Confirm Delete",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            _ = DeleteUserAsync(user);
+        }
+
+        private async Task DeleteUserAsync(UserDisplayModel user)
+        {
+            if (user == null) return;
+
+            try
+            {
+                await _userManagementService.DeleteUserAsync(user.Id);
+                MessageBox.Show($"User '{user.Username}' deleted successfully!",
+                    "User Deleted", MessageBoxButton.OK, MessageBoxImage.Information);
+                await LoadUsersAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to delete user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

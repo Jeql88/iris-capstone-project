@@ -88,5 +88,57 @@ namespace IRIS.UI.Views.Admin
                 MessageBox.Show($"Failed to create user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private async void EditUser_Click(object sender, RoutedEventArgs e)
+        {
+            var username = _viewModel!.EditUsername.Trim();
+            var fullName = _viewModel.EditFullName.Trim();
+            var role = _viewModel.EditRole;
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(role))
+            {
+                MessageBox.Show("Please select a role.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var userRole = role switch
+            {
+                "System Administrator" => UserRole.SystemAdministrator,
+                "IT Personnel" => UserRole.ITPersonnel,
+                "Faculty" => UserRole.Faculty,
+                _ => UserRole.Faculty
+            };
+
+            try
+            {
+                await _userService.UpdateUserAsync(_viewModel.EditUserId, username, fullName, userRole);
+
+                MessageBox.Show("User updated successfully!",
+                    "User Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                _viewModel.RefreshCommand.Execute(null);
+                _viewModel.IsEditModalOpen = false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to update user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

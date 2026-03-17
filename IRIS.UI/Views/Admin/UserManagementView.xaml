@@ -124,10 +124,33 @@
                                     </Style>
                                 </ui:DataGrid.RowStyle>
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
-                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
+                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
+                                    <DataGridTemplateColumn Header="Actions" Width="1*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="5">
+                                                    <ui:Button Content="Edit" 
+                                                               Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}"
+                                                               Icon="{ui:SymbolIcon Edit24}"
+                                                               Appearance="Secondary"
+                                                               Padding="8,4"
+                                                               Margin="8,0,12,0"
+                                                               IsEnabled="{Binding IsActive}"/>
+                                                    <ui:Button Content="Delete" 
+                                                               Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}"
+                                                               Icon="{ui:SymbolIcon Delete24}"
+                                                               Appearance="Danger"
+                                                               Padding="8,4"
+                                                               IsEnabled="{Binding IsActive}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
 
@@ -228,6 +251,65 @@
                                    Icon="{ui:SymbolIcon Add24}"
                                    Appearance="Primary"
                                    Click="AddUser_Click"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
+
+        <!-- Edit User Modal -->
+        <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="White" 
+                    Width="1000"
+                    MaxWidth="1000"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid Width="400">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Edit User" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox x:Name="EditFullNameTextBox" 
+                                    Text="{Binding EditFullName, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Enter full name"
+                                    Icon="{ui:SymbolIcon Person24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox x:Name="EditUsernameTextBox" 
+                                    Text="{Binding EditUsername, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Enter username"
+                                    Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox x:Name="EditRoleComboBox" SelectedValue="{Binding EditRole, Mode=TwoWay}" SelectedValuePath="Content" Margin="0,0,0,15">
+                            <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel" 
+                                   Command="{Binding CloseEditModalCommand}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button x:Name="EditUserButton" 
+                                   Content="Update User" 
+                                   Icon="{ui:SymbolIcon Edit24}"
+                                   Appearance="Primary"
+                                   Click="EditUser_Click"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
