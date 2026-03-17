@@ -25,6 +25,14 @@ namespace IRIS.UI.Views.Admin
         {
         }
 
+        private void UsersDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is DataGrid dataGrid && dataGrid.SelectedItem != null)
+            {
+                dataGrid.SelectedItem = null;
+            }
+        }
+
         private async void AddUser_Click(object sender, RoutedEventArgs e)
         {
             var username = AddUsernameTextBox.Text.Trim();

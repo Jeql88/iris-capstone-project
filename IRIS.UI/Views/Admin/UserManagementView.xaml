@@ -34,7 +34,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Search Box -->
@@ -54,17 +53,6 @@
                                     <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Status Filter -->
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Status" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <ComboBox SelectedValue="{Binding SelectedStatus, Mode=TwoWay}" 
-                                             SelectedValuePath="Content">
-                                    <ComboBoxItem Content="All Status" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBoxItem Content="Active" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBoxItem Content="Inactive" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </ComboBox>
                             </StackPanel>
                         </Grid>
@@ -109,25 +97,13 @@
                         <!-- DataGrid -->
                         <Grid Grid.Row="1" MinHeight="350">
                             <ui:DataGrid ItemsSource="{Binding Users}" 
-                                         SelectedItem="{Binding SelectedUser}"
-                                         AutoGenerateColumns="False" IsReadOnly="True">
-                                <ui:DataGrid.RowStyle>
-                                    <Style TargetType="DataGridRow">
-                                        <Setter Property="Cursor" Value="Hand"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Background" Value="#D6E9FF"/>
-                                                <Setter Property="Foreground" Value="#1a1a1a"/>
-                                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ui:DataGrid.RowStyle>
+                                         AutoGenerateColumns="False"
+                                         IsReadOnly="True"
+                                         SelectionChanged="UsersDataGrid_SelectionChanged">
                                 <ui:DataGrid.Columns>
                                     <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
-                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
                                     <DataGridTemplateColumn Header="Actions" Width="1*">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -138,15 +114,13 @@
                                                                Icon="{ui:SymbolIcon Edit24}"
                                                                Appearance="Secondary"
                                                                Padding="8,4"
-                                                               Margin="8,0,12,0"
-                                                               IsEnabled="{Binding IsActive}"/>
+                                                               Margin="8,0,12,0"/>
                                                     <ui:Button Content="Delete" 
                                                                Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Delete24}"
                                                                Appearance="Danger"
-                                                               Padding="8,4"
-                                                               IsEnabled="{Binding IsActive}"/>
+                                                               Padding="8,4"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>

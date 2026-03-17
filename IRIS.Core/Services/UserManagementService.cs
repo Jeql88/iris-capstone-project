@@ -80,24 +80,6 @@ namespace IRIS.Core.Services
             return true;
         }
 
-        public async Task<bool> ReactivateUserAsync(int userId)
-        {
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-                return false;
-
-            const string reactivationTempPassword = "IRIS@2025";
-
-            user.IsActive = true;
-            user.PasswordHash = HashPassword(reactivationTempPassword);
-            user.MustChangePassword = true;
-            await _context.SaveChangesAsync();
-
-            await _authService.LogUserActionAsync("User Reactivated", $"Reactivated user {user.Username} with temporary password reset");
-
-            return true;
-        }
-
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             return await _context.Users.FindAsync(userId);
@@ -106,13 +88,16 @@ namespace IRIS.Core.Services
         public async Task<IEnumerable<User>> GetAllUsersAsync()
         {
             return await _context.Users
+                .Where(u => u.IsActive)
                 .OrderBy(u => u.Username)
                 .ToListAsync();
         }
 
-        public async Task<PaginatedResult<User>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? search = null, UserRole? role = null, bool? isActive = null)
+        public async Task<PaginatedResult<User>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? search = null, UserRole? role = null)
         {
-            var query = _context.Users.AsQueryable();
+            var query = _context.Users
+                .Where(u => u.IsActive)
+                .AsQueryable();
 
             // Apply search filter
             if (!string.IsNullOrWhiteSpace(search))
@@ -126,12 +111,6 @@ namespace IRIS.Core.Services
             if (role.HasValue)
             {
                 query = query.Where(u => u.Role == role.Value);
-            }
-
-            // Apply status filter
-            if (isActive.HasValue)
-            {
-                query = query.Where(u => u.IsActive == isActive.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -154,7 +133,7 @@ namespace IRIS.Core.Services
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role)
         {
             return await _context.Users
-                .Where(u => u.Role == role)
+                .Where(u => u.Role == role && u.IsActive)
                 .OrderBy(u => u.Username)
                 .ToListAsync();
         }

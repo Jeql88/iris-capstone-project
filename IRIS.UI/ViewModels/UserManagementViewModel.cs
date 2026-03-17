@@ -19,12 +19,10 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _loadUsersSemaphore = new(1, 1);
         private string _searchText = string.Empty;
         private string _selectedRole = "All Roles";
-        private string _selectedStatus = "All Status";
         private int _currentPage = 1;
         private int _pageSize = 10;
         private int _totalPages = 1;
         private int _totalCount = 0;
-        private UserDisplayModel? _selectedUser;
         private bool _isActive = true;
         private bool _isAddModalOpen = false;
         private bool _isEditModalOpen = false;
@@ -67,22 +65,10 @@ namespace IRIS.UI.ViewModels
             set { _selectedRole = value; OnPropertyChanged(); }
         }
 
-        public string SelectedStatus
-        {
-            get => _selectedStatus;
-            set { _selectedStatus = value; OnPropertyChanged(); }
-        }
-
         public int PageSize
         {
             get => _pageSize;
             set { _pageSize = value; OnPropertyChanged(); }
-        }
-
-        public UserDisplayModel? SelectedUser
-        {
-            get => _selectedUser;
-            set { _selectedUser = value; OnPropertyChanged(); }
         }
 
         public int CurrentPage
@@ -182,7 +168,6 @@ namespace IRIS.UI.ViewModels
         {
             SearchText = string.Empty;
             SelectedRole = "All Roles";
-            SelectedStatus = "All Status";
             PageSize = 10;
             CurrentPage = 1;
             await LoadUsersAsync();
@@ -219,14 +204,8 @@ namespace IRIS.UI.ViewModels
                     };
                 }
 
-                bool? statusFilter = null;
-                if (SelectedStatus != "All Status")
-                {
-                    statusFilter = SelectedStatus == "Active";
-                }
-
                 var result = await _userManagementService.GetUsersAsync(
-                    CurrentPage, PageSize, SearchText, roleFilter, statusFilter);
+                    CurrentPage, PageSize, SearchText, roleFilter);
 
                 Users.Clear();
                 foreach (var user in result.Items)
@@ -236,9 +215,7 @@ namespace IRIS.UI.ViewModels
                         Id = user.Id,
                         Username = user.Username,
                         FullName = user.FullName ?? "N/A",
-                        Role = user.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel"),
-                        Status = user.IsActive ? "Active" : "Inactive",
-                        IsActive = user.IsActive
+                        Role = user.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel")
                     });
                 }
 
@@ -333,8 +310,6 @@ namespace IRIS.UI.ViewModels
         private string _username = string.Empty;
         private string _fullName = string.Empty;
         private string _role = string.Empty;
-        private string _status = string.Empty;
-        private bool _isActive;
 
         public int Id
         {
@@ -358,18 +333,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _role;
             set { _role = value; OnPropertyChanged(); }
-        }
-
-        public string Status
-        {
-            get => _status;
-            set { _status = value; OnPropertyChanged(); }
-        }
-
-        public bool IsActive
-        {
-            get => _isActive;
-            set { _isActive = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
