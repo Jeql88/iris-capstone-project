@@ -112,55 +112,6 @@
                         </Grid>
                     </Grid>
                 </ui:Card>
-
-                <!-- Unassigned PCs Card -->
-                <ui:Card>
-                    <StackPanel Margin="15">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <ui:SymbolIcon Symbol="Laptop24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Unassigned PCs" FontSize="18" FontWeight="Bold" 
-                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                        </StackPanel>
-                        <Grid MinHeight="150">
-                            <ItemsControl ItemsSource="{Binding UnassignedPCs}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            
-                            <!-- Empty State -->
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding UnassignedPCs.Count}" Value="0">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-                                <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
-                                <TextBlock Text="No unassigned PCs" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="All PCs are assigned to laboratories" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </ui:Card>
             </StackPanel>
         </ScrollViewer>
 
@@ -223,7 +174,7 @@
         <!-- Edit Laboratory Modal -->
         <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                    Width="500" 
+                    Width="800" 
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Padding="20">
@@ -275,13 +226,6 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Margin="0,20,0,0">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,10">
-                            <ui:Button Content="Assign PCs" 
-                                       Command="{Binding AssignCommand}"
-                                       Icon="{ui:SymbolIcon Laptop24}"
-                                       Appearance="Secondary"
-                                       Margin="0,0,10,0"/>
-                        </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <ui:Button Content="Cancel" 
                                        Command="{Binding CloseEditModalCommand}"
@@ -307,6 +251,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
@@ -315,60 +260,136 @@
                     <StackPanel Grid.Row="0" Margin="0,0,0,20">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="Laptop24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                            <TextBlock Text="Assigned PCs" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                            <TextBlock Text="Manage Laboratory PCs" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <TextBlock Text="{Binding ModalRoomNumber, StringFormat='Room: {0}'}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,8,0,0"/>
                     </StackPanel>
 
-                    <!-- PCs List -->
-                    <Grid Grid.Row="1">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding AssignedPCs}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        
-                        <!-- Empty State -->
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
+                    <!-- Tab Control -->
+                    <TabControl Grid.Row="1" Grid.RowSpan="2" Margin="0,0,0,20" x:Name="PCsTabControl" SelectedIndex="{Binding SelectedPCsTabIndex}">
+                        <!-- Assigned PCs Tab -->
+                        <TabItem Header="Assigned PCs" x:Name="AssignedPCsTab">
+                            <Grid Margin="0,10,0,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding AssignedPCs}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                            <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                
+                                <!-- Empty State -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AssignedPCs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="No PCs assigned" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="This laboratory has no assigned PCs" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Unassigned PCs Tab -->
+                        <TabItem Header="Unassigned PCs" x:Name="UnassignedPCsTab">
+                            <Grid Margin="0,10,0,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding UnassignedPCs}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Hostname}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                            <TextBlock Text="{Binding MacAddress}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                
+                                <!-- Empty State -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding UnassignedPCs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="No unassigned PCs" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="All PCs are assigned to laboratories" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+
+                    <!-- Buttons -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Assign Selected" 
+                                   Command="{Binding AssignPCsToModalRoomCommand}"
+                                   Icon="{ui:SymbolIcon Add24}"
+                                   Appearance="Primary"
+                                   Margin="0,0,10,0">
+                            <ui:Button.Style>
+                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding AssignedPCs.Count}" Value="0">
+                                        <DataTrigger Binding="{Binding IsSelected, ElementName=UnassignedPCsTab}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </StackPanel.Style>
-                            <ui:SymbolIcon Symbol="Laptop24" FontSize="48" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
-                            <TextBlock Text="No PCs assigned" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="This laboratory has no assigned PCs" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Buttons -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                            </ui:Button.Style>
+                        </ui:Button>
                         <ui:Button Content="Unassign Selected" 
                                    Command="{Binding UnassignCommand}"
                                    Icon="{ui:SymbolIcon Delete24}"
                                    Appearance="Secondary"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0">
+                            <ui:Button.Style>
+                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, ElementName=AssignedPCsTab}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Button.Style>
+                        </ui:Button>
                         <ui:Button Content="Close" 
                                    Click="CloseModal_Click"
                                    Icon="{ui:SymbolIcon Dismiss24}"

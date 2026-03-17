@@ -162,6 +162,13 @@ namespace IRIS.UI.ViewModels
             set { _isAssignedPCsModalOpen = value; OnPropertyChanged(); }
         }
 
+        private int _selectedPCsTabIndex;
+        public int SelectedPCsTabIndex
+        {
+            get => _selectedPCsTabIndex;
+            set { _selectedPCsTabIndex = value; OnPropertyChanged(); }
+        }
+
         private int _modalRoomId;
         public int ModalRoomId
         {
@@ -184,6 +191,7 @@ namespace IRIS.UI.ViewModels
         public RelayCommand UpdateCommand { get; }
         public RelayCommand DeleteCommand { get; }
         public RelayCommand AssignCommand { get; }
+        public RelayCommand AssignPCsToModalRoomCommand { get; }
         public RelayCommand UnassignCommand { get; }
         public RelayCommand ViewAssignedPCsCommand { get; }
 
@@ -200,6 +208,7 @@ namespace IRIS.UI.ViewModels
             UpdateCommand = new RelayCommand(async () => await UpdateAsync(), () => SelectedRoom != null);
             DeleteCommand = new RelayCommand(async (param) => await DeleteAsync(param), () => true);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
+            AssignPCsToModalRoomCommand = new RelayCommand(async () => await AssignPCsToModalRoomAsync(), () => true);
             UnassignCommand = new RelayCommand(async () => await UnassignAsync(), () => true);
             ViewAssignedPCsCommand = new RelayCommand(async (param) => await ViewAssignedPCsAsync(param), () => true);
 
@@ -373,6 +382,9 @@ namespace IRIS.UI.ViewModels
                     IsSelected = false
                 });
             }
+
+            await LoadUnassignedAsync();
+            SelectedPCsTabIndex = 0;
             IsAssignedPCsModalOpen = true;
         }
 
@@ -484,6 +496,41 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private async Task AssignPCsToModalRoomAsync()
+        {
+            if (ModalRoomId == 0) return;
+            var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
+            if (!selectedIds.Any()) return;
+
+            var dialog = new ConfirmationDialog(
+                "Assign PCs",
+                $"Are you sure you want to assign {selectedIds.Count} PC(s) to laboratory '{ModalRoomNumber}'?",
+                "Laptop24");
+            dialog.Owner = Application.Current.MainWindow;
+            
+            if (dialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var success = await _pcAdminService.AssignPCsToRoomAsync(selectedIds, ModalRoomId);
+                if (success)
+                {
+                    await LoadUnassignedAsync();
+                    await ViewAssignedPCsAsync(ModalRoomId);
+                    SetStatus($"Assigned {selectedIds.Count} PC(s) to room {ModalRoomNumber}.", false);
+                }
+                else
+                {
+                    SetStatus("No PCs were assigned.", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
+            }
+        }
+
         private async Task AssignAsync()
         {
             if (SelectedRoom == null) return;
@@ -538,7 +585,14 @@ namespace IRIS.UI.ViewModels
                 if (success)
                 {
                     await LoadUnassignedAsync();
-                    AssignedPCs.Clear();
+                    if (ModalRoomId != 0)
+                    {
+                        await ViewAssignedPCsAsync(ModalRoomId);
+                    }
+                    else
+                    {
+                        AssignedPCs.Clear();
+                    }
                     SetStatus($"Unassigned {selectedIds.Count} PC(s) from room.", false);
                 }
                 else
