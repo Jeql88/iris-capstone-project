@@ -305,14 +305,15 @@ namespace IRIS.Core.Data
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Severity and Type are stored as strings in the database (enum names)
             modelBuilder.Entity<Alert>()
                 .Property(a => a.Severity)
-                .HasConversion<string>();
+                .HasConversion<int>()
+                .HasColumnType("integer");
 
             modelBuilder.Entity<Alert>()
                 .Property(a => a.Type)
-                .HasConversion<string>();
+                .HasConversion<int>()
+                .HasColumnType("integer");
 
             modelBuilder.Entity<Alert>()
                 .HasIndex(a => new { a.PCId, a.AlertKey, a.IsResolved });
