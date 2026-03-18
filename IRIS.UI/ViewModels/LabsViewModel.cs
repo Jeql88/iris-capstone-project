@@ -351,19 +351,19 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-            var pcs = await _pcAdminService.GetUnassignedPCsAsync();
-            UnassignedPCs.Clear();
-            foreach (var pc in pcs)
-            {
-                UnassignedPCs.Add(new SelectablePC
+                var pcs = await _pcAdminService.GetUnassignedPCsAsync();
+                UnassignedPCs.Clear();
+                foreach (var pc in pcs)
                 {
-                    Id = pc.Id,
-                    MacAddress = pc.MacAddress,
-                    Hostname = pc.Hostname,
-                    Room = pc.RoomId.ToString(),
-                    IsSelected = false
-                });
-            }
+                    UnassignedPCs.Add(new SelectablePC
+                    {
+                        Id = pc.Id,
+                        MacAddress = pc.MacAddress,
+                        Hostname = pc.Hostname,
+                        Room = pc.RoomId.ToString(),
+                        IsSelected = false
+                    });
+                }
             }
             finally
             {
@@ -476,7 +476,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to create laboratory '{AddRoomNumber}'?",
                 "Add24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 
@@ -513,7 +513,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to update laboratory '{SelectedRoom.RoomNumber}'?",
                 "Edit24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 
@@ -544,7 +544,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to delete laboratory '{room.RoomNumber}'?\n\nAll PCs will be moved to the DEFAULT room and all policies will be deleted. This action cannot be undone.",
                 "Delete24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 
@@ -585,7 +585,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to assign {selectedIds.Count} PC(s) to laboratory '{ModalRoomNumber}'?",
                 "Laptop24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 
@@ -620,7 +620,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to assign {selectedIds.Count} PC(s) to laboratory '{SelectedRoom.RoomNumber}'?",
                 "Laptop24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 
@@ -653,7 +653,7 @@ namespace IRIS.UI.ViewModels
                 $"Are you sure you want to unassign {selectedIds.Count} PC(s) from this laboratory?\n\nThey will be moved to the DEFAULT room.",
                 "Laptop24");
             dialog.Owner = Application.Current.MainWindow;
-            
+
             if (dialog.ShowDialog() != true)
                 return;
 

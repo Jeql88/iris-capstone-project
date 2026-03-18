@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.UI.Views.Faculty;
 using IRIS.Core.Services.Contracts;
 using Microsoft.Extensions.Configuration;
@@ -283,19 +284,25 @@ namespace IRIS.UI.ViewModels
 
         private async Task ShutDownAsync()
         {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("shutdown");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
                 MessageBox.Show("Cannot send shutdown command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"Are you sure you want to shutdown {PCName}?",
+            var confirmationDialog = new ConfirmationDialog(
                 "Confirm Shutdown",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                $"Are you sure you want to shutdown {PCName}?",
+                "Power24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmation != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
@@ -312,19 +319,25 @@ namespace IRIS.UI.ViewModels
 
         private async Task RestartPCAsync()
         {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("restart");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
                 MessageBox.Show("Cannot send restart command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"Are you sure you want to restart {PCName}?",
+            var confirmationDialog = new ConfirmationDialog(
                 "Confirm Restart",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                $"Are you sure you want to restart {PCName}?",
+                "ArrowClockwise24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmation != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
@@ -341,28 +354,28 @@ namespace IRIS.UI.ViewModels
 
         private async Task ToggleFreezeAsync()
         {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("change freeze state");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
                 MessageBox.Show("Cannot send freeze command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            if (!IsFreezeActive && !IsConnected)
-            {
-                MessageBox.Show("Cannot freeze this PC because it is offline.", "PC Offline", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             var commandType = IsFreezeActive ? "FreezeOff" : "FreezeOn";
-            var confirmation = MessageBox.Show(
+            var confirmationDialog = new ConfirmationDialog(
+                IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
                 IsFreezeActive
                     ? $"Unfreeze {PCName}?"
                     : $"Freeze {PCName}?",
-                IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                "LockClosed24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmation != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
@@ -388,9 +401,26 @@ namespace IRIS.UI.ViewModels
         {
             await Task.CompletedTask;
 
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("open Remote Desktop");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(IP) || IP.Equals("N/A", StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox.Show("Cannot open Remote Desktop: missing target IP address.", "Remote Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Open Remote Desktop connection to {PCName}?",
+                "Desktop24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
                 return;
             }
 
@@ -414,6 +444,19 @@ namespace IRIS.UI.ViewModels
             await Task.CompletedTask;
             OnDeactivated();
             _navigationService.GoBack();
+        }
+
+        private void ShowOfflineActionDialog(string actionName)
+        {
+            var offlineDialog = new ConfirmationDialog(
+                "PC Offline",
+                $"Cannot {actionName} because this PC is offline.",
+                "Desktop24",
+                "OK",
+                "Cancel",
+                false);
+            offlineDialog.Owner = Application.Current.MainWindow;
+            offlineDialog.ShowDialog();
         }
 
         private void ExpandScreen()

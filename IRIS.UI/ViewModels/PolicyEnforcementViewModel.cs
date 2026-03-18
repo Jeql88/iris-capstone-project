@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
@@ -386,6 +388,17 @@ namespace IRIS.UI.ViewModels
             {
                 var selectedRoom = Rooms.FirstOrDefault(r => r.IsSelected);
                 if (selectedRoom == null) return;
+
+                var confirmationDialog = new ConfirmationDialog(
+                    "Deploy Policies",
+                    $"Deploy current policy settings to {selectedRoom.RoomNumber}?",
+                    "Send24");
+                confirmationDialog.Owner = Application.Current.MainWindow;
+
+                if (confirmationDialog.ShowDialog() != true)
+                {
+                    return;
+                }
 
                 // Validate settings before applying
                 if (!ValidatePolicySettings())

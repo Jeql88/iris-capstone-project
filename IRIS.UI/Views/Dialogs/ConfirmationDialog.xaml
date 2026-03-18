@@ -3,7 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="Confirm Action"
-        Width="450" Height="200"
+    Width="520"
+    MinHeight="220"
+    MaxHeight="520"
+    SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
@@ -20,13 +23,18 @@
             <TextBlock x:Name="TitleTextBlock" Text="Confirm Action" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
         </StackPanel>
 
-        <TextBlock Grid.Row="1" x:Name="MessageTextBlock" Text="Are you sure you want to proceed?" 
+        <ScrollViewer Grid.Row="1"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  MaxHeight="260">
+            <TextBlock x:Name="MessageTextBlock" Text="Are you sure you want to proceed?"
                    TextWrapping="Wrap" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <ui:Button Content="Confirm" Width="100" Margin="0,0,8,0" Click="ConfirmButton_Click" 
+            <ui:Button x:Name="ConfirmButton" Content="Confirm" Width="100" Margin="0,0,8,0" Click="ConfirmButton_Click" 
                        Appearance="Primary" Icon="{ui:SymbolIcon Checkmark24}"/>
-            <ui:Button Content="Cancel" Width="100" Click="CancelButton_Click" 
+            <ui:Button x:Name="CancelButton" Content="Cancel" Width="100" Click="CancelButton_Click" 
                        Appearance="Secondary" Icon="{ui:SymbolIcon Dismiss24}"/>
         </StackPanel>
     </Grid>

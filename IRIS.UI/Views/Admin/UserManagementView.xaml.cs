@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.ViewModels;
+using IRIS.UI.Views.Dialogs;
 
 namespace IRIS.UI.Views.Admin
 {
@@ -73,6 +74,17 @@ namespace IRIS.UI.Views.Admin
 
             const string defaultPassword = "IRIS@2025";
 
+            var createDialog = new ConfirmationDialog(
+                "Create User",
+                $"Are you sure you want to create user '{username}'?",
+                "Add24");
+            createDialog.Owner = Application.Current.MainWindow;
+
+            if (createDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             try
             {
                 await _userService.CreateUserAsync(username, defaultPassword, role, fullName);
@@ -128,6 +140,17 @@ namespace IRIS.UI.Views.Admin
                 "Faculty" => UserRole.Faculty,
                 _ => UserRole.Faculty
             };
+
+            var updateDialog = new ConfirmationDialog(
+                "Update User",
+                $"Are you sure you want to update user '{username}'?",
+                "Edit24");
+            updateDialog.Owner = Application.Current.MainWindow;
+
+            if (updateDialog.ShowDialog() != true)
+            {
+                return;
+            }
 
             try
             {

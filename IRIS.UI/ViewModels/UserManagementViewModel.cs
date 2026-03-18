@@ -7,6 +7,7 @@ using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using System.Threading;
 
 namespace IRIS.UI.ViewModels
@@ -257,13 +258,13 @@ namespace IRIS.UI.ViewModels
         {
             if (user == null) return;
 
-            var result = MessageBox.Show(
+            var deleteDialog = new ConfirmationDialog(
+                "Delete User",
                 $"Are you sure you want to delete user '{user.Username}'?\n\nThis action cannot be undone.",
-                "Confirm Delete",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                "Delete24");
+            deleteDialog.Owner = Application.Current.MainWindow;
 
-            if (result != MessageBoxResult.Yes) return;
+            if (deleteDialog.ShowDialog() != true) return;
 
             _ = DeleteUserAsync(user);
         }
@@ -275,8 +276,6 @@ namespace IRIS.UI.ViewModels
             try
             {
                 await _userManagementService.DeleteUserAsync(user.Id);
-                MessageBox.Show($"User '{user.Username}' deleted successfully!",
-                    "User Deleted", MessageBoxButton.OK, MessageBoxImage.Information);
                 await LoadUsersAsync();
             }
             catch (Exception ex)

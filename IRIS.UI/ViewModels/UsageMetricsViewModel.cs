@@ -8,6 +8,7 @@ using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using Microsoft.Win32;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using System.Threading;
 
 namespace IRIS.UI.ViewModels
@@ -552,13 +553,13 @@ namespace IRIS.UI.ViewModels
                     ? "This will export BOTH Application and Website usage data based on the current applied filters for each tab (including search, laboratory, and date range where applicable), not just the current page. Continue?"
                     : "No filters are applied. This will export ALL Application and Website usage data, not just the current page. Continue?";
 
-                var confirmed = MessageBox.Show(
+                var confirmationDialog = new ConfirmationDialog(
+                    "Export Usage Metrics",
                     confirmationMessage,
-                    "Confirm Export",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
+                    "ArrowDownload24");
+                confirmationDialog.Owner = Application.Current.MainWindow;
 
-                if (confirmed != MessageBoxResult.Yes)
+                if (confirmationDialog.ShowDialog() != true)
                 {
                     return;
                 }

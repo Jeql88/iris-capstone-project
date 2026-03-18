@@ -8,6 +8,7 @@ using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using Microsoft.Win32;
 using System.Threading;
 
@@ -252,13 +253,13 @@ namespace IRIS.UI.ViewModels
                 ? "This will export all access logs that match the full filter set (Search, Role, From, and To), not just the current page. Continue?"
                 : "No filters are set. This will export all access logs, not just the current page. Continue?";
 
-            var confirmed = MessageBox.Show(
+            var confirmationDialog = new ConfirmationDialog(
+                "Export Access Logs",
                 confirmationMessage,
-                "Confirm Export",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
+                "ArrowDownload24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmed != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
