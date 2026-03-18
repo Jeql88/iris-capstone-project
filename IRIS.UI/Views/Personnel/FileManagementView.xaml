@@ -58,8 +58,11 @@
 
         <!-- ═══ HEADER ═══ -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8">
-            <TextBlock Text="File Management" FontSize="28" FontWeight="Bold"
-                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                <ui:SymbolIcon Symbol="FolderOpen24" FontSize="28" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="File Management" FontSize="28" FontWeight="Bold"
+                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Dual-pane file explorer — Local (left) and Remote (right). Drag files from local to remote to upload."
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
         </StackPanel>

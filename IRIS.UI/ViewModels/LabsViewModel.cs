@@ -288,10 +288,7 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            if (!await _loadRoomsSemaphore.WaitAsync(0))
-            {
-                return;
-            }
+            await _loadRoomsSemaphore.WaitAsync();
 
             try
             {
@@ -345,10 +342,7 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            if (!await _loadUnassignedSemaphore.WaitAsync(0))
-            {
-                return;
-            }
+            await _loadUnassignedSemaphore.WaitAsync();
 
             try
             {
@@ -721,8 +715,14 @@ namespace IRIS.UI.ViewModels
         public void OnNavigatedTo()
         {
             _isViewActive = true;
-            _ = LoadRoomsAsync();
-            _ = LoadUnassignedAsync();
+            _ = ReloadPageOnNavigateAsync();
+        }
+
+        private async Task ReloadPageOnNavigateAsync()
+        {
+            CurrentPage = 1;
+            await LoadRoomsAsync();
+            await LoadUnassignedAsync();
         }
 
         public void OnNavigatedFrom()

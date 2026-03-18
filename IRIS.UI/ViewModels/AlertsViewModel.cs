@@ -525,17 +525,21 @@ namespace IRIS.UI.ViewModels
             return value;
         }
 
-        public void OnNavigatedTo()
-        {
-            _isActive = true;
-            _refreshTimer.Start();
-            _ = LoadAlertsAsync();
-        }
-
         public void OnNavigatedFrom()
         {
             _isActive = false;
             _refreshTimer.Stop();
+        }
+
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            if (!_refreshTimer.IsEnabled)
+            {
+                _refreshTimer.Start();
+            }
+
+            _ = LoadAlertsAsync(preserveCurrentPage: true);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

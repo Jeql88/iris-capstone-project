@@ -25,10 +25,10 @@
 
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon Symbol="Alert24" FontSize="24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0"/>
-                    <TextBlock Text="Alerts" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ui:SymbolIcon Symbol="Alert24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="Alerts" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Text="{Binding LastUpdatedText}" FontSize="12" Margin="34,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Text="{Binding LastUpdatedText}" FontSize="12" Margin="44,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
