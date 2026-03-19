@@ -115,50 +115,6 @@ namespace IRIS.Agent
             Log.Information("File management root path: {ManagedRootPath}", managedRootPath);
             using var fileManagementServer = new AgentFileManagementServer(fileApiPort, managedRootPath, fileApiToken);
 
-            // Execute startup logic: Register PC
-            await pcController.RegisterPCAsync();
-
-            // Initialize wallpaper policy enforcer
-            var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress);
-
-            // Enforce wallpaper policy on startup
-            await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
-
-            // Initialize application usage tracking with separate context
-            var appUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
-                .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
-                .Options;
-            var appUsageContext = new IRISDbContext(appUsageOptions);
-            var appUsageLogic = new ApplicationUsageLogic(appUsageContext, networkInfo.MacAddress);
-            await appUsageLogic.StartMonitoringAsync();
-
-            var websiteUsageCollectInterval = int.TryParse(configuration["AgentSettings:WebsiteCollectIntervalSeconds"], out var wcis) ? wcis : 120;
-            var websiteUsageSyncInterval = int.TryParse(configuration["AgentSettings:WebsiteSyncIntervalSeconds"], out var wsis) ? wsis : 60;
-            var websiteUsageBucketMinutes = int.TryParse(configuration["AgentSettings:WebsiteBucketMinutes"], out var wbm) ? wbm : 5;
-
-            var websiteUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
-                .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
-                .Options;
-            var websiteUsageContext = new IRISDbContext(websiteUsageOptions);
-            var websiteUsageLogic = new WebsiteUsageLogic(
-                websiteUsageContext,
-                networkInfo.MacAddress,
-                websiteUsageCollectInterval,
-                websiteUsageSyncInterval,
-                websiteUsageBucketMinutes);
-            Log.Information("Initializing website usage monitoring...");
-            try
-            {
-                await websiteUsageLogic.StartMonitoringAsync();
-                Log.Information("Website usage monitoring initialization completed.");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Website usage monitoring failed to initialize");
-            }
-
-            // Start monitoring loop
-            await monitoringController.StartMonitoringAsync();
             try
             {
                 await snapshotServer.StartAsync();
@@ -177,21 +133,99 @@ namespace IRIS.Agent
                 Log.Error(ex, "File management API failed to start. Agent will continue without file API.");
             }
 
-            // Start policy enforcement
-            var policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            IRISDbContext? appUsageContext = null;
+            ApplicationUsageLogic? appUsageLogic = null;
+            IRISDbContext? websiteUsageContext = null;
+            WebsiteUsageLogic? websiteUsageLogic = null;
+            System.Threading.Timer? policyTimer = null;
+            ShutdownLogic? shutdownLogic = null;
+            var databaseStartupReady = true;
 
-            Log.Information("Agent initialized successfully. Monitoring loop started.");
+            try
+            {
+                // Execute startup logic: Register PC
+                await pcController.RegisterPCAsync();
+
+                // Initialize wallpaper policy enforcer
+                var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress);
+
+                // Enforce wallpaper policy on startup
+                await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
+
+                // Initialize application usage tracking with separate context
+                var appUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
+                    .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
+                    .Options;
+                appUsageContext = new IRISDbContext(appUsageOptions);
+                appUsageLogic = new ApplicationUsageLogic(appUsageContext, networkInfo.MacAddress);
+                await appUsageLogic.StartMonitoringAsync();
+
+                var websiteUsageCollectInterval = int.TryParse(configuration["AgentSettings:WebsiteCollectIntervalSeconds"], out var wcis) ? wcis : 120;
+                var websiteUsageSyncInterval = int.TryParse(configuration["AgentSettings:WebsiteSyncIntervalSeconds"], out var wsis) ? wsis : 60;
+                var websiteUsageBucketMinutes = int.TryParse(configuration["AgentSettings:WebsiteBucketMinutes"], out var wbm) ? wbm : 5;
+
+                var websiteUsageOptions = new DbContextOptionsBuilder<IRISDbContext>()
+                    .UseNpgsql(configuration.GetConnectionString("IRISDatabase"))
+                    .Options;
+                websiteUsageContext = new IRISDbContext(websiteUsageOptions);
+                websiteUsageLogic = new WebsiteUsageLogic(
+                    websiteUsageContext,
+                    networkInfo.MacAddress,
+                    websiteUsageCollectInterval,
+                    websiteUsageSyncInterval,
+                    websiteUsageBucketMinutes);
+                Log.Information("Initializing website usage monitoring...");
+                try
+                {
+                    await websiteUsageLogic.StartMonitoringAsync();
+                    Log.Information("Website usage monitoring initialization completed.");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Website usage monitoring failed to initialize");
+                }
+
+                // Start policy enforcement
+                policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+                shutdownLogic = new ShutdownLogic(context, networkInfo.MacAddress);
+            }
+            catch (Exception ex)
+            {
+                databaseStartupReady = false;
+                Log.Error(ex, "Database-dependent startup failed. Agent will continue running snapshot/file endpoints and command polling in degraded mode.");
+            }
+
+            // Start monitoring loop
+            await monitoringController.StartMonitoringAsync();
+
+            if (databaseStartupReady)
+            {
+                Log.Information("Agent initialized successfully. Monitoring loop started.");
+            }
+            else
+            {
+                Log.Warning("Agent initialized in degraded mode (database unreachable). Snapshot and file endpoints may still be available.");
+            }
 
             // Set up shutdown handling
-            var shutdownLogic = new ShutdownLogic(context, networkInfo.MacAddress);
             AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
             {
                 Log.Information("Shutdown detected. Handling final update...");
-                await websiteUsageLogic.StopMonitoringAsync();
+                policyTimer?.Dispose();
+                if (websiteUsageLogic != null)
+                {
+                    await websiteUsageLogic.StopMonitoringAsync();
+                }
+                await snapshotServer.StopAsync();
                 await fileManagementServer.StopAsync();
-                await shutdownLogic.HandleShutdownAsync();
-                websiteUsageLogic.Dispose();
-                websiteUsageContext.Dispose();
+                if (shutdownLogic != null)
+                {
+                    await shutdownLogic.HandleShutdownAsync();
+                }
+                websiteUsageLogic?.Dispose();
+                websiteUsageContext?.Dispose();
+                appUsageLogic?.Dispose();
+                appUsageContext?.Dispose();
                 Log.CloseAndFlush();
             };
 
@@ -199,16 +233,26 @@ namespace IRIS.Agent
             {
                 e.Cancel = true; // Prevent immediate exit
                 Log.Information("Ctrl+C detected. Handling shutdown...");
+                policyTimer?.Dispose();
                 await monitoringController.StopMonitoringAsync();
                 await snapshotServer.StopAsync();
                 await fileManagementServer.StopAsync();
-                await appUsageLogic.StopMonitoringAsync();
-                await websiteUsageLogic.StopMonitoringAsync();
-                await shutdownLogic.HandleShutdownAsync();
-                appUsageLogic.Dispose();
-                appUsageContext.Dispose();
-                websiteUsageLogic.Dispose();
-                websiteUsageContext.Dispose();
+                if (appUsageLogic != null)
+                {
+                    await appUsageLogic.StopMonitoringAsync();
+                }
+                if (websiteUsageLogic != null)
+                {
+                    await websiteUsageLogic.StopMonitoringAsync();
+                }
+                if (shutdownLogic != null)
+                {
+                    await shutdownLogic.HandleShutdownAsync();
+                }
+                appUsageLogic?.Dispose();
+                appUsageContext?.Dispose();
+                websiteUsageLogic?.Dispose();
+                websiteUsageContext?.Dispose();
                 Log.CloseAndFlush();
                 Environment.Exit(0);
             };
