@@ -92,6 +92,10 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
             <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary"/>
+            <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Desktop24}"
+                       Content="Remote Desktop"
+                       Command="{Binding RemoteDesktopCommand}"
+                       Appearance="Primary" Height="34" MinWidth="90"/>
         </StackPanel>
 
         <!-- ═══ DUAL PANE ═══ -->
@@ -284,12 +288,25 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="📦 Bulk Upload to Multiple PCs" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
 
-                <!-- Row 1: Folder name + file selection -->
-                <Grid Grid.Row="1" Margin="0,0,0,8">
+                <!-- Row 1: Room selector for bulk upload -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="Room:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="160" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedBulkRoom}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding RoomNumber}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Row 2: Folder name + file selection -->
+                <Grid Grid.Row="2" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="250"/>
@@ -311,8 +328,8 @@
                                Command="{Binding StartBulkUploadCommand}" Appearance="Primary"/>
                 </Grid>
 
-                <!-- Row 2: Target PC mode -->
-                <Grid Grid.Row="2" Margin="0,0,0,8">
+                <!-- Row 3: Target PC mode -->
+                <Grid Grid.Row="3" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -332,8 +349,8 @@
                                Command="{Binding DeselectAllPCsCommand}" Appearance="Secondary"/>
                 </Grid>
 
-                <!-- Row 3: PC checkboxes (visible when not uploading to all) -->
-                <ItemsControl Grid.Row="3" ItemsSource="{Binding PCs}" Margin="0,0,0,4"
+                <!-- Row 4: PC checkboxes (visible when not uploading to all) -->
+                <ItemsControl Grid.Row="4" ItemsSource="{Binding BulkPCs}" Margin="0,0,0,4"
                               Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -354,8 +371,8 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Row 4: Pending files + progress -->
-                <StackPanel Grid.Row="4">
+                <!-- Row 5: Pending files + progress -->
+                <StackPanel Grid.Row="5">
                     <!-- File list -->
                     <ItemsControl ItemsSource="{Binding BulkPendingFiles}" Margin="0,0,0,4"
                                   MaxHeight="100"
