@@ -310,7 +310,7 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Shutdown");
             if (queued)
             {
-                MessageBox.Show($"Shutdown command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowActionSuccessDialog("Command Queued", $"Shutdown command queued for {PCName}.");
                 return;
             }
 
@@ -345,7 +345,7 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Restart");
             if (queued)
             {
-                MessageBox.Show($"Restart command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowActionSuccessDialog("Command Queued", $"Restart command queued for {PCName}.");
                 return;
             }
 
@@ -388,13 +388,11 @@ namespace IRIS.UI.ViewModels
             }
 
             IsFreezeActive = !IsFreezeActive;
-            MessageBox.Show(
+            ShowActionSuccessDialog(
+                "Command Queued",
                 IsFreezeActive
                     ? $"Freeze command queued for {PCName}."
-                    : $"Unfreeze command queued for {PCName}.",
-                "Command Queued",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                    : $"Unfreeze command queued for {PCName}.");
         }
 
         private async Task RemoteDesktopAsync()
@@ -457,6 +455,19 @@ namespace IRIS.UI.ViewModels
                 false);
             offlineDialog.Owner = Application.Current.MainWindow;
             offlineDialog.ShowDialog();
+        }
+
+        private void ShowActionSuccessDialog(string title, string message)
+        {
+            var successDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            successDialog.Owner = Application.Current.MainWindow;
+            successDialog.ShowDialog();
         }
 
         private void ExpandScreen()

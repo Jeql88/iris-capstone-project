@@ -434,6 +434,16 @@ namespace IRIS.UI.ViewModels
                 StartMessageTimer();
                 LastAppliedText = $"Applied to {selectedRoom.RoomNumber} at {DateTime.Now:HH:mm:ss}";
 
+                var deploySuccessDialog = new ConfirmationDialog(
+                    "Policies Deployed",
+                    $"Policies were successfully deployed to {selectedRoom.RoomNumber}.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                deploySuccessDialog.Owner = Application.Current.MainWindow;
+                deploySuccessDialog.ShowDialog();
+
                 await LoadRoomDataAsync();
                 LoadCurrentPolicySettings();
 

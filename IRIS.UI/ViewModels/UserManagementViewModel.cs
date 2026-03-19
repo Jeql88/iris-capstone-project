@@ -277,6 +277,16 @@ namespace IRIS.UI.ViewModels
             {
                 await _userManagementService.DeleteUserAsync(user.Id);
                 await LoadUsersAsync();
+
+                var deleteSuccessDialog = new ConfirmationDialog(
+                    "User Deleted",
+                    $"User '{user.Username}' deleted successfully.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                deleteSuccessDialog.Owner = Application.Current.MainWindow;
+                deleteSuccessDialog.ShowDialog();
             }
             catch (Exception ex)
             {

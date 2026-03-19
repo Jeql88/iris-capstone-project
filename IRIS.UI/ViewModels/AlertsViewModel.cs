@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.Core.DTOs;
@@ -10,6 +9,9 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
+using System.Windows;
+using ClosedXML.Excel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
@@ -45,7 +47,7 @@ namespace IRIS.UI.ViewModels
             _scopeFactory = scopeFactory;
             _authenticationService = authenticationService;
             RefreshCommand = new RelayCommand(async () => await LoadAlertsAsync(), () => true);
-            ExportCommand = new RelayCommand(async () => await ExportCsvAsync(), () => true);
+            ExportCommand = new RelayCommand(async () => await ExportExcelAsync(), () => true);
             AcknowledgeCommand = new RelayCommand(async () => await AcknowledgeSelectedAsync(), () => true);
             ResolveCommand = new RelayCommand(async () => await ResolveSelectedAsync(), () => true);
             AcknowledgeVisibleCommand = new RelayCommand(async () => await AcknowledgeVisibleAsync(), () => FilteredAlerts.Any(a => !a.IsAcknowledged && !a.IsResolved));
@@ -485,13 +487,22 @@ namespace IRIS.UI.ViewModels
             await LoadAlertsAsync();
         }
 
-        private async Task ExportCsvAsync()
+        private async Task ExportExcelAsync()
         {
+            // Confirm export
+            var confirm = new ConfirmationDialog(
+                "Export Alerts",
+                $"Export {FilteredAlerts.Count} alert(s) to Excel?",
+                "ArrowDownload24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var saveDialog = new SaveFileDialog
             {
-                Filter = "CSV files (*.csv)|*.csv",
-                DefaultExt = "csv",
-                FileName = $"IRIS_Alerts_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                Filter = "Excel files (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                FileName = $"IRIS_Alerts_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
             };
 
             if (saveDialog.ShowDialog() != true)
@@ -499,30 +510,46 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var csv = new StringBuilder();
-            csv.AppendLine("Timestamp,Severity,Type,PC,Room,Message");
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Alerts");
+
+            // Headers
+            worksheet.Cell(1, 1).Value = "Timestamp";
+            worksheet.Cell(1, 2).Value = "Severity";
+            worksheet.Cell(1, 3).Value = "Type";
+            worksheet.Cell(1, 4).Value = "PC";
+            worksheet.Cell(1, 5).Value = "Room";
+            worksheet.Cell(1, 6).Value = "Message";
+
+            var row = 2;
             foreach (var alert in FilteredAlerts)
             {
-                csv.AppendLine(string.Join(",",
-                    EscapeCsv(TimeZoneInfo.ConvertTimeFromUtc(alert.Timestamp, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss")),
-                    EscapeCsv(alert.Severity),
-                    EscapeCsv(alert.Type),
-                    EscapeCsv(alert.PCName),
-                    EscapeCsv(alert.RoomName),
-                    EscapeCsv(alert.Message)));
+                worksheet.Cell(row, 1).Value = TimeZoneInfo.ConvertTimeFromUtc(alert.Timestamp, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 2).Value = alert.Severity;
+                worksheet.Cell(row, 3).Value = alert.Type;
+                worksheet.Cell(row, 4).Value = alert.PCName;
+                worksheet.Cell(row, 5).Value = alert.RoomName;
+                worksheet.Cell(row, 6).Value = alert.Message;
+                row++;
             }
 
-            await File.WriteAllTextAsync(saveDialog.FileName, csv.ToString());
-        }
+            // Adjust columns
+            worksheet.Columns().AdjustToContents();
 
-        private static string EscapeCsv(string value)
-        {
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
-            {
-                return $"\"{value.Replace("\"", "\"\"")}\"";
-            }
+            using var memoryStream = new MemoryStream();
+            workbook.SaveAs(memoryStream);
+            await File.WriteAllBytesAsync(saveDialog.FileName, memoryStream.ToArray());
 
-            return value;
+            // Show success dialog
+            var success = new ConfirmationDialog(
+                "Export Successful",
+                $"Exported {FilteredAlerts.Count} alert(s) to {saveDialog.FileName}",
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            success.Owner = Application.Current.MainWindow;
+            success.ShowDialog();
         }
 
         public void OnNavigatedFrom()

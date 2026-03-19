@@ -89,8 +89,15 @@ namespace IRIS.UI.Views.Admin
             {
                 await _userService.CreateUserAsync(username, defaultPassword, role, fullName);
 
-                MessageBox.Show($"User '{username}' created successfully!\n\nDefault Password: {defaultPassword}\n\nUser must change password on first login.",
-                    "User Created", MessageBoxButton.OK, MessageBoxImage.Information);
+                var createSuccessDialog = new ConfirmationDialog(
+                    "User Created",
+                    $"User '{username}' created successfully!\n\nDefault Password: {defaultPassword}\n\nUser must change password on first login.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                createSuccessDialog.Owner = Application.Current.MainWindow;
+                createSuccessDialog.ShowDialog();
 
                 AddUsernameTextBox.Clear();
                 AddFullNameTextBox.Clear();
@@ -156,8 +163,15 @@ namespace IRIS.UI.Views.Admin
             {
                 await _userService.UpdateUserAsync(_viewModel.EditUserId, username, fullName, userRole);
 
-                MessageBox.Show("User updated successfully!",
-                    "User Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+                var updateSuccessDialog = new ConfirmationDialog(
+                    "User Updated",
+                    "User updated successfully!",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                updateSuccessDialog.Owner = Application.Current.MainWindow;
+                updateSuccessDialog.ShowDialog();
 
                 _viewModel.RefreshCommand.Execute(null);
                 _viewModel.IsEditModalOpen = false;

@@ -588,11 +588,15 @@ namespace IRIS.UI.ViewModels
                 }
 
                 await File.WriteAllBytesAsync(saveFileDialog.FileName, bytes);
-                MessageBox.Show(
-                    "Usage metrics for both Application and Website tabs were exported to an Excel file.",
+                var exportSuccessDialog = new ConfirmationDialog(
                     "Export Complete",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    "Usage metrics for both Application and Website tabs were exported to an Excel file.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                exportSuccessDialog.Owner = Application.Current.MainWindow;
+                exportSuccessDialog.ShowDialog();
             }
             catch (Exception ex)
             {

@@ -290,7 +290,15 @@ namespace IRIS.UI.ViewModels
                     endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : null);
 
                 await File.WriteAllBytesAsync(saveDialog.FileName, bytes);
-                MessageBox.Show("Access logs were exported to an Excel file.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                var exportSuccessDialog = new ConfirmationDialog(
+                    "Export Complete",
+                    "Access logs were exported to an Excel file.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                exportSuccessDialog.Owner = Application.Current.MainWindow;
+                exportSuccessDialog.ShowDialog();
             }
             catch (Exception ex)
             {

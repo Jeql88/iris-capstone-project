@@ -491,6 +491,7 @@ namespace IRIS.UI.ViewModels
                 CurrentPage = 1;
                 await LoadRoomsAsync(created.Id);
                 SetStatus($"Room {created.RoomNumber} created.", false);
+                ShowSuccessDialog("Laboratory Created", $"Laboratory '{created.RoomNumber}' was created successfully.");
             }
             catch (Exception ex)
             {
@@ -526,6 +527,7 @@ namespace IRIS.UI.ViewModels
                     CurrentPage = 1;
                     await LoadRoomsAsync(updated.Id);
                     SetStatus($"Room {updated.RoomNumber} updated.", false);
+                    ShowSuccessDialog("Laboratory Updated", $"Laboratory '{updated.RoomNumber}' was updated successfully.");
                 }
             }
             catch (Exception ex)
@@ -541,7 +543,7 @@ namespace IRIS.UI.ViewModels
 
             var dialog = new ConfirmationDialog(
                 "Delete Laboratory",
-                $"Are you sure you want to delete laboratory '{room.RoomNumber}'?\n\nAll PCs will be moved to the DEFAULT room and all policies will be deleted. This action cannot be undone.",
+                $"Are you sure you want to delete laboratory '{room.RoomNumber}'?\n\nAll PCs will be unassigned and policies will be removed. This action cannot be undone.",
                 "Delete24");
             dialog.Owner = Application.Current.MainWindow;
 
@@ -562,6 +564,7 @@ namespace IRIS.UI.ViewModels
                     await LoadRoomsAsync();
                     await LoadUnassignedAsync();
                     SetStatus("Room deleted.", false);
+                    ShowSuccessDialog("Laboratory Deleted", $"Laboratory '{room.RoomNumber}' was deleted successfully.");
                 }
                 else
                 {
@@ -597,6 +600,7 @@ namespace IRIS.UI.ViewModels
                     await LoadUnassignedAsync();
                     await ViewAssignedPCsAsync(ModalRoomId);
                     SetStatus($"Assigned {selectedIds.Count} PC(s) to room {ModalRoomNumber}.", false);
+                    ShowSuccessDialog("PCs Assigned", $"Assigned {selectedIds.Count} PC(s) to laboratory '{ModalRoomNumber}'.");
                 }
                 else
                 {
@@ -631,6 +635,7 @@ namespace IRIS.UI.ViewModels
                 {
                     await LoadUnassignedAsync();
                     SetStatus($"Assigned {selectedIds.Count} PC(s) to room {SelectedRoom.RoomNumber}.", false);
+                    ShowSuccessDialog("PCs Assigned", $"Assigned {selectedIds.Count} PC(s) to laboratory '{SelectedRoom.RoomNumber}'.");
                 }
                 else
                 {
@@ -672,6 +677,7 @@ namespace IRIS.UI.ViewModels
                         AssignedPCs.Clear();
                     }
                     SetStatus($"Unassigned {selectedIds.Count} PC(s) from room.", false);
+                    ShowSuccessDialog("PCs Unassigned", $"Unassigned {selectedIds.Count} PC(s) from the laboratory.");
                 }
                 else
                 {
@@ -710,6 +716,19 @@ namespace IRIS.UI.ViewModels
         {
             StatusMessage = message;
             IsStatusError = isError;
+        }
+
+        private static void ShowSuccessDialog(string title, string message)
+        {
+            var successDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            successDialog.Owner = Application.Current.MainWindow;
+            successDialog.ShowDialog();
         }
 
         public void OnNavigatedTo()
