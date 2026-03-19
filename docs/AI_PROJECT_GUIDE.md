@@ -245,7 +245,13 @@ WPF Dashboard (Admin/IT/Faculty)
 ### Debugging Agent Communication
 - Check TCP socket connection (agent → server)
 - Verify JSON serialization format
-- Confirm firewall rules allow LAN traffic
+- Confirm firewall rules allow LAN traffic:
+  - UI host inbound TCP `5091` (agent command polling)
+  - Agent inbound TCP `5057` (snapshot), `5065` (file API)
+  - UI host rule command:
+    ```powershell
+    netsh advfirewall firewall add rule name="IRIS UI Power Command TCP 5091" dir=in action=allow protocol=TCP localport=5091 profile=private,domain remoteip=localsubnet
+    ```
 - Review agent logs for errors
 - Test with single PC before scaling
 

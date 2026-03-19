@@ -43,6 +43,9 @@ namespace IRIS.UI
 
             _serviceProvider = serviceCollection.BuildServiceProvider();
 
+            var hostFirewallBootstrapService = _serviceProvider.GetRequiredService<IHostFirewallBootstrapService>();
+            _ = hostFirewallBootstrapService.EnsurePowerCommandRuleAsync();
+
             _powerCommandPollingServer = _serviceProvider.GetRequiredService<IPowerCommandPollingServer>();
             _powerCommandPollingServer.Start();
 
@@ -135,6 +138,7 @@ namespace IRIS.UI
             services.AddScoped<IDataRetentionService, DataRetentionService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
             services.AddSingleton<IPowerCommandPollingServer, PowerCommandPollingServer>();
+            services.AddSingleton<IHostFirewallBootstrapService, HostFirewallBootstrapService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
             services.AddSingleton<DataRetentionBackgroundService>();
