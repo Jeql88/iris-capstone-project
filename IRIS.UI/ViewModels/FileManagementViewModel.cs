@@ -276,9 +276,12 @@ namespace IRIS.UI.ViewModels
                 foreach (var room in rooms.OrderBy(r => r.RoomNumber))
                     Rooms.Add(room);
 
-                SelectedRoom = Rooms.FirstOrDefault();
-                SelectedBulkRoom = Rooms.FirstOrDefault();
+                _selectedRoom = Rooms.FirstOrDefault();
+                OnPropertyChanged(nameof(SelectedRoom));
+                _selectedBulkRoom = Rooms.FirstOrDefault();
+                OnPropertyChanged(nameof(SelectedBulkRoom));
                 await LoadPCsAsync();
+                await LoadBulkPCsAsync();
             }
             catch (Exception ex)
             {
