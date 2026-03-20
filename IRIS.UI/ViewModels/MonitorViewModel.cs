@@ -30,8 +30,10 @@ namespace IRIS.UI.ViewModels
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(2200) };
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
-        private int? _selectedRoomId = null;
         private string _selectedPcStatus = "All Statuses";
+        private RoomDto? _appliedRoom;
+        private string _appliedSearchText = string.Empty;
+        private string _appliedPcStatus = "All Statuses";
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
@@ -76,6 +78,8 @@ namespace IRIS.UI.ViewModels
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
 
@@ -99,7 +103,6 @@ namespace IRIS.UI.ViewModels
             {
                 _searchText = value;
                 OnPropertyChanged();
-                ApplyFilter();
             }
         }
 
@@ -110,7 +113,6 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedPcStatus = value;
                 OnPropertyChanged();
-                ApplyFilter();
             }
         }
 
@@ -120,12 +122,7 @@ namespace IRIS.UI.ViewModels
             set
             {
                 _selectedRoom = value;
-                _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
                 OnPropertyChanged();
-                if (_isInitialized)
-                {
-                    _ = LoadPCDataAsync();
-                }
             }
         }
 
@@ -246,6 +243,26 @@ namespace IRIS.UI.ViewModels
         public ICommand RemoteDesktopForPCCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand RefreshSelectedPcTimelineCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
+
+        private async Task ApplyFiltersAsync()
+        {
+            _appliedRoom = SelectedRoom;
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedPcStatus = SelectedPcStatus;
+
+            ApplyFilter();
+            await Task.CompletedTask;
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SearchText = string.Empty;
+            SelectedPcStatus = "All Statuses";
+            SelectedRoom = Rooms.FirstOrDefault();
+            await ApplyFiltersAsync();
+        }
 
         private async Task InitializeAsync()
         {
@@ -257,6 +274,10 @@ namespace IRIS.UI.ViewModels
             {
                 ApplyCachedPCData();
             }
+
+            _appliedRoom = SelectedRoom;
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedPcStatus = SelectedPcStatus;
 
             await LoadPCDataAsync();
             _refreshTimer.Start();
@@ -285,7 +306,7 @@ namespace IRIS.UI.ViewModels
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
                 // Refresh via shared cache (uses its own DI scope — safe from navigation disposal)
-                _cache.CurrentRoomFilter = _selectedRoomId;
+                _cache.CurrentRoomFilter = null;
                 await _cache.RefreshPCDataAsync();
 
                 var pcs = _cache.CachedPCs;
@@ -496,17 +517,24 @@ namespace IRIS.UI.ViewModels
         private void ApplyFilter()
         {
             var desired = new List<PCDisplayModel>();
+            var appliedRoomName = _appliedRoom != null && _appliedRoom.Id > 0
+                ? _appliedRoom.RoomNumber
+                : null;
+
             foreach (var pc in PCs)
             {
-                bool matchesSearch = string.IsNullOrEmpty(SearchText) ||
-                    pc.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+                bool matchesRoom = string.IsNullOrWhiteSpace(appliedRoomName) ||
+                    string.Equals(pc.RoomName, appliedRoomName, StringComparison.OrdinalIgnoreCase);
 
-                bool matchesStatus = SelectedPcStatus.StartsWith("All", StringComparison.OrdinalIgnoreCase)
-                    || (SelectedPcStatus.StartsWith("Online", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
-                    || (SelectedPcStatus.StartsWith("Offline", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Offline", StringComparison.OrdinalIgnoreCase));
+                bool matchesSearch = string.IsNullOrEmpty(_appliedSearchText) ||
+                    pc.PCName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    pc.IPAddress.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase);
 
-                if (matchesSearch && matchesStatus)
+                bool matchesStatus = _appliedPcStatus.StartsWith("All", StringComparison.OrdinalIgnoreCase)
+                    || (_appliedPcStatus.StartsWith("Online", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    || (_appliedPcStatus.StartsWith("Offline", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Offline", StringComparison.OrdinalIgnoreCase));
+
+                if (matchesRoom && matchesSearch && matchesStatus)
                 {
                     desired.Add(pc);
                 }

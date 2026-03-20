@@ -208,9 +208,9 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Alert24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="System Alerts" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Alert24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="System Alerts" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
