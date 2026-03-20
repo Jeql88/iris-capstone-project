@@ -1,5 +1,6 @@
 using System.Net;
 using System.IO.Compression;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Serilog;
@@ -8,6 +9,7 @@ namespace IRIS.Agent.Logic
 {
     public sealed class AgentFileManagementServer : IDisposable
     {
+        private const string ActiveDesktopToken = "%ACTIVE_DESKTOP%";
         private readonly HttpListener _listener = new();
         private readonly int _port;
         private readonly string _rootPath;
@@ -532,6 +534,20 @@ namespace IRIS.Agent.Logic
             if (string.IsNullOrWhiteSpace(normalized) || normalized == ".")
                 return _rootPath;
 
+            if (normalized.StartsWith(ActiveDesktopToken, StringComparison.OrdinalIgnoreCase))
+            {
+                var activeDesktopPath = GetActiveUserDesktopPath();
+                var suffix = normalized.Length == ActiveDesktopToken.Length
+                    ? string.Empty
+                    : normalized[ActiveDesktopToken.Length..].TrimStart('\\', '/');
+
+                var combinedActivePath = string.IsNullOrWhiteSpace(suffix)
+                    ? activeDesktopPath
+                    : Path.Combine(activeDesktopPath, suffix);
+
+                return Path.GetFullPath(combinedActivePath);
+            }
+
             // Handle absolute paths (C:\... or \\share\...)
             if (Path.IsPathFullyQualified(normalized))
             {
@@ -547,6 +563,93 @@ namespace IRIS.Agent.Logic
             if (!combined.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException("Path escapes managed root.");
             return combined;
+        }
+
+        private static string GetActiveUserDesktopPath()
+        {
+            try
+            {
+                var activeUserName = TryGetActiveConsoleUserName();
+                if (!string.IsNullOrWhiteSpace(activeUserName))
+                {
+                    var normalizedUserName = activeUserName.Contains('\\')
+                        ? activeUserName[(activeUserName.LastIndexOf('\\') + 1)..]
+                        : activeUserName;
+
+                    var candidate = Path.Combine(@"C:\Users", normalizedUserName, "Desktop");
+                    if (Directory.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to resolve active user desktop path");
+            }
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (!string.IsNullOrWhiteSpace(desktop) && Directory.Exists(desktop))
+            {
+                return desktop;
+            }
+
+            return @"C:\Users\Public\Desktop";
+        }
+
+        private static string? TryGetActiveConsoleUserName()
+        {
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "quser",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(3000);
+
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    return null;
+                }
+
+                var lines = output
+                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => line.Trim())
+                    .Where(line => line.Length > 0)
+                    .ToList();
+
+                // Prefer the actively logged-in session (marked with '>').
+                var activeLine = lines.FirstOrDefault(line => line.StartsWith(">", StringComparison.Ordinal));
+                if (activeLine != null)
+                {
+                    var cleaned = activeLine.TrimStart('>').Trim();
+                    return cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                }
+
+                // Fallback: first non-header row.
+                var firstSession = lines.FirstOrDefault(line =>
+                    !line.StartsWith("USERNAME", StringComparison.OrdinalIgnoreCase));
+                if (firstSession == null)
+                {
+                    return null;
+                }
+
+                return firstSession.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private async Task HandleDrivesAsync(HttpListenerContext context)

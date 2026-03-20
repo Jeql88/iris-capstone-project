@@ -12,6 +12,7 @@ using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Models;
+using IRIS.UI.Views.Dialogs;
 using Microsoft.Extensions.Configuration;
 
 namespace IRIS.UI.ViewModels
@@ -45,6 +46,7 @@ namespace IRIS.UI.ViewModels
         private bool _isBusy;
 
         // Bulk upload state
+        private RoomDto? _selectedBulkRoom;
         private string _bulkFolderName = string.Empty;
         private bool _bulkUploadToAll = true;
         private string _bulkStatusMessage = string.Empty;
@@ -90,8 +92,9 @@ namespace IRIS.UI.ViewModels
             RemoveBulkFileCommand = new RelayCommand<string>(RemoveBulkFile);
             StartBulkUploadCommand = new RelayCommand(async () => await StartBulkUploadAsync(),
                 () => BulkPendingFiles.Count > 0 && !string.IsNullOrWhiteSpace(BulkFolderName) && !_isBulkUploading);
-            SelectAllPCsCommand = new RelayCommand(() => { foreach (var pc in PCs) pc.IsSelected = true; OnPropertyChanged(nameof(PCs)); }, () => true);
-            DeselectAllPCsCommand = new RelayCommand(() => { foreach (var pc in PCs) pc.IsSelected = false; OnPropertyChanged(nameof(PCs)); }, () => true);
+            SelectAllPCsCommand = new RelayCommand(() => { foreach (var pc in BulkPCs) pc.IsSelected = true; OnPropertyChanged(nameof(BulkPCs)); }, () => true);
+            DeselectAllPCsCommand = new RelayCommand(() => { foreach (var pc in BulkPCs) pc.IsSelected = false; OnPropertyChanged(nameof(BulkPCs)); }, () => true);
+            RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => _selectedPC != null);
 
             _ = InitializeAsync();
         }
@@ -104,6 +107,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<PCModel> PCs { get; } = new();
         public ObservableCollection<FileItemModel> LocalFiles { get; } = new();
         public ObservableCollection<FileItemModel> RemoteFiles { get; } = new();
+        public ObservableCollection<PCModel> BulkPCs { get; } = new();
         public ObservableCollection<string> BulkPendingFiles { get; } = new();
 
         // Tracks the current multi-selection in each grid (set by code-behind SelectionChanged)
@@ -197,6 +201,12 @@ namespace IRIS.UI.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public RoomDto? SelectedBulkRoom
+        {
+            get => _selectedBulkRoom;
+            set { _selectedBulkRoom = value; OnPropertyChanged(); _ = LoadBulkPCsAsync(); }
+        }
+
         public string BulkFolderName
         {
             get => _bulkFolderName;
@@ -250,6 +260,7 @@ namespace IRIS.UI.ViewModels
         public ICommand StartBulkUploadCommand { get; }
         public ICommand SelectAllPCsCommand { get; }
         public ICommand DeselectAllPCsCommand { get; }
+        public ICommand RemoteDesktopCommand { get; }
 
         // ═══════════════════════════════════════
         // Initialization
@@ -265,8 +276,12 @@ namespace IRIS.UI.ViewModels
                 foreach (var room in rooms.OrderBy(r => r.RoomNumber))
                     Rooms.Add(room);
 
-                SelectedRoom = Rooms.FirstOrDefault();
+                _selectedRoom = Rooms.FirstOrDefault();
+                OnPropertyChanged(nameof(SelectedRoom));
+                _selectedBulkRoom = Rooms.FirstOrDefault();
+                OnPropertyChanged(nameof(SelectedBulkRoom));
                 await LoadPCsAsync();
+                await LoadBulkPCsAsync();
             }
             catch (Exception ex)
             {
@@ -308,6 +323,32 @@ namespace IRIS.UI.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"Failed to load PCs: {ex.Message}";
+            }
+        }
+
+        private async Task LoadBulkPCsAsync()
+        {
+            try
+            {
+                int? roomId = SelectedBulkRoom != null && SelectedBulkRoom.Id > 0 ? SelectedBulkRoom.Id : null;
+                var pcs = await _deploymentDataService.GetRegisteredPCsAsync(roomId);
+
+                BulkPCs.Clear();
+                foreach (var pc in pcs)
+                {
+                    BulkPCs.Add(new PCModel
+                    {
+                        Id = pc.Id,
+                        Hostname = pc.Hostname ?? "Unknown",
+                        IPAddress = pc.IpAddress ?? "N/A",
+                        Status = pc.Status,
+                        RoomNumber = pc.RoomNumber
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                BulkStatusMessage = $"Failed to load bulk PCs: {ex.Message}";
             }
         }
 
@@ -469,8 +510,9 @@ namespace IRIS.UI.ViewModels
                 ? $"Delete '{items[0].Name}'?"
                 : $"Delete {items.Count} selected items?";
 
-            var confirm = MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
+            var dialog = new ConfirmationDialog("Delete", msg, "Delete24", "Yes", "No");
+            dialog.Owner = Application.Current.MainWindow;
+            if (dialog.ShowDialog() != true) return;
 
             try
             {
@@ -718,8 +760,9 @@ namespace IRIS.UI.ViewModels
                 ? $"Delete '{items[0].Name}' on {_selectedPC.Hostname}?"
                 : $"Delete {items.Count} items on {_selectedPC.Hostname}?";
 
-            var confirm = MessageBox.Show(msg, "Delete Remote Items", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
+            var dialog = new ConfirmationDialog("Delete Remote Items", msg, "Delete24", "Yes", "No");
+            dialog.Owner = Application.Current.MainWindow;
+            if (dialog.ShowDialog() != true) return;
 
             try
             {
@@ -834,10 +877,9 @@ namespace IRIS.UI.ViewModels
 
                 if (File.Exists(localPath))
                 {
-                    var confirm = MessageBox.Show(
-                        $"'{Path.GetFileName(localPath)}' already exists locally. Overwrite?",
-                        "Overwrite", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (confirm != MessageBoxResult.Yes) return;
+                    var overwriteDialog = new ConfirmationDialog("Overwrite", $"'{Path.GetFileName(localPath)}' already exists locally. Overwrite?", "Warning24", "Yes", "No");
+                    overwriteDialog.Owner = Application.Current.MainWindow;
+                    if (overwriteDialog.ShowDialog() != true) return;
                 }
 
                 await DownloadToPathAsync(item, localPath);
@@ -869,10 +911,9 @@ namespace IRIS.UI.ViewModels
                 ? Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
                 : CurrentLocalPath;
 
-            var confirm = MessageBox.Show(
-                $"Download {items.Count} items to:\n{localDir}?",
-                "Download Multiple Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (confirm != MessageBoxResult.Yes) return;
+            var downloadDialog = new ConfirmationDialog("Download Multiple Files", $"Download {items.Count} items to:\n{localDir}?", "ArrowDownload24", "Yes", "No");
+            downloadDialog.Owner = Application.Current.MainWindow;
+            if (downloadDialog.ShowDialog() != true) return;
 
             try
             {
@@ -888,10 +929,9 @@ namespace IRIS.UI.ViewModels
 
                         if (File.Exists(localPath))
                         {
-                            var result = MessageBox.Show(
-                                $"'{Path.GetFileName(localPath)}' already exists. Overwrite?",
-                                "Overwrite", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                            if (result != MessageBoxResult.Yes) continue;
+                            var overwriteDialog = new ConfirmationDialog("Overwrite", $"'{Path.GetFileName(localPath)}' already exists. Overwrite?", "Warning24", "Yes", "No");
+                            overwriteDialog.Owner = Application.Current.MainWindow;
+                            if (overwriteDialog.ShowDialog() != true) continue;
                         }
 
                         await DownloadToPathAsync(item, localPath);
@@ -983,10 +1023,9 @@ namespace IRIS.UI.ViewModels
                 bool alreadyExists = await CheckRemoteFileExistsAsync(_selectedPC, remotePath);
                 if (alreadyExists)
                 {
-                    var result = MessageBox.Show(
-                        $"'{fileName}' already exists on {_selectedPC.Hostname}.\nOverwrite?",
-                        "File Exists", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (result != MessageBoxResult.Yes) return;
+                    var existsDialog = new ConfirmationDialog("File Exists", $"'{fileName}' already exists on {_selectedPC.Hostname}.\nOverwrite?", "Warning24", "Yes", "No");
+                    existsDialog.Owner = Application.Current.MainWindow;
+                    if (existsDialog.ShowDialog() != true) return;
                 }
             }
 
@@ -1094,8 +1133,8 @@ namespace IRIS.UI.ViewModels
 
             // Determine target PCs
             var targetPCs = BulkUploadToAll
-                ? PCs.Where(pc => !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList()
-                : PCs.Where(pc => pc.IsSelected && !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList();
+                ? BulkPCs.Where(pc => !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList()
+                : BulkPCs.Where(pc => pc.IsSelected && !string.IsNullOrWhiteSpace(pc.IPAddress) && pc.IPAddress != "N/A").ToList();
 
             if (targetPCs.Count == 0)
             {
@@ -1111,8 +1150,9 @@ namespace IRIS.UI.ViewModels
             var failCount = 0;
             var skippedFiles = new List<string>();
 
-            // Use Desktop as default remote target folder parent
-            var remoteDesktop = @"C:\Users\Public\Desktop";
+            // Use the active logged-in user's desktop on each remote PC.
+            // The token is resolved by AgentFileManagementServer.
+            var remoteDesktop = "%ACTIVE_DESKTOP%";
             var remoteFolderPath = Path.Combine(remoteDesktop, BulkFolderName.Trim());
 
             BulkStatusMessage = $"Uploading {BulkPendingFiles.Count} file(s) to {targetPCs.Count} PC(s) into '{BulkFolderName}'...";
@@ -1132,20 +1172,13 @@ namespace IRIS.UI.ViewModels
                             bool exists = await CheckRemoteFileExistsAsync(pc, remoteFilePath);
                             if (exists)
                             {
-                                // Ask once per file-per-PC conflict
-                                var result = MessageBox.Show(
+                                var overwriteDialog = new ConfirmationDialog(
+                                    "File Exists",
                                     $"'{fileName}' already exists on {pc.Hostname} in folder '{BulkFolderName}'.\nOverwrite?",
-                                    "File Exists", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                                    "Warning24", "Overwrite", "Skip");
+                                overwriteDialog.Owner = Application.Current.MainWindow;
 
-                                if (result == MessageBoxResult.Cancel)
-                                {
-                                    BulkStatusMessage = "Bulk upload cancelled by user.";
-                                    IsBulkUploading = false;
-                                    BulkProgress = 0;
-                                    return;
-                                }
-
-                                if (result == MessageBoxResult.No)
+                                if (overwriteDialog.ShowDialog() != true)
                                 {
                                     skippedFiles.Add($"{fileName} → {pc.Hostname}");
                                     completedOps++;
@@ -1202,6 +1235,48 @@ namespace IRIS.UI.ViewModels
         }
 
         // ═══════════════════════════════════════
+        // REMOTE DESKTOP
+        // ═══════════════════════════════════════
+
+        private async Task RemoteDesktopAsync()
+        {
+            await Task.CompletedTask;
+
+            if (_selectedPC == null || string.IsNullOrWhiteSpace(_selectedPC.IPAddress)
+                || _selectedPC.IPAddress.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+            {
+                var errorDialog = new ConfirmationDialog(
+                    "Remote Desktop",
+                    "Cannot open Remote Desktop: no PC selected or missing IP address.",
+                    "Warning24", "OK", "Cancel", false);
+                errorDialog.Owner = Application.Current.MainWindow;
+                errorDialog.ShowDialog();
+                return;
+            }
+
+            var dialog = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Open Remote Desktop connection to {_selectedPC.Hostname} ({_selectedPC.IPAddress})?",
+                "Desktop24");
+            dialog.Owner = Application.Current.MainWindow;
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "mstsc",
+                    Arguments = $"/v:{_selectedPC.IPAddress}",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Failed to open Remote Desktop: {ex.Message}";
+            }
+        }
+
+        // ═══════════════════════════════════════
         // HELPERS
         // ═══════════════════════════════════════
 
@@ -1217,6 +1292,7 @@ namespace IRIS.UI.ViewModels
             (NavigateUpRemoteCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (NavigateToRemotePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (GoToRemoteDrivesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RemoteDesktopCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private Uri BuildAgentUri(string ipAddress, string relativePath)

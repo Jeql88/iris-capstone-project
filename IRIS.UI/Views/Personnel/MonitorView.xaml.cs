@@ -88,6 +88,45 @@ namespace IRIS.UI.Views.Personnel
             }
         }
 
+        private void RemoteDesktop_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            var border = FindParent<Border>(button);
+            if (border != null)
+            {
+                var popup = FindChild<Popup>(border, "ContextMenuPopup");
+                if (popup != null)
+                {
+                    popup.IsOpen = false;
+                }
+            }
+
+            if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.SelectedPC = pc;
+                vm.RemoteDesktopCommand.Execute(null);
+            }
+        }
+
+        private void HealthTimeline_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            var border = FindParent<Border>(button);
+            if (border != null)
+            {
+                var popup = FindChild<Popup>(border, "ContextMenuPopup");
+                if (popup != null)
+                {
+                    popup.IsOpen = false;
+                }
+            }
+
+            if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.ShowTimelineForPCCommand.Execute(pc);
+            }
+        }
+
         private T? FindParent<T>(DependencyObject? child) where T : DependencyObject
         {
             if (child == null) return null;

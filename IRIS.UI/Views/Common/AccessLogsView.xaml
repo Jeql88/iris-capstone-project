@@ -23,47 +23,90 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1.2*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Search Box -->
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                         PlaceholderText="Search by username, action, or IP..."
                                         Icon="{ui:SymbolIcon Search24}"
                                         ToolTip="Search by username, action, details, or IP address"/>
                         </StackPanel>
 
-                        <!-- Action Filter -->
+                        <!-- Role Filter -->
                         <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                            <TextBlock Text="Action" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ComboBox SelectedValue="{Binding SelectedAction, Mode=TwoWay}" 
+                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                          SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Actions" IsSelected="True" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Login" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Logout" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Password Change" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Created" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Updated" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="User Deactivated" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="System Access" Foreground="#1a1a1a"/>
+                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </ComboBox>
                         </StackPanel>
 
-                        <!-- Role Filter -->
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="User Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
-                                         SelectedValuePath="Content">
-                                <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
-                            </ComboBox>
+                        <!-- From Date -->
+                        <StackPanel Grid.Column="2" Margin="0,0,15,0">
+                            <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <Grid>
+                                <DatePicker SelectedDate="{Binding StartDate}" DisplayDateEnd="{Binding EndDate}"/>
+                                <TextBlock Text="dd/mm/yyyy"
+                                           Margin="12,0,36,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StartDate}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- To Date -->
+                        <StackPanel Grid.Column="3" Margin="0,0,0,0">
+                            <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <Grid>
+                                <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate}"/>
+                                <TextBlock Text="dd/mm/yyyy"
+                                           Margin="12,0,36,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding EndDate}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
                         </StackPanel>
                     </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <ui:Button Content="Apply Filters"
+                                   Command="{Binding ApplyFiltersCommand}"
+                                   Appearance="Primary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button Content="Reset"
+                                   Command="{Binding ResetFiltersCommand}"
+                                   Appearance="Secondary"/>
+                    </StackPanel>
                 </StackPanel>
             </ui:Card>
 
@@ -84,27 +127,55 @@
                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
+                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
                                          ItemsSource="{Binding PageSizeOptions}"
                                          Width="70" Margin="0,0,5,0"/>
-                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="#1a1a1a"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}"
+                                       Content="Export"
+                                       Command="{Binding ExportCommand}"
+                                       Appearance="Secondary"
+                                       Margin="12,0,0,0"/>
                         </StackPanel>
                     </Grid>
 
                     <!-- DataGrid -->
-                    <ui:DataGrid Grid.Row="1" ItemsSource="{Binding AccessLogs}" 
-                                 AutoGenerateColumns="False" IsReadOnly="True"
-                                 MinHeight="450">
-                        <ui:DataGrid.Columns>
-                            <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="1.5*"/>
-                            <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.2*"/>
-                            <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="1.2*"/>
-                            <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="1*"/>
-                            <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="2*"/>
-                            <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="1*"/>
-                        </ui:DataGrid.Columns>
-                    </ui:DataGrid>
+                    <Grid Grid.Row="1" MinHeight="450">
+                        <ui:DataGrid ItemsSource="{Binding AccessLogs}" 
+                                     AutoGenerateColumns="False" IsReadOnly="True">
+                            <ui:DataGrid.Columns>
+                                <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="1.5*"/>
+                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.2*"/>
+                                <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="1.2*"/>
+                                <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="1*"/>
+                                <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="2*"/>
+                                <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="1*"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <Border VerticalAlignment="Top"
+                                Margin="0,42,0,0"
+                                Height="390"
+                                Background="{DynamicResource LayerFillColorDefaultBrush}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AccessLogs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="No access logs found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Try adjusting the filters" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Pagination Controls -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
@@ -115,7 +186,7 @@
                                    Margin="0,0,10,0"/>
                         
                         <TextBlock Text="{Binding PageInfo}" FontSize="13" 
-                                   VerticalAlignment="Center" Margin="15,0" Foreground="#1a1a1a"/>
+                                   VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         
                         <ui:Button Command="{Binding NextPageCommand}" 
                                    Content="Next" 

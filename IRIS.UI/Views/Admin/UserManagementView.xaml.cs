@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.ViewModels;
+using IRIS.UI.Views.Dialogs;
 
 namespace IRIS.UI.Views.Admin
 {
@@ -23,85 +24,14 @@ namespace IRIS.UI.Views.Admin
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(UserManagementViewModel.SelectedUser))
-            {
-                if (_viewModel?.SelectedUser != null)
-                {
-                    // Enable fields and populate
-                    EditFullNameTextBox.IsEnabled = true;
-                    EditUsernameTextBox.IsEnabled = true;
-                    EditRoleComboBox.IsEnabled = true;
-                    EditUserButton.IsEnabled = true;
-                    DeactivateUserButton.IsEnabled = true;
-                    ClearSelectionButton.Visibility = System.Windows.Visibility.Visible;
-                    HelpIcon.Visibility = System.Windows.Visibility.Collapsed;
-
-                    if (_viewModel.SelectedUser.IsActive)
-                    {
-                        DeactivateUserButton.Content = "Deactivate User";
-                        DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24 };
-                        DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Danger;
-                    }
-                    else
-                    {
-                        DeactivateUserButton.Content = "Reactivate User";
-                        DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.ArrowSync24 };
-                        DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
-                    }
-
-                    EditFullNameTextBox.Text = _viewModel.SelectedUser.FullName;
-                    EditUsernameTextBox.Text = _viewModel.SelectedUser.Username;
-
-                    foreach (ComboBoxItem item in EditRoleComboBox.Items)
-                    {
-                        if (item.Content.ToString() == _viewModel.SelectedUser.Role)
-                        {
-                            EditRoleComboBox.SelectedItem = item;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    // Disable fields and clear
-                    EditFullNameTextBox.IsEnabled = false;
-                    EditUsernameTextBox.IsEnabled = false;
-                    EditRoleComboBox.IsEnabled = false;
-                    EditUserButton.IsEnabled = false;
-                    DeactivateUserButton.IsEnabled = false;
-                    ClearSelectionButton.Visibility = System.Windows.Visibility.Collapsed;
-                    HelpIcon.Visibility = System.Windows.Visibility.Visible;
-
-                    DeactivateUserButton.Content = "Deactivate User";
-                    DeactivateUserButton.Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24 };
-                    DeactivateUserButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Danger;
-
-                    EditFullNameTextBox.Text = string.Empty;
-                    EditUsernameTextBox.Text = string.Empty;
-                    EditRoleComboBox.SelectedIndex = -1;
-                }
-            }
         }
 
-        private void ClearSelection_Click(object sender, System.Windows.RoutedEventArgs e)
+        private void UsersDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_viewModel != null)
+            if (sender is DataGrid dataGrid && dataGrid.SelectedItem != null)
             {
-                _viewModel.SelectedUser = null;
+                dataGrid.SelectedItem = null;
             }
-            EditFullNameTextBox.Text = string.Empty;
-            EditUsernameTextBox.Text = string.Empty;
-            EditRoleComboBox.SelectedIndex = -1;
-        }
-
-        private void HelpIcon_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(
-                "To edit a user, click a row in the users table first.\n\n" +
-                "The selected user's details will be loaded into the Manage User form.",
-                "Manage User Help",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
         }
 
         private async void AddUser_Click(object sender, RoutedEventArgs e)
@@ -110,9 +40,21 @@ namespace IRIS.UI.Views.Admin
             var fullName = AddFullNameTextBox.Text.Trim();
             var roleItem = AddRoleComboBox.SelectedItem as ComboBoxItem;
 
+            if (string.IsNullOrWhiteSpace(username) && string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Username and Full Name are required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(username))
             {
                 MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -132,18 +74,37 @@ namespace IRIS.UI.Views.Admin
 
             const string defaultPassword = "IRIS@2025";
 
+            var createDialog = new ConfirmationDialog(
+                "Create User",
+                $"Are you sure you want to create user '{username}'?",
+                "Add24");
+            createDialog.Owner = Application.Current.MainWindow;
+
+            if (createDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             try
             {
-                await _userService.CreateUserAsync(username, defaultPassword, role, string.IsNullOrWhiteSpace(fullName) ? null : fullName);
+                await _userService.CreateUserAsync(username, defaultPassword, role, fullName);
 
-                MessageBox.Show($"User '{username}' created successfully!\n\nDefault Password: {defaultPassword}\n\nUser must change password on first login.",
-                    "User Created", MessageBoxButton.OK, MessageBoxImage.Information);
+                var createSuccessDialog = new ConfirmationDialog(
+                    "User Created",
+                    $"User '{username}' created successfully!\n\nDefault Password: {defaultPassword}\n\nUser must change password on first login.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                createSuccessDialog.Owner = Application.Current.MainWindow;
+                createSuccessDialog.ShowDialog();
 
                 AddUsernameTextBox.Clear();
                 AddFullNameTextBox.Clear();
                 AddRoleComboBox.SelectedIndex = 2;
 
                 _viewModel!.RefreshCommand.Execute(null);
+                _viewModel.IsAddModalOpen = false;
             }
             catch (InvalidOperationException ex)
             {
@@ -157,11 +118,9 @@ namespace IRIS.UI.Views.Admin
 
         private async void EditUser_Click(object sender, RoutedEventArgs e)
         {
-            if (_viewModel?.SelectedUser == null) return;
-
-            var username = EditUsernameTextBox.Text.Trim();
-            var fullName = EditFullNameTextBox.Text.Trim();
-            var roleItem = EditRoleComboBox.SelectedItem as ComboBoxItem;
+            var username = _viewModel!.EditUsername.Trim();
+            var fullName = _viewModel.EditFullName.Trim();
+            var role = _viewModel.EditRole;
 
             if (string.IsNullOrWhiteSpace(username))
             {
@@ -169,13 +128,19 @@ namespace IRIS.UI.Views.Admin
                 return;
             }
 
-            if (roleItem == null)
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(role))
             {
                 MessageBox.Show("Please select a role.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var role = roleItem.Content.ToString() switch
+            var userRole = role switch
             {
                 "System Administrator" => UserRole.SystemAdministrator,
                 "IT Personnel" => UserRole.ITPersonnel,
@@ -183,20 +148,33 @@ namespace IRIS.UI.Views.Admin
                 _ => UserRole.Faculty
             };
 
+            var updateDialog = new ConfirmationDialog(
+                "Update User",
+                $"Are you sure you want to update user '{username}'?",
+                "Edit24");
+            updateDialog.Owner = Application.Current.MainWindow;
+
+            if (updateDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             try
             {
-                await _userService.UpdateUserAsync(
-                    _viewModel.SelectedUser.Id,
-                    username,
-                    string.IsNullOrWhiteSpace(fullName) ? null : fullName,
-                    role
-                );
+                await _userService.UpdateUserAsync(_viewModel.EditUserId, username, fullName, userRole);
 
-                MessageBox.Show($"User updated successfully!",
-                    "User Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+                var updateSuccessDialog = new ConfirmationDialog(
+                    "User Updated",
+                    "User updated successfully!",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                updateSuccessDialog.Owner = Application.Current.MainWindow;
+                updateSuccessDialog.ShowDialog();
 
                 _viewModel.RefreshCommand.Execute(null);
-                _viewModel.SelectedUser = null;
+                _viewModel.IsEditModalOpen = false;
             }
             catch (InvalidOperationException ex)
             {
@@ -205,43 +183,6 @@ namespace IRIS.UI.Views.Admin
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to update user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private async void DeactivateUser_Click(object sender, RoutedEventArgs e)
-        {
-            if (_viewModel?.SelectedUser == null) return;
-
-            var isActive = _viewModel.SelectedUser.IsActive;
-            var confirmMessage = isActive
-                ? $"Are you sure you want to deactivate user '{_viewModel.SelectedUser.Username}'?\n\nThis user will no longer be able to log in."
-                : $"Are you sure you want to reactivate user '{_viewModel.SelectedUser.Username}'?\n\nThe user can log in again and will be required to change password.";
-            var confirmTitle = isActive ? "Confirm Deactivation" : "Confirm Reactivation";
-
-            var result = MessageBox.Show(confirmMessage, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result != MessageBoxResult.Yes) return;
-
-            try
-            {
-                if (isActive)
-                {
-                    await _userService.DeleteUserAsync(_viewModel.SelectedUser.Id);
-                    MessageBox.Show($"User '{_viewModel.SelectedUser.Username}' deactivated successfully!",
-                        "User Deactivated", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    await _userService.ReactivateUserAsync(_viewModel.SelectedUser.Id);
-                    MessageBox.Show($"User '{_viewModel.SelectedUser.Username}' reactivated successfully!\n\nTemporary Password: IRIS@2025\n\nUser must change password on next login.",
-                        "User Reactivated", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-
-                _viewModel.RefreshCommand.Execute(null);
-                _viewModel.SelectedUser = null;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to deactivate user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

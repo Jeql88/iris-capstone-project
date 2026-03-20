@@ -90,7 +90,7 @@
                 
                 <StackPanel Grid.Row="2" Margin="10,10,10,20">
                     <Separator Margin="0,0,0,10" Background="#44FFFFFF"/>
-                    <ui:Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click" Appearance="Danger">
+                    <ui:Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
                             <TextBlock Text="Logout" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
@@ -114,7 +114,7 @@
                 <StackPanel Margin="25,20">
                     <Grid Margin="0,0,0,25">
                         <TextBlock Text="Dashboard" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-                        <ComboBox HorizontalAlignment="Right" Width="180" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber" Foreground="#1a1a1a"/>
+                        <ComboBox HorizontalAlignment="Right" Width="180" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </Grid>
 
                     <Grid Margin="0,0,0,20">
@@ -135,7 +135,7 @@
                                 </Grid>
                                 <Grid Margin="0,0,0,20">
                                     <TextBlock Text="Average Latency (Today)" FontSize="14" Foreground="#666666" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding AverageLatency, StringFormat={}{0:F0}ms}" FontSize="28" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="{Binding AverageLatency, StringFormat={}{0:F0}ms}" FontSize="28" FontWeight="Bold" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </Grid>
                                 <Border Height="180" Background="#f0f0f0" CornerRadius="8" Padding="6">
                                     <oxy:PlotView Model="{Binding LatencyPlot}" />
@@ -154,11 +154,11 @@
                                 </Grid>
                                 <Grid Margin="0,0,0,10">
                                     <TextBlock Text="Current Bandwidth Usage" FontSize="14" Foreground="#666666"/>
-                                    <TextBlock Text="{Binding CurrentBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="{Binding CurrentBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </Grid>
                                 <Grid Margin="0,0,0,20">
                                     <TextBlock Text="Peak Usage (Today)" FontSize="14" Foreground="#666666"/>
-                                    <TextBlock Text="{Binding PeakBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="{Binding PeakBandwidth, StringFormat={}{0:F1} Mbps}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </Grid>
                                 <Border Height="180" Background="#f0f0f0" CornerRadius="8" Padding="6">
                                     <oxy:PlotView Model="{Binding BandwidthPlot}" />
@@ -208,7 +208,7 @@
                                                         <TextBlock Text="{Binding Icon}" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
                                                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="#1a1a1a"/>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                         <TextBlock FontSize="12" Foreground="#666666">
                                                             <Run Text="{Binding Instances}"/>
                                                             <Run Text="instances •"/>
@@ -234,7 +234,7 @@
                 <Grid Margin="0,0,0,20">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="DesktopPulse24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold" Foreground="#1a1a1a"/>
+                        <TextBlock Text="Active Lab PCs" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </StackPanel>
                     <TextBlock FontSize="13" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Run Text="{Binding OnlinePCs}"/>

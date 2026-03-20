@@ -36,6 +36,7 @@ namespace IRIS.UI.Services
             _viewRegistry["AccessLogs"] = typeof(Views.Common.AccessLogsView);
             _viewRegistry["UsageMetrics"] = typeof(Views.Common.UsageMetricsView);
             _viewRegistry["Alerts"] = typeof(Views.Common.AlertsView);
+            _viewRegistry["NetworkAnalytics"] = typeof(Views.Common.NetworkAnalyticsView);
 
             // Admin Views
             _viewRegistry["UserManagement"] = typeof(Views.Admin.UserManagementView);
@@ -71,8 +72,14 @@ namespace IRIS.UI.Services
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
                     }
 
+                    if (parameter != null && userControl is Views.Common.NetworkAnalyticsView analyticsView)
+                    {
+                        analyticsView.LoadParameter((ViewModels.NetworkAnalyticsParameter)parameter);
+                    }
+
                     _navigationStack.Push((viewKey, parameter));
                     _navigationFrame.Content = userControl;
+                    NotifyCurrentViewNavigatedTo(userControl);
                 }
             }
             catch (Exception ex)
@@ -117,7 +124,13 @@ namespace IRIS.UI.Services
                         viewScreenPage.LoadPCData((ViewModels.PCDisplayModel)parameter);
                     }
 
+                    if (parameter != null && userControl is Views.Common.NetworkAnalyticsView analyticsView)
+                    {
+                        analyticsView.LoadParameter((ViewModels.NetworkAnalyticsParameter)parameter);
+                    }
+
                     _navigationFrame.Content = userControl;
+                    NotifyCurrentViewNavigatedTo(userControl);
                 }
             }
             catch (Exception ex)
@@ -154,6 +167,26 @@ namespace IRIS.UI.Services
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error while notifying current view of navigation away.");
+            }
+        }
+
+        private void NotifyCurrentViewNavigatedTo(FrameworkElement view)
+        {
+            try
+            {
+                if (view.DataContext is INavigationAware navigationAware)
+                {
+                    navigationAware.OnNavigatedTo();
+                }
+
+                if (view is INavigationAware viewNavigationAware)
+                {
+                    viewNavigationAware.OnNavigatedTo();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error while notifying view of navigation to.");
             }
         }
 

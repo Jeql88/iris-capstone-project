@@ -347,6 +347,9 @@ namespace IRIS.Agent.Logic
             return "Unknown";
         }
 
+        // Tracks previously selected adapter to avoid log spam on every heartbeat
+        private static string? _lastSelectedAdapter;
+
         public static NetworkInfoDto GetNetworkInfo()
         {
             var candidates = NetworkInterface.GetAllNetworkInterfaces()
@@ -408,7 +411,13 @@ namespace IRIS.Agent.Logic
                 var subnetMask = selected.IPv4.IPv4Mask?.ToString() ?? "255.255.255.0";
                 var defaultGateway = selected.Gateway?.ToString() ?? "N/A";
 
-                Log.Information("Selected network adapter for registration: {Adapter} | IP={IpAddress} | Gateway={Gateway}", selected.Interface.Name, ipAddress, defaultGateway);
+                // Only log when the adapter changes (avoids spam every heartbeat)
+                var adapterKey = $"{selected.Interface.Name}|{ipAddress}|{defaultGateway}";
+                if (_lastSelectedAdapter != adapterKey)
+                {
+                    _lastSelectedAdapter = adapterKey;
+                    Log.Information("Selected network adapter: {Adapter} | IP={IpAddress} | Gateway={Gateway}", selected.Interface.Name, ipAddress, defaultGateway);
+                }
 
                 return new NetworkInfoDto(ipAddress, macAddress, subnetMask, defaultGateway);
             }

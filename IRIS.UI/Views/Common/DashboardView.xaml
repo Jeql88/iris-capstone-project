@@ -151,10 +151,10 @@
 
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="Home24" FontSize="24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0"/>
-                                <TextBlock Text="Dashboard" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <ui:SymbolIcon Symbol="Home24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Dashboard" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="34,4,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="44,4,0,0">
                                 <TextBlock Text="{Binding ActiveRoomDescription}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text=" · " FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="{Binding ActiveRangeDescription}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
@@ -181,25 +181,25 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                    <TextBlock Text="TIME RANGE" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="Time Range" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ComboBox ItemsSource="{Binding RangePresets}"
                                               SelectedItem="{Binding SelectedRangePreset}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                                    <TextBlock Text="FROM" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="From" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <DatePicker SelectedDate="{Binding StartDate}"
                                                 IsEnabled="{Binding IsCustomRange}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Margin="0,0,15,0">
-                                    <TextBlock Text="TO" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="To" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <DatePicker SelectedDate="{Binding EndDate}"
                                                 IsEnabled="{Binding IsCustomRange}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="3">
-                                    <TextBlock Text="LAB" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                    <TextBlock Text="Lab" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <ComboBox ItemsSource="{Binding Rooms}"
                                               SelectedItem="{Binding SelectedRoom}"
                                               DisplayMemberPath="RoomNumber"/>

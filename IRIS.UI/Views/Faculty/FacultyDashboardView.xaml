@@ -60,7 +60,7 @@
                 
                 <StackPanel Grid.Row="2" Margin="10,10,10,20">
                     <Separator Margin="0,0,0,10" Background="#44FFFFFF"/>
-                    <ui:Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click" Appearance="Danger">
+                    <ui:Button x:Name="LogoutBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LogoutBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
                             <TextBlock Text="Logout" Foreground="White" VerticalAlignment="Center" FontSize="14"/>

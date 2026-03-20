@@ -48,8 +48,8 @@
                    AllowsTransparency="True"
                    PopupAnimation="Fade"
                    IsOpen="False">
-                <Border Background="White"
-                        BorderBrush="#E0E0E0"
+                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
                         Padding="0"
@@ -59,19 +59,19 @@
                         <ui:Button x:Name="SettingsMenuBtn"
                                    Click="SettingsMenuBtn_Click"
                                    Style="{StaticResource DropdownMenuButtonStyle}"
-                                   Foreground="#1a1a1a">
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="Settings24" FontSize="18" Margin="0,0,12,0"/>
                                 <TextBlock Text="Settings" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ui:Button>
 
-                        <Separator Margin="0" Background="#E0E0E0"/>
+                        <Separator Margin="0" Background="{DynamicResource ControlStrokeColorDefaultBrush}"/>
 
                         <ui:Button x:Name="LogoutMenuBtn"
                                    Click="LogoutMenuBtn_Click"
                                    Style="{StaticResource DropdownMenuButtonStyle}"
-                                   Foreground="#B85A5A">
+                                   Foreground="#C0392B">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Margin="0,0,12,0"/>
                                 <TextBlock Text="Logout" VerticalAlignment="Center"/>

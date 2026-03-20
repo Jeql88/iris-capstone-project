@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
@@ -9,6 +10,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
+using IRIS.UI.Views.Faculty;
 using IRIS.Core.Services.Contracts;
 using Microsoft.Extensions.Configuration;
 
@@ -25,7 +28,7 @@ namespace IRIS.UI.ViewModels
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
         private int _pcId;
         private bool _isActive;
-        private bool _isDetailsExpanded = true;
+        private bool _isDetailsExpanded = false;
         private string _pcName = string.Empty;
         private string _pcNumber = string.Empty;
         private string _roomName = string.Empty;
@@ -51,8 +54,10 @@ namespace IRIS.UI.ViewModels
         private bool _isConnected = true;
         private bool _isLoading;
         private bool _isDisconnected;
+        private bool _isFreezeActive;
         private DateTime _lastFrameUpdatedUtc = DateTime.MinValue;
         private ImageSource? _screenImage;
+        private ExpandedScreenWindow? _expandedWindow;
 
         public ViewScreenViewModel(
             INavigationService navigationService,
@@ -70,9 +75,11 @@ namespace IRIS.UI.ViewModels
             ShutDownCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
+            ToggleFreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
+            ExpandScreenCommand = new RelayCommand(() => ExpandScreen(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
 
             _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -119,9 +126,11 @@ namespace IRIS.UI.ViewModels
         public bool IsConnected { get => _isConnected; set { _isConnected = value; OnPropertyChanged(); } }
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
         public bool IsDisconnected { get => _isDisconnected; set { _isDisconnected = value; OnPropertyChanged(); } }
+        public bool IsFreezeActive { get => _isFreezeActive; set { _isFreezeActive = value; OnPropertyChanged(); OnPropertyChanged(nameof(FreezeButtonText)); } }
         public string LastFrameUpdatedText => _lastFrameUpdatedUtc == DateTime.MinValue
             ? "No frame yet"
             : $"Last frame {TimeZoneInfo.ConvertTimeFromUtc(_lastFrameUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+        public string FreezeButtonText => IsFreezeActive ? "Unfreeze" : "Freeze";
         public ImageSource? ScreenImage { get => _screenImage; set { _screenImage = value; OnPropertyChanged(); } }
 
         public ICommand ToggleDetailsCommand { get; }
@@ -129,9 +138,11 @@ namespace IRIS.UI.ViewModels
         public ICommand ShutDownCommand { get; }
         public ICommand ShutdownPCCommand { get; }
         public ICommand RestartPCCommand { get; }
+        public ICommand ToggleFreezeCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RefreshScreenCommand { get; }
         public ICommand RetryConnectionCommand { get; }
+        public ICommand ExpandScreenCommand { get; }
         public ICommand BackCommand { get; }
 
         public async void LoadPCData(PCDisplayModel pc)
@@ -155,6 +166,7 @@ namespace IRIS.UI.ViewModels
             ConnectionStatus = pc.Status == "Online" ? "Connected" : "Disconnected";
             IsConnected = pc.Status == "Online";
             IsDisconnected = pc.Status == "Offline";
+            IsFreezeActive = false;
 
             _isActive = true;
             await LoadHardwareConfigAsync();
@@ -272,19 +284,25 @@ namespace IRIS.UI.ViewModels
 
         private async Task ShutDownAsync()
         {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("shutdown");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
                 MessageBox.Show("Cannot send shutdown command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"Are you sure you want to shutdown {PCName}?",
+            var confirmationDialog = new ConfirmationDialog(
                 "Confirm Shutdown",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                $"Are you sure you want to shutdown {PCName}?",
+                "Power24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmation != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
@@ -292,7 +310,7 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Shutdown");
             if (queued)
             {
-                MessageBox.Show($"Shutdown command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowActionSuccessDialog("Command Queued", $"Shutdown command queued for {PCName}.");
                 return;
             }
 
@@ -301,19 +319,25 @@ namespace IRIS.UI.ViewModels
 
         private async Task RestartPCAsync()
         {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("restart");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
                 MessageBox.Show("Cannot send restart command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"Are you sure you want to restart {PCName}?",
+            var confirmationDialog = new ConfirmationDialog(
                 "Confirm Restart",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                $"Are you sure you want to restart {PCName}?",
+                "ArrowClockwise24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
 
-            if (confirmation != MessageBoxResult.Yes)
+            if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
@@ -321,17 +345,96 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Restart");
             if (queued)
             {
-                MessageBox.Show($"Restart command queued for {PCName}.", "Command Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowActionSuccessDialog("Command Queued", $"Restart command queued for {PCName}.");
                 return;
             }
 
             MessageBox.Show("Failed to queue restart command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
+        private async Task ToggleFreezeAsync()
+        {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("change freeze state");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(MacAddress))
+            {
+                MessageBox.Show("Cannot send freeze command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var commandType = IsFreezeActive ? "FreezeOff" : "FreezeOn";
+            var confirmationDialog = new ConfirmationDialog(
+                IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
+                IsFreezeActive
+                    ? $"Unfreeze {PCName}?"
+                    : $"Freeze {PCName}?",
+                "LockClosed24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, commandType);
+            if (!queued)
+            {
+                MessageBox.Show("Failed to queue freeze command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            IsFreezeActive = !IsFreezeActive;
+            ShowActionSuccessDialog(
+                "Command Queued",
+                IsFreezeActive
+                    ? $"Freeze command queued for {PCName}."
+                    : $"Unfreeze command queued for {PCName}.");
+        }
+
         private async Task RemoteDesktopAsync()
         {
             await Task.CompletedTask;
-            MessageBox.Show("Remote Desktop functionality will be implemented.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("open Remote Desktop");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(IP) || IP.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Cannot open Remote Desktop: missing target IP address.", "Remote Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Open Remote Desktop connection to {PCName}?",
+                "Desktop24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "mstsc",
+                    Arguments = $"/v:{IP}",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open Remote Desktop. {ex.Message}", "Remote Desktop Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task BackAsync()
@@ -339,6 +442,38 @@ namespace IRIS.UI.ViewModels
             await Task.CompletedTask;
             OnDeactivated();
             _navigationService.GoBack();
+        }
+
+        private void ShowOfflineActionDialog(string actionName)
+        {
+            var offlineDialog = new ConfirmationDialog(
+                "PC Offline",
+                $"Cannot {actionName} because this PC is offline.",
+                "Desktop24",
+                "OK",
+                "Cancel",
+                false);
+            offlineDialog.Owner = Application.Current.MainWindow;
+            offlineDialog.ShowDialog();
+        }
+
+        private void ShowActionSuccessDialog(string title, string message)
+        {
+            var successDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            successDialog.Owner = Application.Current.MainWindow;
+            successDialog.ShowDialog();
+        }
+
+        private void ExpandScreen()
+        {
+            _expandedWindow = new ExpandedScreenWindow { DataContext = this };
+            _expandedWindow.Show();
         }
 
         public async Task OnActivatedAsync()
@@ -357,6 +492,11 @@ namespace IRIS.UI.ViewModels
         {
             _isActive = false;
             _screenRefreshTimer.Stop();
+        }
+
+        public void OnNavigatedTo()
+        {
+            _ = OnActivatedAsync();
         }
 
         public void OnNavigatedFrom()

@@ -659,6 +659,51 @@ namespace IRIS.Core.Migrations
                     b.ToTable("SoftwareUsageHistory");
                 });
 
+            modelBuilder.Entity("IRIS.Core.Models.SystemSettings", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("SystemSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Key = "DataRetention.HardwareMetricDays",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "30"
+                        },
+                        new
+                        {
+                            Key = "DataRetention.NetworkMetricDays",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "30"
+                        },
+                        new
+                        {
+                            Key = "DataRetention.ResolvedAlertDays",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "90"
+                        },
+                        new
+                        {
+                            Key = "DataRetention.CleanupHourUtc",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "2"
+                        });
+                });
+
             modelBuilder.Entity("IRIS.Core.Models.User", b =>
                 {
                     b.Property<int>("Id")

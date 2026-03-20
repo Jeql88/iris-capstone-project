@@ -210,6 +210,37 @@ After migration, use these credentials to log in:
 
 ---
 
+## 🌐 Host Firewall Setup (Required)
+
+When Windows Firewall is enabled on the machine running `IRIS.UI`, add an inbound rule so agents can poll for power commands.
+
+### Required Traffic
+- **Agent ➜ UI Host:** TCP `5091` (Power command polling)
+- **UI Host ➜ Agent:** TCP `5057` (Snapshot), TCP `5065` (File API)
+
+### One-Time UI Host Setup (Run as Administrator)
+
+```powershell
+netsh advfirewall firewall add rule name="IRIS UI Power Command TCP 5091" dir=in action=allow protocol=TCP localport=5091 profile=private,domain remoteip=localsubnet
+```
+
+### Verify Listener + Firewall
+
+1. Start `IRIS.UI`
+2. On UI host:
+   ```powershell
+   netstat -ano | findstr :5091
+   netsh advfirewall firewall show rule name="IRIS UI Power Command TCP 5091"
+   ```
+3. On an agent PC:
+   ```powershell
+   Test-NetConnection <UI_HOST_IP> -Port 5091
+   ```
+
+If `TcpTestSucceeded` is `False`, verify the agent `CommandServerHost` points to the correct UI host IP and that no network ACL blocks inter-room traffic.
+
+---
+
 ## 🧪 Testing
 
 ### Testing Methodology

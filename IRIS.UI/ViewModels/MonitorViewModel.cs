@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -30,6 +31,7 @@ namespace IRIS.UI.ViewModels
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
         private int? _selectedRoomId = null;
+        private string _selectedPcStatus = "All Statuses";
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
@@ -70,6 +72,8 @@ namespace IRIS.UI.ViewModels
             ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
             CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
+            RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
+            RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
 
@@ -94,6 +98,17 @@ namespace IRIS.UI.ViewModels
             set
             {
                 _searchText = value;
+                OnPropertyChanged();
+                ApplyFilter();
+            }
+        }
+
+        public string SelectedPcStatus
+        {
+            get => _selectedPcStatus;
+            set
+            {
+                _selectedPcStatus = value;
                 OnPropertyChanged();
                 ApplyFilter();
             }
@@ -214,6 +229,7 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RemoteDesktopCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
@@ -226,6 +242,8 @@ namespace IRIS.UI.ViewModels
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
         public ICommand LockScreenCommand { get; }
+        public ICommand RemoteDesktopCommand { get; }
+        public ICommand RemoteDesktopForPCCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand RefreshSelectedPcTimelineCommand { get; }
 
@@ -319,6 +337,13 @@ namespace IRIS.UI.ViewModels
             {
                 _loadPcDataSemaphore.Release();
             }
+        }
+
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadPCDataAsync();
         }
 
         public void OnNavigatedFrom()
@@ -456,9 +481,10 @@ namespace IRIS.UI.ViewModels
                     Rooms.Add(room);
                 }
 
-                if (SelectedRoom == null && Rooms.Any())
+                // Default to "All Rooms" so the monitor shows all PCs immediately
+                if (SelectedRoom == null && Rooms.Count > 0)
                 {
-                    SelectedRoom = Rooms.First();
+                    SelectedRoom = Rooms[0];
                 }
             }
             catch
@@ -476,7 +502,11 @@ namespace IRIS.UI.ViewModels
                     pc.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                     pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
 
-                if (matchesSearch)
+                bool matchesStatus = SelectedPcStatus.StartsWith("All", StringComparison.OrdinalIgnoreCase)
+                    || (SelectedPcStatus.StartsWith("Online", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    || (SelectedPcStatus.StartsWith("Offline", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Offline", StringComparison.OrdinalIgnoreCase));
+
+                if (matchesSearch && matchesStatus)
                 {
                     desired.Add(pc);
                 }
@@ -794,6 +824,33 @@ namespace IRIS.UI.ViewModels
         {
             await Task.CompletedTask;
             // TODO: Implement lock screen functionality
+        }
+
+        private void RemoteDesktopConnect()
+        {
+            if (SelectedPC == null || string.IsNullOrWhiteSpace(SelectedPC.IPAddress) || SelectedPC.IPAddress == "N/A")
+                return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "mstsc",
+                    Arguments = $"/v:{SelectedPC.IPAddress}",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to launch Remote Desktop: {ex.Message}");
+            }
+        }
+
+        private void RemoteDesktopForPC(PCDisplayModel? pc)
+        {
+            if (pc == null) return;
+            SelectedPC = pc;
+            RemoteDesktopConnect();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
