@@ -38,7 +38,7 @@ namespace IRIS.UI.ViewModels
         private PlotModel _chartModel = new();
 
         // Pagination
-        private int _pageSize = 25;
+        private int _pageSize = 10;
         private List<NetworkStatRow> _allRows = new();
         private int _currentPage = 1;
         private int _totalPages = 1;
@@ -77,7 +77,7 @@ namespace IRIS.UI.ViewModels
         }
 
         public ObservableCollection<NetworkStatRow> PagedData { get; } = new();
-        public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
+        public int[] PageSizeOptions { get; } = { 10, 25, 50 };
 
         public int PageSize
         {
@@ -107,7 +107,7 @@ namespace IRIS.UI.ViewModels
 
         public int TotalRecords => _allRows.Count;
 
-        public string PageInfo => $"Page {CurrentPage} of {TotalPages}  ({TotalRecords} records)";
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({TotalRecords} total entries)";
 
         public ICommand NextPageCommand { get; }
         public ICommand PreviousPageCommand { get; }

@@ -46,80 +46,86 @@
         </ui:Card>
 
         <!-- Data Table with pagination -->
-        <ui:Card Grid.Row="2" Padding="16">
-            <Grid>
+        <ui:Card Grid.Row="2">
+            <Grid Margin="15">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="TableSimple24" FontSize="16"
-                                       Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Text="Data Points" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <!-- Table Header -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="TableSimple24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Data Points" FontSize="18" FontWeight="Bold"
+                                   Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Per Page" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}"
-                                  Width="70" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
+                                  ItemsSource="{Binding PageSizeOptions}"
+                                  Width="70" Margin="0,0,5,0"/>
+                        <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </StackPanel>
                 </Grid>
 
-                <DataGrid Grid.Row="1"
-                          ItemsSource="{Binding PagedData}"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserSortColumns="True"
-                          CanUserResizeColumns="True"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          BorderThickness="0"
-                          RowHeaderWidth="0"
-                          SelectionMode="Single"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Auto">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="180"/>
-                        <DataGridTextColumn Header="Metric" Binding="{Binding Metric}" Width="120"/>
-                        <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="140"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid Grid.Row="1" MinHeight="350">
+                    <DataGrid ItemsSource="{Binding PagedData}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              ColumnHeaderHeight="36"
+                              RowHeight="34"
+                              MinHeight="350"
+                              Margin="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="180"/>
+                            <DataGridTextColumn Header="Metric" Binding="{Binding Metric}" Width="150"/>
+                            <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty state -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TotalRecords}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <ui:SymbolIcon Symbol="DataHistogram24" FontSize="36" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="No data points available" Margin="0,8,0,0" FontSize="13"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Try a different room or date range" Margin="0,4,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
 
                 <!-- Pagination controls -->
-                <Grid Grid.Row="2" Margin="0,12,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <ui:Button Command="{Binding PreviousPageCommand}"
+                               Content="Previous"
+                               Icon="{ui:SymbolIcon ChevronLeft24}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
 
-                    <TextBlock Grid.Column="0" Text="{Binding PageInfo}" FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PageInfo}" FontSize="13"
+                               VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleLeft20}" Appearance="Secondary"
-                                   Command="{Binding FirstPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="First page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronLeft24}" Appearance="Secondary"
-                                   Command="{Binding PreviousPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="Previous page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronRight24}" Appearance="Secondary"
-                                   Command="{Binding NextPageCommand}" Margin="0,0,4,0"
-                                   Padding="6,4" ToolTip="Next page"/>
-                        <ui:Button Icon="{ui:SymbolIcon ChevronDoubleRight20}" Appearance="Secondary"
-                                   Command="{Binding LastPageCommand}"
-                                   Padding="6,4" ToolTip="Last page"/>
-                    </StackPanel>
-                </Grid>
+                    <ui:Button Command="{Binding NextPageCommand}"
+                               Content="Next"
+                               Icon="{ui:SymbolIcon ChevronRight24}"
+                               Appearance="Primary"
+                               Margin="10,0,0,0"/>
+                </StackPanel>
             </Grid>
         </ui:Card>
 
