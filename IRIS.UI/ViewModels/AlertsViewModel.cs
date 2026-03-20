@@ -419,7 +419,19 @@ namespace IRIS.UI.ViewModels
                 .Distinct()
                 .ToList();
 
-            if (!ids.Any()) return;
+            if (!ids.Any())
+            {
+                ShowInfoDialog("No Alerts Selected", "Please select one or more alert rows before acknowledging.");
+                return;
+            }
+
+            var confirm = new ConfirmationDialog(
+                "Acknowledge Selected Alerts",
+                $"Acknowledge {ids.Count} selected alert(s)?",
+                "Checkmark24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
 
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
@@ -428,6 +440,8 @@ namespace IRIS.UI.ViewModels
             var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
             await monitoringService.AcknowledgeAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Acknowledged", $"Acknowledged {ids.Count} selected alert(s) successfully.");
         }
 
         private async Task ResolveSelectedAsync()
@@ -438,7 +452,19 @@ namespace IRIS.UI.ViewModels
                 .Distinct()
                 .ToList();
 
-            if (!ids.Any()) return;
+            if (!ids.Any())
+            {
+                ShowInfoDialog("No Alerts Selected", "Please select one or more alert rows before resolving.");
+                return;
+            }
+
+            var confirm = new ConfirmationDialog(
+                "Resolve Selected Alerts",
+                $"Resolve {ids.Count} selected alert(s)?",
+                "CheckmarkCircle24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
 
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
@@ -447,6 +473,8 @@ namespace IRIS.UI.ViewModels
             var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
             await monitoringService.ResolveAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Resolved", $"Resolved {ids.Count} selected alert(s) successfully.");
         }
 
         private async Task AcknowledgeVisibleAsync()
@@ -459,6 +487,14 @@ namespace IRIS.UI.ViewModels
 
             if (!ids.Any()) return;
 
+            var confirm = new ConfirmationDialog(
+                "Acknowledge Visible Alerts",
+                $"Acknowledge {ids.Count} visible alert(s)?",
+                "Checkmark24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
 
@@ -466,6 +502,8 @@ namespace IRIS.UI.ViewModels
             var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
             await monitoringService.AcknowledgeAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Acknowledged", $"Acknowledged {ids.Count} visible alert(s) successfully.");
         }
 
         private async Task ResolveVisibleAsync()
@@ -478,6 +516,14 @@ namespace IRIS.UI.ViewModels
 
             if (!ids.Any()) return;
 
+            var confirm = new ConfirmationDialog(
+                "Resolve Visible Alerts",
+                $"Resolve {ids.Count} visible alert(s)?",
+                "CheckmarkCircle24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
 
@@ -485,6 +531,8 @@ namespace IRIS.UI.ViewModels
             var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
             await monitoringService.ResolveAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Resolved", $"Resolved {ids.Count} visible alert(s) successfully.");
         }
 
         private async Task ExportExcelAsync()
@@ -550,6 +598,32 @@ namespace IRIS.UI.ViewModels
                 false);
             success.Owner = Application.Current.MainWindow;
             success.ShowDialog();
+        }
+
+        private static void ShowSuccessDialog(string title, string message)
+        {
+            var success = new ConfirmationDialog(
+                title,
+                message,
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            success.Owner = Application.Current.MainWindow;
+            success.ShowDialog();
+        }
+
+        private static void ShowInfoDialog(string title, string message)
+        {
+            var info = new ConfirmationDialog(
+                title,
+                message,
+                "Info24",
+                "OK",
+                "Cancel",
+                false);
+            info.Owner = Application.Current.MainWindow;
+            info.ShowDialog();
         }
 
         public void OnNavigatedFrom()

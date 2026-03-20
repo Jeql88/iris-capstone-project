@@ -95,15 +95,6 @@
                                    RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Button>
                         
-                        <!-- Loading/Disconnected Overlay -->
-                        <Border Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                Background="{DynamicResource ControlFillColorDefaultBrush}">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <ui:ProgressRing IsIndeterminate="True" Width="60" Height="60"/>
-                                <TextBlock Text="Connecting to PC..." FontSize="16" Margin="0,20,0,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-
                         <!-- Disconnected State -->
                         <Border Visibility="{Binding IsDisconnected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 Background="{DynamicResource ControlFillColorDefaultBrush}">
