@@ -174,7 +174,7 @@
         </ScrollViewer>
 
         <!-- Add User Modal -->
-        <Grid Background="#00000080" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid Background="#80000000" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="White" 
                     Width="1000"
                     MaxWidth="1000"
@@ -231,7 +231,7 @@
         </Grid>
 
         <!-- Edit User Modal -->
-        <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid Background="#80000000" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="White" 
                     Width="1000"
                     MaxWidth="1000"

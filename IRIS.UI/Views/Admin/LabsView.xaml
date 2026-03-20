@@ -208,9 +208,24 @@
                         
                         <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:TextBox Text="{Binding AddCapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="Enter capacity"
+                                    PlaceholderText="0 (1-60)"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,0,0,10">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#0B6A0B"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                            <Setter Property="Foreground" Value="#B00020"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         
                         <CheckBox Content="Active" IsChecked="{Binding AddIsActive}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </StackPanel>
@@ -265,7 +280,7 @@
                         
                         <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="Enter capacity"
+                                    PlaceholderText="1-60"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
                         

@@ -108,7 +108,7 @@ namespace IRIS.UI.ViewModels
             set { _addDescription = value; OnPropertyChanged(); }
         }
 
-        private string _addCapacityText = "0";
+        private string _addCapacityText = string.Empty;
         public string AddCapacityText
         {
             get => _addCapacityText;
@@ -290,8 +290,20 @@ namespace IRIS.UI.ViewModels
                 await LoadRoomsAsync();
             }, () => true);
 
-            OpenAddModalCommand = new RelayCommand(() => { IsAddModalOpen = true; return Task.CompletedTask; }, () => true);
-            CloseAddModalCommand = new RelayCommand(() => { IsAddModalOpen = false; return Task.CompletedTask; }, () => true);
+            OpenAddModalCommand = new RelayCommand(() =>
+            {
+                StatusMessage = string.Empty;
+                IsStatusError = false;
+                IsAddModalOpen = true;
+                return Task.CompletedTask;
+            }, () => true);
+            CloseAddModalCommand = new RelayCommand(() =>
+            {
+                StatusMessage = string.Empty;
+                IsStatusError = false;
+                IsAddModalOpen = false;
+                return Task.CompletedTask;
+            }, () => true);
             OpenEditModalCommand = new RelayCommand((param) => { OpenEditModal(param); return Task.CompletedTask; }, () => true);
             CloseEditModalCommand = new RelayCommand(() => { IsEditModalOpen = false; return Task.CompletedTask; }, () => true);
             CreateCommand = new RelayCommand(async () => await CreateAsync(), () => !string.IsNullOrWhiteSpace(AddRoomNumber));
@@ -555,7 +567,7 @@ namespace IRIS.UI.ViewModels
                 var created = await _roomService.CreateRoomAsync(request);
                 AddRoomNumber = string.Empty;
                 AddDescription = string.Empty;
-                AddCapacityText = "0";
+                AddCapacityText = string.Empty;
                 AddIsActive = true;
                 IsAddModalOpen = false;
                 CurrentPage = 1;
@@ -772,9 +784,9 @@ namespace IRIS.UI.ViewModels
                 return false;
             }
 
-            if (!int.TryParse(capacityText, out var parsedCapacity) || parsedCapacity < 0)
+            if (!int.TryParse(capacityText, out var parsedCapacity) || parsedCapacity <= 0 || parsedCapacity > 60)
             {
-                error = "Capacity must be a valid non-negative number.";
+                error = "Capacity must be a whole number between 1 and 60.";
                 return false;
             }
 
