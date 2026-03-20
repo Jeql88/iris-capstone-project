@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System;
 using IRIS.Core.DTOs;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
@@ -41,6 +43,8 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _loadUnassignedSemaphore = new(1, 1);
         private readonly RelayCommand _previousPageRelayCommand;
         private readonly RelayCommand _nextPageRelayCommand;
+        private List<RoomDto> _allRooms = new();
+        private List<RoomDto> _filteredRooms = new();
         private bool _isViewActive = true;
         private int _currentPage = 1;
         private int _pageSize = 10;
@@ -48,9 +52,22 @@ namespace IRIS.UI.ViewModels
         private int _totalCount = 0;
 
         public ObservableCollection<RoomDto> Rooms { get; } = new();
+        public ICollectionView RoomsView { get; }
         public ObservableCollection<SelectablePC> UnassignedPCs { get; } = new();
         public ObservableCollection<SelectablePC> AssignedPCs { get; } = new();
         public List<int> PageSizeOptions { get; } = new() { 10, 25, 50 };
+
+        private string _searchText = string.Empty;
+        private string _appliedSearchText = string.Empty;
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                _searchText = value;
+                OnPropertyChanged();
+            }
+        }
 
         private RoomDto? _selectedRoom;
         public RoomDto? SelectedRoom
@@ -249,16 +266,29 @@ namespace IRIS.UI.ViewModels
         public RelayCommand ViewAssignedPCsCommand { get; }
         public RelayCommand PreviousPageCommand { get; }
         public RelayCommand NextPageCommand { get; }
+        public RelayCommand ApplyFiltersCommand { get; }
+        public RelayCommand ResetFiltersCommand { get; }
 
         public LabsViewModel(IRoomService roomService, IPCAdminService pcAdminService)
         {
             _roomService = roomService;
             _pcAdminService = pcAdminService;
 
+            RoomsView = CollectionViewSource.GetDefaultView(Rooms);
+
             _previousPageRelayCommand = new RelayCommand(async () => await PreviousPageAsync(), () => HasPreviousPage);
             _nextPageRelayCommand = new RelayCommand(async () => await NextPageAsync(), () => HasNextPage);
             PreviousPageCommand = _previousPageRelayCommand;
             NextPageCommand = _nextPageRelayCommand;
+
+            ApplyFiltersCommand = new RelayCommand(() => { ApplyRoomFilter(); return Task.CompletedTask; }, () => true);
+            ResetFiltersCommand = new RelayCommand(async () =>
+            {
+                SearchText = string.Empty;
+                _appliedSearchText = string.Empty;
+                CurrentPage = 1;
+                await LoadRoomsAsync();
+            }, () => true);
 
             OpenAddModalCommand = new RelayCommand(() => { IsAddModalOpen = true; return Task.CompletedTask; }, () => true);
             CloseAddModalCommand = new RelayCommand(() => { IsAddModalOpen = false; return Task.CompletedTask; }, () => true);
@@ -297,19 +327,10 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var result = await _roomService.GetRoomsPagedAsync(CurrentPage, PageSize);
-                Rooms.Clear();
-                foreach (var room in result.Items.Where(r => r.RoomNumber != "DEFAULT"))
-                    Rooms.Add(room);
+                var rooms = await _roomService.GetRoomsAsync();
+                _allRooms = rooms.Where(r => r.RoomNumber != "DEFAULT").OrderBy(r => r.RoomNumber).ToList();
 
-                TotalCount = result.TotalCount;
-                TotalPages = result.TotalPages;
-
-                var targetId = selectedRoomId ?? SelectedRoom?.Id;
-                if (targetId.HasValue)
-                {
-                    SelectedRoom = Rooms.FirstOrDefault(r => r.Id == targetId.Value);
-                }
+                RebuildPagedRooms(selectedRoomId ?? SelectedRoom?.Id);
             }
             finally
             {
@@ -317,12 +338,61 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private void ApplyRoomFilter()
+        {
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            CurrentPage = 1;
+            RebuildPagedRooms(SelectedRoom?.Id);
+        }
+
+        private void RebuildPagedRooms(int? selectedRoomId = null)
+        {
+            var query = _allRooms.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(_appliedSearchText))
+            {
+                query = query.Where(r => r.RoomNumber.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase));
+            }
+
+            _filteredRooms = query.OrderBy(r => r.RoomNumber).ToList();
+
+            TotalCount = _filteredRooms.Count;
+            TotalPages = TotalCount == 0 ? 1 : (int)Math.Ceiling((double)TotalCount / PageSize);
+
+            if (CurrentPage > TotalPages)
+            {
+                CurrentPage = TotalPages;
+            }
+            if (CurrentPage < 1)
+            {
+                CurrentPage = 1;
+            }
+
+            Rooms.Clear();
+            var skip = (CurrentPage - 1) * PageSize;
+            foreach (var room in _filteredRooms.Skip(skip).Take(PageSize))
+            {
+                Rooms.Add(room);
+            }
+
+            if (selectedRoomId.HasValue)
+            {
+                var match = Rooms.FirstOrDefault(r => r.Id == selectedRoomId.Value) ?? _filteredRooms.FirstOrDefault(r => r.Id == selectedRoomId.Value);
+                if (match != null)
+                {
+                    SelectedRoom = match;
+                }
+            }
+
+            RoomsView.Refresh();
+        }
+
         private async Task PreviousPageAsync()
         {
             if (HasPreviousPage)
             {
                 CurrentPage--;
-                await LoadRoomsAsync();
+                RebuildPagedRooms(SelectedRoom?.Id);
             }
         }
 
@@ -331,7 +401,7 @@ namespace IRIS.UI.ViewModels
             if (HasNextPage)
             {
                 CurrentPage++;
-                await LoadRoomsAsync();
+                RebuildPagedRooms(SelectedRoom?.Id);
             }
         }
 

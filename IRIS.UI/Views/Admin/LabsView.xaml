@@ -22,6 +22,46 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
+                <!-- Filter Card -->
+                <ui:Card Margin="0,0,0,20" Padding="15">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Filter Laboratories" FontSize="18" FontWeight="Bold" 
+                                       Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                        </StackPanel>
+                        <Grid>
+                            <!-- <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions> -->
+
+                            <StackPanel Grid.Column="0" Margin="0,0,0,0">
+                                <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <ui:TextBox PlaceholderText="Search laboratory name..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                            Icon="{ui:SymbolIcon Search24}">
+                                    <ui:TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding ApplyFiltersCommand}"/>
+                                    </ui:TextBox.InputBindings>
+                                </ui:TextBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                            <ui:Button Content="Apply Filters"
+                                       Command="{Binding ApplyFiltersCommand}"
+                                       Appearance="Primary"
+                                       Margin="0,0,10,0"/>
+                            <ui:Button Content="Reset"
+                                       Command="{Binding ResetFiltersCommand}"
+                                       Appearance="Secondary"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ui:Card>
+
                 <!-- Rooms Card -->
                 <ui:Card Margin="0,0,0,20">
                     <Grid Margin="15">
@@ -49,7 +89,7 @@
 
                         <!-- Rooms List -->
                         <Grid Grid.Row="1" MinHeight="250">
-                            <DataGrid ItemsSource="{Binding Rooms}"
+                            <DataGrid ItemsSource="{Binding RoomsView}"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       HeadersVisibility="Column"
@@ -60,7 +100,7 @@
                                       RowHeight="40"
                                       Margin="0">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomNumber}" Width="2*"/>
+                                    <DataGridTextColumn Header="Laboratory Name" Binding="{Binding RoomNumber}" Width="2*"/>
                                     <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*"/>
                                     <DataGridTextColumn Header="Capacity" Binding="{Binding Capacity}" Width="*"/>
                                     <DataGridTemplateColumn Header="Actions" Width="1.5*">
