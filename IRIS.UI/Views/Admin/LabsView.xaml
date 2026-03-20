@@ -174,7 +174,7 @@
         </ScrollViewer>
 
         <!-- Add Laboratory Modal -->
-        <Grid Background="#00000080" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid Background="#80000000" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="White" 
                     Width="1000"
                     MaxWidth="1000"
@@ -231,7 +231,7 @@
         </Grid>
 
         <!-- Edit Laboratory Modal -->
-        <Grid Background="#00000080" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid Background="#80000000" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="White" 
                     Width="1600"
                     MaxWidth="1600"
@@ -303,7 +303,7 @@
         </Grid>
 
         <!-- Assigned PCs Modal -->
-        <Grid Background="#00000080" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid Background="#80000000" Visibility="{Binding IsAssignedPCsModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <ui:Card Background="White" 
                     Width="800" 
                     Height="600"
