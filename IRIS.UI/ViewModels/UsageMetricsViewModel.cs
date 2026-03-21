@@ -377,8 +377,8 @@ namespace IRIS.UI.ViewModels
                         ApplicationName = item.ApplicationName,
                         PCName = item.PCName,
                         RoomNumber = item.RoomNumber,
-                        StartTime = item.StartTime,
-                        EndTime = item.EndTime,
+                        StartTime = DateTimeDisplayHelper.ToManilaFromUtc(item.StartTime),
+                        EndTime = DateTimeDisplayHelper.ToManilaFromUtc(item.EndTime),
                         Duration = item.Duration
                     });
                 }

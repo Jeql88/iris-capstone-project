@@ -133,7 +133,7 @@ namespace IRIS.UI.ViewModels
 
         public string LastUpdatedText => _lastUpdatedUtc == DateTime.MinValue
             ? "Not yet updated"
-            : $"Updated {TimeZoneInfo.ConvertTimeFromUtc(_lastUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+            : $"Updated {DateTimeDisplayHelper.ToManilaFromUtc(_lastUpdatedUtc):HH:mm:ss}";
 
         public int AlertCount => FilteredAlerts.Count;
         public int CriticalCount => FilteredAlerts.Count(a => a.Severity == "Critical");
@@ -321,7 +321,7 @@ namespace IRIS.UI.ViewModels
                     {
                         AlertId = alert.AlertId,
                         AlertKey = alert.AlertKey,
-                        Timestamp = alert.CreatedAt,
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(alert.CreatedAt),
                         Severity = alert.Severity,
                         Type = alert.Type,
                         PCName = alert.PCName,
@@ -572,7 +572,7 @@ namespace IRIS.UI.ViewModels
             var row = 2;
             foreach (var alert in FilteredAlerts)
             {
-                worksheet.Cell(row, 1).Value = TimeZoneInfo.ConvertTimeFromUtc(alert.Timestamp, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 1).Value = alert.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
                 worksheet.Cell(row, 2).Value = alert.Severity;
                 worksheet.Cell(row, 3).Value = alert.Type;
                 worksheet.Cell(row, 4).Value = alert.PCName;

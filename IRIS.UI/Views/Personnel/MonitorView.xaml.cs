@@ -68,7 +68,7 @@ namespace IRIS.UI.Views.Personnel
             }
         }
 
-        private void LockScreen_Click(object sender, RoutedEventArgs e)
+        private void Freeze_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button) return;
             var border = FindParent<Border>(button);
@@ -84,7 +84,7 @@ namespace IRIS.UI.Views.Personnel
             if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
             {
                 vm.SelectedPC = pc;
-                vm.LockScreenCommand.Execute(null);
+                vm.FreezeCommand.Execute(null);
             }
         }
 

@@ -77,7 +77,18 @@ namespace IRIS.UI.ViewModels
         public int PageSize
         {
             get => _pageSize;
-            set { _pageSize = value; OnPropertyChanged(); }
+            set
+            {
+                if (_pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                CurrentPage = 1;
+                _ = LoadLogsAsync();
+            }
         }
 
         public int CurrentPage
@@ -192,7 +203,7 @@ namespace IRIS.UI.ViewModels
                     AccessLogs.Add(new AccessLogDisplayModel
                     {
                         Id = log.Id,
-                        Timestamp = log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(log.Timestamp).ToString("yyyy-MM-dd HH:mm:ss"),
                         Username = log.User?.Username ?? "Unknown",
                         UserRole = log.User?.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel") ?? "Unknown",
                         Action = log.Action,

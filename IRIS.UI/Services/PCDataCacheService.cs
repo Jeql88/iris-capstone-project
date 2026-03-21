@@ -23,6 +23,8 @@ namespace IRIS.UI.Services
         private DashboardSummary? _cachedDashboardSummary;
         private List<RoomDto> _cachedRooms = new();
         private List<LiveAlertItem> _cachedLiveAlerts = new();
+        private readonly Dictionary<int, bool> _freezeStatesByPcId = new();
+        private readonly object _freezeStateLock = new();
 
         public PCDataCacheService(IServiceScopeFactory scopeFactory)
         {
@@ -136,6 +138,26 @@ namespace IRIS.UI.Services
             {
                 // Non-critical — keep stale data
             }
+        }
+
+        public bool? GetFreezeState(int pcId)
+        {
+            lock (_freezeStateLock)
+            {
+                return _freezeStatesByPcId.TryGetValue(pcId, out var isFrozen)
+                    ? isFrozen
+                    : null;
+            }
+        }
+
+        public void SetFreezeState(int pcId, bool isFrozen)
+        {
+            lock (_freezeStateLock)
+            {
+                _freezeStatesByPcId[pcId] = isFrozen;
+            }
+
+            DataChanged?.Invoke();
         }
     }
 }

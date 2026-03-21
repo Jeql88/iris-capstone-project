@@ -111,7 +111,7 @@ namespace IRIS.UI.ViewModels
 
         public string LastUpdatedText => _lastUpdatedUtc == DateTime.MinValue
             ? "Not yet updated"
-            : $"Updated {TimeZoneInfo.ConvertTimeFromUtc(_lastUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+            : $"Updated {DateTimeDisplayHelper.ToManilaFromUtc(_lastUpdatedUtc):HH:mm:ss}";
 
         public bool HasHeavyApplications => HeavyApplications.Count > 0;
         public bool HasLabStatuses => LabStatuses.Count > 0;
@@ -511,8 +511,8 @@ namespace IRIS.UI.ViewModels
             model.Axes.Add(timeAxis);
             model.Axes.Add(valueAxis);
 
-            // Convert UTC timestamps to local time for display
-            var localPoints = points.Select(p => (Timestamp: p.Timestamp.ToLocalTime(), p.Value)).OrderBy(p => p.Timestamp).ToList();
+            // Convert UTC timestamps to Manila time for display
+            var localPoints = points.Select(p => (Timestamp: DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), p.Value)).OrderBy(p => p.Timestamp).ToList();
 
             var series = new LineSeries
             {

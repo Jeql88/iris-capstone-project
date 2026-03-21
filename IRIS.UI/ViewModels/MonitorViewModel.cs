@@ -8,8 +8,10 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Threading;
 using System.Collections.Specialized;
+using System.Windows;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.Core.DTOs;
@@ -73,7 +75,7 @@ namespace IRIS.UI.ViewModels
             ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
             ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
             CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
-            LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
+            FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
             RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
@@ -225,7 +227,7 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(HasTimelineEvents));
                 OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (FreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RemoteDesktopCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
@@ -238,7 +240,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
-        public ICommand LockScreenCommand { get; }
+        public ICommand FreezeCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RemoteDesktopForPCCommand { get; }
         public ICommand RefreshCommand { get; }
@@ -394,11 +396,24 @@ namespace IRIS.UI.ViewModels
                 {
                     // Update in-place — each setter fires PropertyChanged, UI updates smoothly
                     UpdateDisplayModel(existing, pc);
+
+                    var cachedFreezeState = _cache.GetFreezeState(pc.Id);
+                    if (cachedFreezeState.HasValue)
+                    {
+                        existing.IsFreezeActive = cachedFreezeState.Value;
+                    }
                 }
                 else
                 {
                     // Brand-new PC — add it
                     var display = CreateDisplayModel(pc);
+
+                    var cachedFreezeState = _cache.GetFreezeState(pc.Id);
+                    if (cachedFreezeState.HasValue)
+                    {
+                        display.IsFreezeActive = cachedFreezeState.Value;
+                    }
+
                     PCs.Add(display);
                 }
             }
@@ -581,7 +596,7 @@ namespace IRIS.UI.ViewModels
                     Severity = alert.Severity,
                     Type = alert.Type,
                     Message = alert.Message,
-                    Timestamp = alert.Timestamp
+                    Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(alert.Timestamp)
                 });
             }
 
@@ -793,12 +808,12 @@ namespace IRIS.UI.ViewModels
                 {
                     SelectedPcTimeline.Add(new PCHealthTimelineDisplayModel
                     {
-                        Timestamp = timelineEvent.Timestamp,
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(timelineEvent.Timestamp),
                         RelativeTime = ToRelativeTime(timelineEvent.Timestamp),
                         Severity = string.IsNullOrWhiteSpace(timelineEvent.Severity) ? "Info" : timelineEvent.Severity,
                         Category = string.IsNullOrWhiteSpace(timelineEvent.Category) ? "System" : timelineEvent.Category,
                         Title = timelineEvent.Title,
-                        Message = timelineEvent.Message
+                        Message = FormatTimelineMessage(timelineEvent)
                     });
                 }
 
@@ -848,16 +863,130 @@ namespace IRIS.UI.ViewModels
             OnPropertyChanged(nameof(TimelineEmptyMessage));
         }
 
-        private async Task LockScreenAsync()
+        private static string FormatTimelineMessage(PcHealthTimelineEvent timelineEvent)
+        {
+            if (!string.IsNullOrWhiteSpace(timelineEvent.Message)
+                && timelineEvent.Message.Contains("Last agent heartbeat", StringComparison.OrdinalIgnoreCase))
+            {
+                var manilaTimestamp = DateTimeDisplayHelper.ToManilaFromUtc(timelineEvent.Timestamp);
+                return $"Last agent heartbeat at {manilaTimestamp:MMM dd, yyyy HH:mm:ss} Asia/Manila.";
+            }
+
+            return timelineEvent.Message;
+        }
+
+        private async Task ToggleFreezeAsync()
         {
             await Task.CompletedTask;
-            // TODO: Implement lock screen functionality
+
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(SelectedPC.Status, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowOfflineActionDialog("change freeze state");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedPC.MacAddress))
+            {
+                var missingMacDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Cannot send freeze command: missing PC MAC address.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                missingMacDialog.Owner = Application.Current.MainWindow;
+                missingMacDialog.ShowDialog();
+                return;
+            }
+
+            var commandType = SelectedPC.IsFreezeActive ? "FreezeOff" : "FreezeOn";
+
+            var confirmationDialog = new ConfirmationDialog(
+                SelectedPC.IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
+                SelectedPC.IsFreezeActive
+                    ? $"Unfreeze {SelectedPC.PCName}?"
+                    : $"Freeze {SelectedPC.PCName}?",
+                "LockClosed24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress, commandType);
+            if (!queued)
+            {
+                var commandErrorDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Failed to queue freeze command.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                commandErrorDialog.Owner = Application.Current.MainWindow;
+                commandErrorDialog.ShowDialog();
+                return;
+            }
+
+            SelectedPC.IsFreezeActive = !SelectedPC.IsFreezeActive;
+            _cache.SetFreezeState(SelectedPC.Id, SelectedPC.IsFreezeActive);
+
+            var successDialog = new ConfirmationDialog(
+                "Command Queued",
+                SelectedPC.IsFreezeActive
+                    ? $"Freeze command queued for {SelectedPC.PCName}."
+                    : $"Unfreeze command queued for {SelectedPC.PCName}.",
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            successDialog.Owner = Application.Current.MainWindow;
+            successDialog.ShowDialog();
         }
 
         private void RemoteDesktopConnect()
         {
-            if (SelectedPC == null || string.IsNullOrWhiteSpace(SelectedPC.IPAddress) || SelectedPC.IPAddress == "N/A")
+            if (SelectedPC == null)
+            {
                 return;
+            }
+
+            if (!string.Equals(SelectedPC.Status, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowOfflineActionDialog("open Remote Desktop");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedPC.IPAddress) || SelectedPC.IPAddress == "N/A")
+            {
+                var missingIpDialog = new ConfirmationDialog(
+                    "Remote Desktop",
+                    "Cannot open Remote Desktop: missing target IP address.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                missingIpDialog.Owner = Application.Current.MainWindow;
+                missingIpDialog.ShowDialog();
+                return;
+            }
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Open Remote Desktop connection to {SelectedPC.PCName}?",
+                "Desktop24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
 
             try
             {
@@ -870,8 +999,29 @@ namespace IRIS.UI.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to launch Remote Desktop: {ex.Message}");
+                var errorDialog = new ConfirmationDialog(
+                    "Remote Desktop Error",
+                    $"Failed to open Remote Desktop. {ex.Message}",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                errorDialog.Owner = Application.Current.MainWindow;
+                errorDialog.ShowDialog();
             }
+        }
+
+        private static void ShowOfflineActionDialog(string actionName)
+        {
+            var offlineDialog = new ConfirmationDialog(
+                "PC Offline",
+                $"Cannot {actionName} because this PC is offline.",
+                "Desktop24",
+                "OK",
+                "Cancel",
+                false);
+            offlineDialog.Owner = Application.Current.MainWindow;
+            offlineDialog.ShowDialog();
         }
 
         private void RemoteDesktopForPC(PCDisplayModel? pc)
@@ -923,6 +1073,7 @@ namespace IRIS.UI.ViewModels
         private int _alertCount;
         private bool _isSelected;
         private bool _isFlipped;
+        private bool _isFreezeActive;
 
         public int Id
         {
@@ -1140,6 +1291,12 @@ namespace IRIS.UI.ViewModels
         {
             get => _isFlipped;
             set { _isFlipped = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFreezeActive
+        {
+            get => _isFreezeActive;
+            set { _isFreezeActive = value; OnPropertyChanged(); }
         }
 
         // Legacy property aliases for backward compatibility

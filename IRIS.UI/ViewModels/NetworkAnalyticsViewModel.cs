@@ -144,21 +144,21 @@ namespace IRIS.UI.ViewModels
                         var latency = await monSvc.GetLatencyHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
                         ChartModel = BuildDetailedPlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F0} ms");
                         foreach (var p in latency.OrderByDescending(x => x.Timestamp))
-                            _allRows.Add(new NetworkStatRow { Timestamp = p.Timestamp.ToLocalTime(), Metric = "Latency", Value = $"{p.Value:F0} ms", NumericValue = p.Value });
+                            _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Latency", Value = $"{p.Value:F0} ms", NumericValue = p.Value });
                         break;
 
                     case "Bandwidth":
                         var bw = await monSvc.GetBandwidthHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
                         ChartModel = BuildDetailedPlot("Bandwidth (Mbps)", bw.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps");
                         foreach (var p in bw.OrderByDescending(x => x.Timestamp))
-                            _allRows.Add(new NetworkStatRow { Timestamp = p.Timestamp.ToLocalTime(), Metric = "Bandwidth", Value = $"{p.Value:F1} Mbps", NumericValue = p.Value });
+                            _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Bandwidth", Value = $"{p.Value:F1} Mbps", NumericValue = p.Value });
                         break;
 
                     case "PacketLoss":
                         var pl = await monSvc.GetPacketLossHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
                         ChartModel = BuildDetailedPlot("Packet Loss (%)", pl.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1}%");
                         foreach (var p in pl.OrderByDescending(x => x.Timestamp))
-                            _allRows.Add(new NetworkStatRow { Timestamp = p.Timestamp.ToLocalTime(), Metric = "Packet Loss", Value = $"{p.Value:F1}%", NumericValue = p.Value });
+                            _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Packet Loss", Value = $"{p.Value:F1}%", NumericValue = p.Value });
                         break;
                 }
 
@@ -202,8 +202,8 @@ namespace IRIS.UI.ViewModels
                 Subtitle = "Scroll to zoom  •  Drag to pan  •  Hover for exact values"
             };
 
-            // Convert UTC timestamps to local time for display
-            var localPoints = points.Select(p => (Timestamp: p.Timestamp.ToLocalTime(), p.Value)).OrderBy(p => p.Timestamp).ToList();
+            // Convert UTC timestamps to Manila time for display
+            var localPoints = points.Select(p => (Timestamp: DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), p.Value)).OrderBy(p => p.Timestamp).ToList();
 
             var timeAxis = new DateTimeAxis
             {

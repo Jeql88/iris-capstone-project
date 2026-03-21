@@ -1,4 +1,5 @@
 using System.IO;
+using IRIS.UI.Helpers;
 
 namespace IRIS.UI.Models
 {
@@ -19,7 +20,7 @@ namespace IRIS.UI.Models
 
         public string DateText => IsDrive || LastWriteTimeUtc == default
             ? ""
-            : LastWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            : DateTimeDisplayHelper.ToManilaFromUtc(LastWriteTimeUtc).ToString("yyyy-MM-dd HH:mm");
 
         private string GetFileType()
         {

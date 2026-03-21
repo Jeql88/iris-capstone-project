@@ -20,6 +20,7 @@ namespace IRIS.UI.ViewModels
     public class ViewScreenViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly INavigationService _navigationService;
+        private readonly IPCDataCacheService _cache;
         private readonly IMonitoringService _monitoringService;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
@@ -61,11 +62,13 @@ namespace IRIS.UI.ViewModels
 
         public ViewScreenViewModel(
             INavigationService navigationService,
+            IPCDataCacheService cache,
             IMonitoringService monitoringService,
             IPowerCommandQueueService powerCommandQueueService,
             IConfiguration configuration)
         {
             _navigationService = navigationService;
+            _cache = cache;
             _monitoringService = monitoringService;
             _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
@@ -129,7 +132,7 @@ namespace IRIS.UI.ViewModels
         public bool IsFreezeActive { get => _isFreezeActive; set { _isFreezeActive = value; OnPropertyChanged(); OnPropertyChanged(nameof(FreezeButtonText)); } }
         public string LastFrameUpdatedText => _lastFrameUpdatedUtc == DateTime.MinValue
             ? "No frame yet"
-            : $"Last frame {TimeZoneInfo.ConvertTimeFromUtc(_lastFrameUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+            : $"Last frame {DateTimeDisplayHelper.ToManilaFromUtc(_lastFrameUpdatedUtc):HH:mm:ss}";
         public string FreezeButtonText => IsFreezeActive ? "Unfreeze" : "Freeze";
         public ImageSource? ScreenImage { get => _screenImage; set { _screenImage = value; OnPropertyChanged(); } }
 
@@ -166,7 +169,8 @@ namespace IRIS.UI.ViewModels
             ConnectionStatus = pc.Status == "Online" ? "Connected" : "Disconnected";
             IsConnected = pc.Status == "Online";
             IsDisconnected = pc.Status == "Offline";
-            IsFreezeActive = false;
+            var cachedFreezeState = _cache.GetFreezeState(pc.Id);
+            IsFreezeActive = cachedFreezeState ?? pc.IsFreezeActive;
 
             _isActive = true;
             await LoadHardwareConfigAsync();
@@ -388,6 +392,7 @@ namespace IRIS.UI.ViewModels
             }
 
             IsFreezeActive = !IsFreezeActive;
+            _cache.SetFreezeState(_pcId, IsFreezeActive);
             ShowActionSuccessDialog(
                 "Command Queued",
                 IsFreezeActive

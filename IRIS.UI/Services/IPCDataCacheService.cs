@@ -36,6 +36,12 @@ namespace IRIS.UI.Services
         /// <summary>Refresh rooms list. Creates its own scope.</summary>
         Task RefreshRoomsAsync();
 
+        /// <summary>Gets cached freeze state for a PC, if known.</summary>
+        bool? GetFreezeState(int pcId);
+
+        /// <summary>Sets cached freeze state for a PC so UI pages stay in sync.</summary>
+        void SetFreezeState(int pcId, bool isFrozen);
+
         /// <summary>Fired on the calling thread after any data changes.</summary>
         event Action? DataChanged;
     }

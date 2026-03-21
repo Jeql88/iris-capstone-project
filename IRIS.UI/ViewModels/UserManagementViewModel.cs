@@ -69,7 +69,18 @@ namespace IRIS.UI.ViewModels
         public int PageSize
         {
             get => _pageSize;
-            set { _pageSize = value; OnPropertyChanged(); }
+            set
+            {
+                if (_pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                CurrentPage = 1;
+                _ = LoadUsersAsync();
+            }
         }
 
         public int CurrentPage
