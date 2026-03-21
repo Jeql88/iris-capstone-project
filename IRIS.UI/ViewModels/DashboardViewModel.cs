@@ -44,7 +44,7 @@ namespace IRIS.UI.ViewModels
             ExportNetworkAnalyticsCommand = new RelayCommand(async () => await ExportNetworkAnalyticsAsync(), () => true);
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
             ExportSelectedCommand = new RelayCommand(async () => await ExportSelectedAsync(), () => true);
-            
+
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
 

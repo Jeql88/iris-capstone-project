@@ -6,9 +6,12 @@ namespace IRIS.UI.Helpers
 
         public static DateTime ToManilaFromUtc(DateTime utcDateTime)
         {
-            var value = utcDateTime.Kind == DateTimeKind.Utc
-                ? utcDateTime
-                : DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            var value = utcDateTime.Kind switch
+            {
+                DateTimeKind.Utc => utcDateTime,
+                DateTimeKind.Local => utcDateTime.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc)
+            };
 
             return TimeZoneInfo.ConvertTimeFromUtc(value, ManilaTimeZone);
         }

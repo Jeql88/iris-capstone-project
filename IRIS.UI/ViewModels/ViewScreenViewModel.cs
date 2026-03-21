@@ -366,7 +366,7 @@ namespace IRIS.UI.ViewModels
 
             if (string.IsNullOrWhiteSpace(MacAddress))
             {
-                MessageBox.Show("Cannot send freeze command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowActionErrorDialog("Command Error", "Cannot send freeze command: missing PC MAC address.");
                 return;
             }
 
@@ -387,7 +387,7 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, commandType);
             if (!queued)
             {
-                MessageBox.Show("Failed to queue freeze command.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowActionErrorDialog("Command Error", "Failed to queue freeze command.");
                 return;
             }
 
@@ -473,6 +473,19 @@ namespace IRIS.UI.ViewModels
                 false);
             successDialog.Owner = Application.Current.MainWindow;
             successDialog.ShowDialog();
+        }
+
+        private static void ShowActionErrorDialog(string title, string message)
+        {
+            var errorDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Warning24",
+                "OK",
+                "Cancel",
+                false);
+            errorDialog.Owner = Application.Current.MainWindow;
+            errorDialog.ShowDialog();
         }
 
         private void ExpandScreen()
