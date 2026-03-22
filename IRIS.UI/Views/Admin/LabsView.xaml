@@ -468,43 +468,58 @@
                     </TabControl>
 
                     <!-- Buttons -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
-                        <ui:Button Content="Assign Selected" 
-                                   Command="{Binding AssignPCsToModalRoomCommand}"
-                                   Icon="{ui:SymbolIcon Add24}"
-                                   Appearance="Primary"
-                                   Margin="0,0,10,0">
-                            <ui:Button.Style>
-                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <StackPanel Grid.Row="3" Margin="0,20,0,0">
+                        <TextBlock Text="{Binding ManagePcsStatusMessage}" FontSize="12" Foreground="#B00020" Margin="0,0,0,8">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Visible"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSelected, ElementName=UnassignedPCsTab}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                        <DataTrigger Binding="{Binding ManagePcsStatusMessage}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ui:Button.Style>
-                        </ui:Button>
-                        <ui:Button Content="Unassign Selected" 
-                                   Command="{Binding UnassignCommand}"
-                                   Icon="{ui:SymbolIcon Delete24}"
-                                   Appearance="Secondary"
-                                   Margin="0,0,10,0">
-                            <ui:Button.Style>
-                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSelected, ElementName=AssignedPCsTab}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ui:Button.Style>
-                        </ui:Button>
-                        <ui:Button Content="Close" 
-                                   Click="CloseModal_Click"
-                                   Icon="{ui:SymbolIcon Dismiss24}"
-                                   Appearance="Secondary"/>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button Content="Assign Selected" 
+                                       Command="{Binding AssignPCsToModalRoomCommand}"
+                                       Icon="{ui:SymbolIcon Add24}"
+                                       Appearance="Primary"
+                                       Margin="0,0,10,0">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, ElementName=UnassignedPCsTab}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+                            <ui:Button Content="Unassign Selected" 
+                                       Command="{Binding UnassignCommand}"
+                                       Icon="{ui:SymbolIcon Delete24}"
+                                       Appearance="Secondary"
+                                       Margin="0,0,10,0">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, ElementName=AssignedPCsTab}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+                            <ui:Button Content="Close" 
+                                       Click="CloseModal_Click"
+                                       Icon="{ui:SymbolIcon Dismiss24}"
+                                       Appearance="Secondary"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </ui:Card>

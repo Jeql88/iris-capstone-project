@@ -193,14 +193,34 @@ namespace IRIS.UI.ViewModels
         public bool IsAssignedPCsModalOpen
         {
             get => _isAssignedPCsModalOpen;
-            set { _isAssignedPCsModalOpen = value; OnPropertyChanged(); }
+            set
+            {
+                _isAssignedPCsModalOpen = value;
+                OnPropertyChanged();
+                if (!value)
+                {
+                    ManagePcsStatusMessage = string.Empty;
+                }
+            }
+        }
+
+        private string _managePcsStatusMessage = string.Empty;
+        public string ManagePcsStatusMessage
+        {
+            get => _managePcsStatusMessage;
+            set { _managePcsStatusMessage = value; OnPropertyChanged(); }
         }
 
         private int _selectedPCsTabIndex;
         public int SelectedPCsTabIndex
         {
             get => _selectedPCsTabIndex;
-            set { _selectedPCsTabIndex = value; OnPropertyChanged(); }
+            set
+            {
+                _selectedPCsTabIndex = value;
+                OnPropertyChanged();
+                ManagePcsStatusMessage = string.Empty;
+            }
         }
 
         private int _modalRoomId;
@@ -553,6 +573,8 @@ namespace IRIS.UI.ViewModels
         {
             if (param is not int roomId) return;
 
+            ManagePcsStatusMessage = string.Empty;
+
             ModalRoomId = roomId;
             var room = Rooms.FirstOrDefault(r => r.Id == roomId);
             if (room != null)
@@ -697,9 +719,11 @@ namespace IRIS.UI.ViewModels
             var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
             if (!selectedIds.Any())
             {
-                ShowInfoDialog("No PCs Selected", "Please select one or multiple PCs to assign.");
+                ManagePcsStatusMessage = "Please select one or multiple PCs to assign.";
                 return;
             }
+
+            ManagePcsStatusMessage = string.Empty;
 
             var dialog = new ConfirmationDialog(
                 "Assign PCs",
@@ -715,6 +739,7 @@ namespace IRIS.UI.ViewModels
                 var success = await _pcAdminService.AssignPCsToRoomAsync(selectedIds, ModalRoomId);
                 if (success)
                 {
+                    ManagePcsStatusMessage = string.Empty;
                     await LoadUnassignedAsync();
                     await ViewAssignedPCsAsync(ModalRoomId);
                     ShowSuccessDialog("PCs Assigned", $"Assigned {selectedIds.Count} PC(s) to laboratory '{ModalRoomNumber}'.");
@@ -773,9 +798,11 @@ namespace IRIS.UI.ViewModels
             var selectedIds = AssignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
             if (!selectedIds.Any())
             {
-                ShowInfoDialog("No PCs Selected", "Please select one or multiple PCs to unassign.");
+                ManagePcsStatusMessage = "Please select one or multiple PCs to unassign.";
                 return;
             }
+
+            ManagePcsStatusMessage = string.Empty;
 
             var dialog = new ConfirmationDialog(
                 "Unassign PCs",
@@ -791,6 +818,7 @@ namespace IRIS.UI.ViewModels
                 var success = await _pcAdminService.UnassignPCsAsync(selectedIds);
                 if (success)
                 {
+                    ManagePcsStatusMessage = string.Empty;
                     await LoadUnassignedAsync();
                     if (ModalRoomId != 0)
                     {
