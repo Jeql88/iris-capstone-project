@@ -59,6 +59,8 @@ namespace IRIS.UI.ViewModels
 
         private string _searchText = string.Empty;
         private string _appliedSearchText = string.Empty;
+        private string _selectedStatus = "All Statuses";
+        private string _appliedStatus = "All Statuses";
         public string SearchText
         {
             get => _searchText;
@@ -69,20 +71,23 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public string SelectedStatus
+        {
+            get => _selectedStatus;
+            set
+            {
+                _selectedStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
         private RoomDto? _selectedRoom;
         public RoomDto? SelectedRoom
         {
             get => _selectedRoom;
             set
             {
-                if (_selectedRoom?.Id == value?.Id)
-                {
-                    _selectedRoom = null;
-                }
-                else
-                {
-                    _selectedRoom = value;
-                }
+                _selectedRoom = value;
                 OnPropertyChanged();
                 PopulateFormFromSelection();
             }
@@ -112,7 +117,12 @@ namespace IRIS.UI.ViewModels
         public string AddCapacityText
         {
             get => _addCapacityText;
-            set { _addCapacityText = value; OnPropertyChanged(); }
+            set
+            {
+                _addCapacityText = value;
+                OnPropertyChanged();
+                CreateCommand.RaiseCanExecuteChanged();
+            }
         }
 
         private bool _addIsActive = true;
@@ -285,13 +295,16 @@ namespace IRIS.UI.ViewModels
             ResetFiltersCommand = new RelayCommand(async () =>
             {
                 SearchText = string.Empty;
+                SelectedStatus = "All Statuses";
                 _appliedSearchText = string.Empty;
+                _appliedStatus = "All Statuses";
                 CurrentPage = 1;
                 await LoadRoomsAsync();
             }, () => true);
 
             OpenAddModalCommand = new RelayCommand(() =>
             {
+                ResetAddForm();
                 StatusMessage = string.Empty;
                 IsStatusError = false;
                 IsAddModalOpen = true;
@@ -299,14 +312,21 @@ namespace IRIS.UI.ViewModels
             }, () => true);
             CloseAddModalCommand = new RelayCommand(() =>
             {
+                ResetAddForm();
                 StatusMessage = string.Empty;
                 IsStatusError = false;
                 IsAddModalOpen = false;
                 return Task.CompletedTask;
             }, () => true);
             OpenEditModalCommand = new RelayCommand((param) => { OpenEditModal(param); return Task.CompletedTask; }, () => true);
-            CloseEditModalCommand = new RelayCommand(() => { IsEditModalOpen = false; return Task.CompletedTask; }, () => true);
-            CreateCommand = new RelayCommand(async () => await CreateAsync(), () => !string.IsNullOrWhiteSpace(AddRoomNumber));
+            CloseEditModalCommand = new RelayCommand(() =>
+            {
+                StatusMessage = string.Empty;
+                IsStatusError = false;
+                IsEditModalOpen = false;
+                return Task.CompletedTask;
+            }, () => true);
+            CreateCommand = new RelayCommand(async () => await CreateAsync(), CanCreateLaboratory);
             UpdateCommand = new RelayCommand(async () => await UpdateAsync(), () => SelectedRoom != null);
             DeleteCommand = new RelayCommand(async (param) => await DeleteAsync(param), () => true);
             AssignCommand = new RelayCommand(async () => await AssignAsync(), () => true);
@@ -353,6 +373,7 @@ namespace IRIS.UI.ViewModels
         private void ApplyRoomFilter()
         {
             _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedStatus = SelectedStatus?.Trim() ?? "All Statuses";
             CurrentPage = 1;
             RebuildPagedRooms(SelectedRoom?.Id);
         }
@@ -364,6 +385,15 @@ namespace IRIS.UI.ViewModels
             if (!string.IsNullOrWhiteSpace(_appliedSearchText))
             {
                 query = query.Where(r => r.RoomNumber.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (string.Equals(_appliedStatus, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(r => r.IsActive);
+            }
+            else if (string.Equals(_appliedStatus, "Inactive", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(r => !r.IsActive);
             }
 
             _filteredRooms = query.OrderBy(r => r.RoomNumber).ToList();
@@ -457,6 +487,8 @@ namespace IRIS.UI.ViewModels
         {
             if (param is RoomDto room)
             {
+                StatusMessage = string.Empty;
+                IsStatusError = false;
                 SelectedRoom = room;
                 IsEditModalOpen = true;
             }
@@ -549,7 +581,8 @@ namespace IRIS.UI.ViewModels
         {
             if (!TryBuildRequest(AddRoomNumber, AddDescription, AddCapacityText, AddIsActive, out var request, out var validationError))
             {
-                SetStatus(validationError, true);
+                StatusMessage = validationError;
+                IsStatusError = true;
                 return;
             }
 
@@ -565,19 +598,17 @@ namespace IRIS.UI.ViewModels
             try
             {
                 var created = await _roomService.CreateRoomAsync(request);
-                AddRoomNumber = string.Empty;
-                AddDescription = string.Empty;
-                AddCapacityText = string.Empty;
-                AddIsActive = true;
+                ResetAddForm();
                 IsAddModalOpen = false;
                 CurrentPage = 1;
+                StatusMessage = string.Empty;
+                IsStatusError = false;
                 await LoadRoomsAsync(created.Id);
-                SetStatus($"Room {created.RoomNumber} created.", false);
                 ShowSuccessDialog("Laboratory Created", $"Laboratory '{created.RoomNumber}' was created successfully.");
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Create Laboratory", ex.Message);
             }
         }
 
@@ -587,7 +618,8 @@ namespace IRIS.UI.ViewModels
 
             if (!TryBuildRequest(RoomNumber, Description, CapacityText, IsActive, out var request, out var validationError))
             {
-                SetStatus(validationError, true);
+                StatusMessage = validationError;
+                IsStatusError = true;
                 return;
             }
 
@@ -607,14 +639,15 @@ namespace IRIS.UI.ViewModels
                 {
                     IsEditModalOpen = false;
                     CurrentPage = 1;
+                    StatusMessage = string.Empty;
+                    IsStatusError = false;
                     await LoadRoomsAsync(updated.Id);
-                    SetStatus($"Room {updated.RoomNumber} updated.", false);
                     ShowSuccessDialog("Laboratory Updated", $"Laboratory '{updated.RoomNumber}' was updated successfully.");
                 }
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Update Laboratory", ex.Message);
             }
         }
 
@@ -645,17 +678,16 @@ namespace IRIS.UI.ViewModels
                     CurrentPage = 1;
                     await LoadRoomsAsync();
                     await LoadUnassignedAsync();
-                    SetStatus("Room deleted.", false);
                     ShowSuccessDialog("Laboratory Deleted", $"Laboratory '{room.RoomNumber}' was deleted successfully.");
                 }
                 else
                 {
-                    SetStatus("Could not delete room.", true);
+                    ShowErrorDialog("Delete Laboratory", "Could not delete laboratory.");
                 }
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Delete Laboratory", ex.Message);
             }
         }
 
@@ -663,7 +695,11 @@ namespace IRIS.UI.ViewModels
         {
             if (ModalRoomId == 0) return;
             var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
-            if (!selectedIds.Any()) return;
+            if (!selectedIds.Any())
+            {
+                ShowInfoDialog("No PCs Selected", "Please select one or multiple PCs to assign.");
+                return;
+            }
 
             var dialog = new ConfirmationDialog(
                 "Assign PCs",
@@ -681,17 +717,16 @@ namespace IRIS.UI.ViewModels
                 {
                     await LoadUnassignedAsync();
                     await ViewAssignedPCsAsync(ModalRoomId);
-                    SetStatus($"Assigned {selectedIds.Count} PC(s) to room {ModalRoomNumber}.", false);
                     ShowSuccessDialog("PCs Assigned", $"Assigned {selectedIds.Count} PC(s) to laboratory '{ModalRoomNumber}'.");
                 }
                 else
                 {
-                    SetStatus("No PCs were assigned.", true);
+                    ShowErrorDialog("Assign PCs", "No PCs were assigned.");
                 }
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Assign PCs", ex.Message);
             }
         }
 
@@ -699,7 +734,11 @@ namespace IRIS.UI.ViewModels
         {
             if (SelectedRoom == null) return;
             var selectedIds = UnassignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
-            if (!selectedIds.Any()) return;
+            if (!selectedIds.Any())
+            {
+                ShowInfoDialog("No PCs Selected", "Please select one or multiple PCs to assign.");
+                return;
+            }
 
             var dialog = new ConfirmationDialog(
                 "Assign PCs",
@@ -716,28 +755,31 @@ namespace IRIS.UI.ViewModels
                 if (success)
                 {
                     await LoadUnassignedAsync();
-                    SetStatus($"Assigned {selectedIds.Count} PC(s) to room {SelectedRoom.RoomNumber}.", false);
                     ShowSuccessDialog("PCs Assigned", $"Assigned {selectedIds.Count} PC(s) to laboratory '{SelectedRoom.RoomNumber}'.");
                 }
                 else
                 {
-                    SetStatus("No PCs were assigned.", true);
+                    ShowErrorDialog("Assign PCs", "No PCs were assigned.");
                 }
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Assign PCs", ex.Message);
             }
         }
 
         private async Task UnassignAsync()
         {
             var selectedIds = AssignedPCs.Where(pc => pc.IsSelected).Select(pc => pc.Id).ToList();
-            if (!selectedIds.Any()) return;
+            if (!selectedIds.Any())
+            {
+                ShowInfoDialog("No PCs Selected", "Please select one or multiple PCs to unassign.");
+                return;
+            }
 
             var dialog = new ConfirmationDialog(
                 "Unassign PCs",
-                $"Are you sure you want to unassign {selectedIds.Count} PC(s) from this laboratory?\n\nThey will be moved to the DEFAULT room.",
+                $"Are you sure you want to unassign {selectedIds.Count} PC(s) from this laboratory?\n\nSelected PC(s) will be unassigned.",
                 "Laptop24");
             dialog.Owner = Application.Current.MainWindow;
 
@@ -758,17 +800,16 @@ namespace IRIS.UI.ViewModels
                     {
                         AssignedPCs.Clear();
                     }
-                    SetStatus($"Unassigned {selectedIds.Count} PC(s) from room.", false);
                     ShowSuccessDialog("PCs Unassigned", $"Unassigned {selectedIds.Count} PC(s) from the laboratory.");
                 }
                 else
                 {
-                    SetStatus("No PCs were unassigned.", true);
+                    ShowErrorDialog("Unassign PCs", "No PCs were unassigned.");
                 }
             }
             catch (Exception ex)
             {
-                SetStatus(ex.Message, true);
+                ShowErrorDialog("Unassign PCs", ex.Message);
             }
         }
 
@@ -778,13 +819,15 @@ namespace IRIS.UI.ViewModels
             error = string.Empty;
 
             var normalizedRoomNumber = roomNumber?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(normalizedRoomNumber))
+            var normalizedCapacityText = capacityText?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(normalizedRoomNumber) || string.IsNullOrWhiteSpace(normalizedCapacityText))
             {
-                error = "Room number is required.";
+                error = "All required fields should be filled.";
                 return false;
             }
 
-            if (!int.TryParse(capacityText, out var parsedCapacity) || parsedCapacity <= 0 || parsedCapacity > 60)
+            if (!int.TryParse(normalizedCapacityText, out var parsedCapacity) || parsedCapacity <= 0 || parsedCapacity > 60)
             {
                 error = "Capacity must be a whole number between 1 and 60.";
                 return false;
@@ -794,10 +837,31 @@ namespace IRIS.UI.ViewModels
             return true;
         }
 
-        private void SetStatus(string message, bool isError)
+        private void ResetAddForm()
         {
-            StatusMessage = message;
-            IsStatusError = isError;
+            AddRoomNumber = string.Empty;
+            AddDescription = string.Empty;
+            AddCapacityText = string.Empty;
+            AddIsActive = true;
+        }
+
+        private bool CanCreateLaboratory()
+        {
+            return !string.IsNullOrWhiteSpace(AddRoomNumber)
+                && !string.IsNullOrWhiteSpace(AddCapacityText);
+        }
+
+        private static void ShowInfoDialog(string title, string message)
+        {
+            var infoDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Warning24",
+                "OK",
+                "Cancel",
+                false);
+            infoDialog.Owner = Application.Current.MainWindow;
+            infoDialog.ShowDialog();
         }
 
         private static void ShowSuccessDialog(string title, string message)
@@ -811,6 +875,19 @@ namespace IRIS.UI.ViewModels
                 false);
             successDialog.Owner = Application.Current.MainWindow;
             successDialog.ShowDialog();
+        }
+
+        private static void ShowErrorDialog(string title, string message)
+        {
+            var errorDialog = new ConfirmationDialog(
+                title,
+                message,
+                "Warning24",
+                "OK",
+                "Cancel",
+                false);
+            errorDialog.Owner = Application.Current.MainWindow;
+            errorDialog.ShowDialog();
         }
 
         public void OnNavigatedTo()

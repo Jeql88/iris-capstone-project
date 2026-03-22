@@ -31,15 +31,12 @@
                                        Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
                         <Grid>
-                            <!-- <Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions> -->
+                            </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,0,0">
+                            <StackPanel Grid.Column="0" Margin="0,0,15,0">
                                 <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
                                 <ui:TextBox PlaceholderText="Search laboratory name..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                             Icon="{ui:SymbolIcon Search24}">
@@ -47,6 +44,15 @@
                                         <KeyBinding Key="Enter" Command="{Binding ApplyFiltersCommand}"/>
                                     </ui:TextBox.InputBindings>
                                 </ui:TextBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Status" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <ComboBox SelectedValue="{Binding SelectedStatus, Mode=TwoWay}" SelectedValuePath="Content">
+                                    <ComboBoxItem Content="All Statuses" IsSelected="True"/>
+                                    <ComboBoxItem Content="Active"/>
+                                    <ComboBoxItem Content="Inactive"/>
+                                </ComboBox>
                             </StackPanel>
                         </Grid>
 
@@ -103,6 +109,25 @@
                                     <DataGridTextColumn Header="Laboratory Name" Binding="{Binding RoomNumber}" Width="2*"/>
                                     <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*"/>
                                     <DataGridTextColumn Header="Capacity" Binding="{Binding Capacity}" Width="*"/>
+                                    <DataGridTemplateColumn Header="Status" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock VerticalAlignment="Top" HorizontalAlignment="Left">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="Inactive"/>
+                                                            <Setter Property="Foreground" Value="Black"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                    <Setter Property="Text" Value="Active"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                     <DataGridTemplateColumn Header="Actions" Width="1.5*">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -194,31 +219,37 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1">
-                        <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Laboratory Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox Text="{Binding AddRoomNumber, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="Enter room number"
+                                    PlaceholderText="Enter lab name"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
-                        
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
+                        <ui:TextBox Text="{Binding AddCapacityText, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="1 - 60"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+
                         <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:TextBox Text="{Binding AddDescription, UpdateSourceTrigger=PropertyChanged}" 
                                     PlaceholderText="Enter description"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
-                        
-                        <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ui:TextBox Text="{Binding AddCapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="0 (1-60)"
-                                    Icon="{ui:SymbolIcon Settings24}"
-                                    Margin="0,0,0,15"/>
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,0,0,10">
+
+                        <CheckBox Content="Active" IsChecked="{Binding AddIsActive}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,8,0,0" Foreground="#B00020">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#0B6A0B"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                                            <Setter Property="Foreground" Value="#B00020"/>
-                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding StatusMessage}" Value="">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
@@ -226,8 +257,6 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        
-                        <CheckBox Content="Active" IsChecked="{Binding AddIsActive}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
@@ -266,38 +295,45 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1">
-                        <TextBlock Text="Room Number" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Laboratory Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="Enter room number"
+                                    PlaceholderText="Enter lab name"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
-                        
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
+                        <ui:TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}" 
+                                    PlaceholderText="1 - 60"
+                                    Icon="{ui:SymbolIcon Settings24}"
+                                    Margin="0,0,0,15"/>
+
                         <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
                                     PlaceholderText="Enter description"
                                     Icon="{ui:SymbolIcon Settings24}"
                                     Margin="0,0,0,15"/>
                         
-                        <TextBlock Text="Capacity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ui:TextBox Text="{Binding CapacityText, UpdateSourceTrigger=PropertyChanged}" 
-                                    PlaceholderText="1-60"
-                                    Icon="{ui:SymbolIcon Settings24}"
-                                    Margin="0,0,0,15"/>
-                        
                         <CheckBox Content="Active" IsChecked="{Binding IsActive}" Margin="0,0,0,15" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,0,0,15">
+
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Margin="0,0,0,15" Foreground="#B00020">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#0B6A0B"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                                            <Setter Property="Foreground" Value="#B00020"/>
+                                        <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                        
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Margin="0,20,0,0">
