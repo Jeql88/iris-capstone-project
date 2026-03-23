@@ -16,56 +16,6 @@ namespace IRIS.Core.Services
             _authService = authService;
         }
 
-        public async Task<IEnumerable<Policy>> GetPoliciesByRoomIdAsync(int roomId)
-        {
-            return await _context.Policies
-                .Where(p => p.RoomId == roomId)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Policy>> GetActivePoliciesByRoomIdAsync(int roomId)
-        {
-            return await _context.Policies
-                .Where(p => p.RoomId == roomId && p.IsActive)
-                .ToListAsync();
-        }
-
-        public async Task<Policy> CreatePolicyAsync(Policy policy)
-        {
-            policy.CreatedAt = DateTime.UtcNow;
-            _context.Policies.Add(policy);
-            await _context.SaveChangesAsync();
-            return policy;
-        }
-
-        public async Task<Policy> UpdatePolicyAsync(Policy policy)
-        {
-            policy.UpdatedAt = DateTime.UtcNow;
-            _context.Policies.Update(policy);
-            await _context.SaveChangesAsync();
-            return policy;
-        }
-
-        public async Task DeletePolicyAsync(int policyId)
-        {
-            var policy = await _context.Policies.FindAsync(policyId);
-            if (policy != null)
-            {
-                _context.Policies.Remove(policy);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task DeletePoliciesByRoomIdAsync(int roomId)
-        {
-            var policies = await _context.Policies
-                .Where(p => p.RoomId == roomId)
-                .ToListAsync();
-
-            _context.Policies.RemoveRange(policies);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<Policy> CreateOrUpdatePolicyAsync(
             int roomId,
             bool resetWallpaperOnStartup,
@@ -181,30 +131,5 @@ namespace IRIS.Core.Services
             }
         }
 
-        public async Task<bool> UpdateWallpaperPolicyAsync(int roomId, string wallpaperPath)
-        {
-            var policy = await _context.Policies
-                .FirstOrDefaultAsync(p => p.RoomId == roomId);
-
-            if (policy != null)
-            {
-                policy.WallpaperPath = wallpaperPath;
-                policy.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                var roomNumber = await _context.Rooms
-                    .Where(r => r.Id == roomId)
-                    .Select(r => r.RoomNumber)
-                    .FirstOrDefaultAsync();
-
-                await _authService.LogUserActionAsync(
-                    "Policy Enforcement Updated",
-                    $"Updated wallpaper policy for lab {(string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber)}");
-
-                return true;
-            }
-
-            return false;
-        }
     }
 }
