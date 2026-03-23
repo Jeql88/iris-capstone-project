@@ -96,7 +96,7 @@ namespace IRIS.Core.Services
                 .Select(r => r.RoomNumber)
                 .FirstOrDefaultAsync();
 
-            var roomLabel = roomNumber ?? roomId.ToString();
+            var roomLabel = string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber;
 
             if (existingPolicy != null)
             {
@@ -135,7 +135,7 @@ namespace IRIS.Core.Services
 
                 await _authService.LogUserActionAsync(
                     "Policy Enforcement Updated",
-                    $"Updated policy enforcement for lab {roomLabel} (RoomId: {roomId})");
+                    $"Updated policy enforcement for lab {roomLabel}");
 
                 return existingPolicy;
             }
@@ -175,7 +175,7 @@ namespace IRIS.Core.Services
 
                 await _authService.LogUserActionAsync(
                     "Policy Enforcement Updated",
-                    $"Created policy enforcement for lab {roomLabel} (RoomId: {roomId})");
+                    $"Created policy enforcement for lab {roomLabel}");
 
                 return newPolicy;
             }
@@ -199,7 +199,7 @@ namespace IRIS.Core.Services
 
                 await _authService.LogUserActionAsync(
                     "Policy Enforcement Updated",
-                    $"Updated wallpaper policy for lab {roomNumber ?? roomId.ToString()} (RoomId: {roomId})");
+                    $"Updated wallpaper policy for lab {(string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber)}");
 
                 return true;
             }

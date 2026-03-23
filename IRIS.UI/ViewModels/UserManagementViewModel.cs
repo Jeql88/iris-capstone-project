@@ -19,7 +19,9 @@ namespace IRIS.UI.ViewModels
         private readonly RelayCommand _nextPageRelayCommand;
         private readonly SemaphoreSlim _loadUsersSemaphore = new(1, 1);
         private string _searchText = string.Empty;
+        private string _appliedSearchText = string.Empty;
         private string _selectedRole = "All Roles";
+        private string _appliedRole = "All Roles";
         private int _currentPage = 1;
         private int _pageSize = 10;
         private int _totalPages = 1;
@@ -172,6 +174,8 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyFiltersAsync()
         {
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedRole = SelectedRole;
             CurrentPage = 1;
             await LoadUsersAsync();
         }
@@ -180,6 +184,8 @@ namespace IRIS.UI.ViewModels
         {
             SearchText = string.Empty;
             SelectedRole = "All Roles";
+            _appliedSearchText = string.Empty;
+            _appliedRole = "All Roles";
             PageSize = 10;
             CurrentPage = 1;
             await LoadUsersAsync();
@@ -205,9 +211,9 @@ namespace IRIS.UI.ViewModels
                 }
 
                 UserRole? roleFilter = null;
-                if (SelectedRole != "All Roles")
+                if (_appliedRole != "All Roles")
                 {
-                    roleFilter = SelectedRole switch
+                    roleFilter = _appliedRole switch
                     {
                         "System Administrator" => UserRole.SystemAdministrator,
                         "IT Personnel" => UserRole.ITPersonnel,
@@ -217,7 +223,7 @@ namespace IRIS.UI.ViewModels
                 }
 
                 var result = await _userManagementService.GetUsersAsync(
-                    CurrentPage, PageSize, SearchText, roleFilter);
+                    CurrentPage, PageSize, _appliedSearchText, roleFilter);
 
                 Users.Clear();
                 foreach (var user in result.Items)

@@ -194,16 +194,24 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1">
-                        <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox x:Name="AddFullNameTextBox" 
                                     PlaceholderText="Enter full name"
                                     Icon="{ui:SymbolIcon Person24}"
+                                    TextChanged="AddUserInput_Changed"
                                     Margin="0,0,0,15"/>
                         
-                        <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox x:Name="AddUsernameTextBox" 
                                     PlaceholderText="Enter username"
                                     Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    TextChanged="AddUserInput_Changed"
                                     Margin="0,0,0,15"/>
                         
                         <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -224,6 +232,7 @@
                                    Content="Add User" 
                                    Icon="{ui:SymbolIcon Add24}"
                                    Appearance="Primary"
+                                   IsEnabled="False"
                                    Click="AddUser_Click"/>
                     </StackPanel>
                 </Grid>
@@ -251,18 +260,26 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1">
-                        <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox x:Name="EditFullNameTextBox" 
                                     Text="{Binding EditFullName, UpdateSourceTrigger=PropertyChanged}"
                                     PlaceholderText="Enter full name"
                                     Icon="{ui:SymbolIcon Person24}"
+                                    TextChanged="EditUserInput_Changed"
                                     Margin="0,0,0,15"/>
                         
-                        <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
                         <ui:TextBox x:Name="EditUsernameTextBox" 
                                     Text="{Binding EditUsername, UpdateSourceTrigger=PropertyChanged}"
                                     PlaceholderText="Enter username"
                                     Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    TextChanged="EditUserInput_Changed"
                                     Margin="0,0,0,15"/>
                         
                         <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -271,6 +288,12 @@
                             <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         </ComboBox>
+
+                        <TextBlock x:Name="EditValidationTextBlock"
+                                   FontSize="12"
+                                   Foreground="#B00020"
+                                   Margin="0,0,0,10"
+                                   Visibility="Collapsed"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">

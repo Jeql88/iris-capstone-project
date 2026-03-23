@@ -20,10 +20,23 @@ namespace IRIS.UI.Views.Admin
             _userService = userService;
 
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            ResetAddUserForm();
+            UpdateAddUserButtonState();
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            if (e.PropertyName == nameof(UserManagementViewModel.IsAddModalOpen))
+            {
+                ResetAddUserForm();
+                UpdateAddUserButtonState();
+            }
+
+            if (e.PropertyName == nameof(UserManagementViewModel.IsEditModalOpen) && _viewModel != null && _viewModel.IsEditModalOpen)
+            {
+                EditValidationTextBlock.Text = string.Empty;
+                EditValidationTextBlock.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void UsersDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -40,21 +53,8 @@ namespace IRIS.UI.Views.Admin
             var fullName = AddFullNameTextBox.Text.Trim();
             var roleItem = AddRoleComboBox.SelectedItem as ComboBoxItem;
 
-            if (string.IsNullOrWhiteSpace(username) && string.IsNullOrWhiteSpace(fullName))
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(fullName))
             {
-                MessageBox.Show("Username and Full Name are required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(username))
-            {
-                MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -99,9 +99,8 @@ namespace IRIS.UI.Views.Admin
                 createSuccessDialog.Owner = Application.Current.MainWindow;
                 createSuccessDialog.ShowDialog();
 
-                AddUsernameTextBox.Clear();
-                AddFullNameTextBox.Clear();
-                AddRoleComboBox.SelectedIndex = 2;
+                ResetAddUserForm();
+                UpdateAddUserButtonState();
 
                 _viewModel!.RefreshCommand.Execute(null);
                 _viewModel.IsAddModalOpen = false;
@@ -122,17 +121,15 @@ namespace IRIS.UI.Views.Admin
             var fullName = _viewModel.EditFullName.Trim();
             var role = _viewModel.EditRole;
 
-            if (string.IsNullOrWhiteSpace(username))
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(fullName))
             {
-                MessageBox.Show("Username is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                EditValidationTextBlock.Text = "All required fields should be filled.";
+                EditValidationTextBlock.Visibility = Visibility.Visible;
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            EditValidationTextBlock.Text = string.Empty;
+            EditValidationTextBlock.Visibility = Visibility.Collapsed;
 
             if (string.IsNullOrWhiteSpace(role))
             {
@@ -184,6 +181,30 @@ namespace IRIS.UI.Views.Admin
             {
                 MessageBox.Show($"Failed to update user: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void AddUserInput_Changed(object sender, TextChangedEventArgs e)
+        {
+            UpdateAddUserButtonState();
+        }
+
+        private void EditUserInput_Changed(object sender, TextChangedEventArgs e)
+        {
+            EditValidationTextBlock.Text = string.Empty;
+            EditValidationTextBlock.Visibility = Visibility.Collapsed;
+        }
+
+        private void ResetAddUserForm()
+        {
+            AddUsernameTextBox.Clear();
+            AddFullNameTextBox.Clear();
+            AddRoleComboBox.SelectedIndex = 2;
+        }
+
+        private void UpdateAddUserButtonState()
+        {
+            AddUserButton.IsEnabled = !string.IsNullOrWhiteSpace(AddUsernameTextBox.Text)
+                                    && !string.IsNullOrWhiteSpace(AddFullNameTextBox.Text);
         }
     }
 }

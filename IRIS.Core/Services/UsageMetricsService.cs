@@ -344,7 +344,7 @@ public class UsageMetricsService : IUsageMetricsService
 
         await _authService.LogUserActionAsync(
             "Usage Metrics Exported",
-            $"Exported usage metrics from {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}. App rows: {appItems.Count}, Web rows: {webItems.Count}");
+            $"Exported usage metrics from {startDate:yyyy-MM-dd HH:mm} to {endDate:yyyy-MM-dd HH:mm}. App rows: {appItems.Count}, Web rows: {webItems.Count}");
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);

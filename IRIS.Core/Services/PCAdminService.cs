@@ -79,9 +79,11 @@ namespace IRIS.Core.Services
                 .Select(r => r.RoomNumber)
                 .FirstOrDefaultAsync();
 
+            var roomLabel = string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber;
+
             await _authService.LogUserActionAsync(
                 "PCs Assigned To Lab",
-                $"Assigned {pcs.Count} PC(s) to lab {roomNumber ?? roomId.ToString()} (RoomId: {roomId})");
+                $"Assigned {pcs.Count} PC(s) to lab {roomLabel}");
 
             return true;
         }

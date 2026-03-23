@@ -83,7 +83,7 @@ namespace IRIS.Core.Services
 
             await _authService.LogUserActionAsync(
                 "Lab Created",
-                $"Created lab {room.RoomNumber} (ID: {room.Id}, Capacity: {room.Capacity})");
+                $"Created lab {room.RoomNumber} with capacity {room.Capacity}");
 
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
@@ -116,7 +116,7 @@ namespace IRIS.Core.Services
 
             await _authService.LogUserActionAsync(
                 "Lab Updated",
-                $"Updated lab {room.RoomNumber} (ID: {room.Id})");
+                $"Updated lab {room.RoomNumber}");
 
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
@@ -149,7 +149,7 @@ namespace IRIS.Core.Services
 
             await _authService.LogUserActionAsync(
                 "Lab Deleted",
-                $"Deleted lab {room.RoomNumber} (ID: {room.Id})");
+                $"Deleted lab {room.RoomNumber}");
 
             return true;
         }

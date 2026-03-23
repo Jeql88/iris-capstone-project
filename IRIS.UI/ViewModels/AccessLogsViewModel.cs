@@ -21,7 +21,9 @@ namespace IRIS.UI.ViewModels
         private readonly RelayCommand _nextPageRelayCommand;
         private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
+        private string _appliedSearchText = string.Empty;
         private string _selectedRole = "All Roles";
+        private string _appliedRole = "All Roles";
         private DateTime? _startDate;
         private DateTime? _endDate;
         private DateTime? _appliedStartDate;
@@ -150,6 +152,8 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedRole = SelectedRole;
             _appliedStartDate = StartDate?.Date;
             _appliedEndDate = EndDate?.Date;
             CurrentPage = 1;
@@ -162,6 +166,8 @@ namespace IRIS.UI.ViewModels
             SelectedRole = "All Roles";
             StartDate = null;
             EndDate = null;
+            _appliedSearchText = string.Empty;
+            _appliedRole = "All Roles";
             _appliedStartDate = null;
             _appliedEndDate = null;
             PageSize = 10;
@@ -188,10 +194,10 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                UserRole? roleFilter = GetRoleFilter();
+                UserRole? roleFilter = GetRoleFilter(_appliedRole);
 
                 var result = await _accessLogsService.GetAccessLogsAsync(
-                    CurrentPage, PageSize, SearchText,
+                    CurrentPage, PageSize, _appliedSearchText,
                     null,
                     roleFilter,
                     _appliedStartDate.HasValue ? DateTime.SpecifyKind(_appliedStartDate.Value, DateTimeKind.Utc) : null,
@@ -245,24 +251,14 @@ namespace IRIS.UI.ViewModels
 
         private async Task ExportLogsAsync()
         {
-            if (StartDate.HasValue && EndDate.HasValue && EndDate.Value.Date < StartDate.Value.Date)
-            {
-                MessageBox.Show(
-                    "'To' date cannot be earlier than 'From' date.",
-                    "Invalid Date Range",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            var hasFilters = !string.IsNullOrWhiteSpace(SearchText)
-                             || SelectedRole != "All Roles"
-                             || StartDate.HasValue
-                             || EndDate.HasValue;
+            var hasFilters = !string.IsNullOrWhiteSpace(_appliedSearchText)
+                             || _appliedRole != "All Roles"
+                             || _appliedStartDate.HasValue
+                             || _appliedEndDate.HasValue;
 
             var confirmationMessage = hasFilters
-                ? "This will export all access logs that match the full filter set (Search, Role, From, and To), not just the current page. Continue?"
-                : "No filters are set. This will export all access logs, not just the current page. Continue?";
+                ? "This will export all access logs that match the applied filters (Search, Role, From, and To), not just the current page. Continue?"
+                : "No applied filters are set. This will export all access logs, not just the current page. Continue?";
 
             var confirmationDialog = new ConfirmationDialog(
                 "Export Access Logs",
@@ -289,12 +285,12 @@ namespace IRIS.UI.ViewModels
 
             try
             {
-                var roleFilter = GetRoleFilter();
-                var startDate = StartDate?.Date;
-                var endDate = EndDate?.Date.AddDays(1).AddSeconds(-1);
+                var roleFilter = GetRoleFilter(_appliedRole);
+                var startDate = _appliedStartDate?.Date;
+                var endDate = _appliedEndDate?.Date.AddDays(1).AddSeconds(-1);
 
                 var bytes = await _accessLogsService.ExportAccessLogsToExcelAsync(
-                    SearchText,
+                    _appliedSearchText,
                     null,
                     roleFilter,
                     startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : null,
@@ -317,14 +313,14 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private UserRole? GetRoleFilter()
+        private static UserRole? GetRoleFilter(string selectedRole)
         {
-            if (SelectedRole == "All Roles")
+            if (selectedRole == "All Roles")
             {
                 return null;
             }
 
-            return SelectedRole switch
+            return selectedRole switch
             {
                 "System Administrator" => UserRole.SystemAdministrator,
                 "IT Personnel" => UserRole.ITPersonnel,
