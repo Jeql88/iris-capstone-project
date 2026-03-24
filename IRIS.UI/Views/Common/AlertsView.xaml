@@ -150,7 +150,7 @@
                     <!-- Search -->
                     <StackPanel Grid.Column="0" Margin="0,0,15,0">
                         <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ui:TextBox PlaceholderText="Search PC, room, or message..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                        <ui:TextBox PlaceholderText="Search PC, laboratory, or message..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                     Icon="{ui:SymbolIcon Search24}"/>
                     </StackPanel>
 
@@ -172,9 +172,9 @@
                         <ComboBox ItemsSource="{Binding StateOptions}" SelectedItem="{Binding StateFilter}"/>
                     </StackPanel>
 
-                    <!-- Lab -->
+                    <!-- Laboratory -->
                     <StackPanel Grid.Column="4" Margin="0,0,15,0">
-                        <TextBlock Text="Lab" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber"/>
                     </StackPanel>
 
@@ -254,7 +254,7 @@
                         <DataGridTextColumn Header="State" Binding="{Binding State}" Width="140"/>
                         <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="140"/>
                         <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="190"/>
-                        <DataGridTextColumn Header="Room" Binding="{Binding RoomName}" Width="120"/>
+                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="120"/>
                         <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>

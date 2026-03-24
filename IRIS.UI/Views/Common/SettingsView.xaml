@@ -155,10 +155,10 @@
             </Border>
 
             <!-- ═══════════ Data Retention ═══════════ -->
-            <TextBlock Text="DATA RETENTION" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                <TextBlock x:Name="DataRetentionHeader" Text="DATA RETENTION" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                        Margin="2,20,0,8"/>
 
-            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                <Border x:Name="DataRetentionCard" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="20,18" Margin="0,0,0,10">
                 <StackPanel>

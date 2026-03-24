@@ -463,7 +463,6 @@ namespace IRIS.UI.ViewModels
                 NetworkDownloadMbps = pc.NetworkDownloadMbps,
                 NetworkLatencyMs = pc.NetworkLatencyMs,
                 PacketLossPercent = pc.PacketLossPercent,
-                User = pc.User,
                 SnapshotImageBase64 = null,
                 TopAlertSeverity = "None",
                 TopAlertMessage = "No active alerts",
@@ -499,7 +498,6 @@ namespace IRIS.UI.ViewModels
             display.NetworkDownloadMbps = pc.NetworkDownloadMbps;
             display.NetworkLatencyMs = pc.NetworkLatencyMs;
             display.PacketLossPercent = pc.PacketLossPercent;
-            display.User = pc.User;
             display.LastMetricTimestamp = pc.LastMetricTimestamp;
             // SnapshotImageBase64 and alert fields are NOT overwritten — they're loaded separately
         }
@@ -511,7 +509,7 @@ namespace IRIS.UI.ViewModels
                 await _cache.RefreshRoomsAsync();
                 var rooms = _cache.CachedRooms;
                 Rooms.Clear();
-                Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+                Rooms.Add(new RoomDto(-1, "All Laboratories", "", 0, true, DateTime.UtcNow));
                 foreach (var room in rooms)
                 {
                     Rooms.Add(room);
@@ -554,6 +552,11 @@ namespace IRIS.UI.ViewModels
                     desired.Add(pc);
                 }
             }
+
+            desired = desired
+                .OrderBy(pc => pc.PCName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(pc => pc.Id)
+                .ToList();
 
             // Build a set of desired IDs for quick removal lookup
             var desiredIds = new HashSet<int>(desired.Select(p => p.Id));
@@ -936,18 +939,6 @@ namespace IRIS.UI.ViewModels
 
             SelectedPC.IsFreezeActive = !SelectedPC.IsFreezeActive;
             _cache.SetFreezeState(SelectedPC.Id, SelectedPC.IsFreezeActive);
-
-            var successDialog = new ConfirmationDialog(
-                "Command Queued",
-                SelectedPC.IsFreezeActive
-                    ? $"Freeze command queued for {SelectedPC.PCName}."
-                    : $"Unfreeze command queued for {SelectedPC.PCName}.",
-                "Checkmark24",
-                "OK",
-                "Cancel",
-                false);
-            successDialog.Owner = Application.Current.MainWindow;
-            successDialog.ShowDialog();
         }
 
         private void RemoteDesktopConnect()
@@ -1053,7 +1044,6 @@ namespace IRIS.UI.ViewModels
         private string _networkLatency = "N/A";
         private string _packetLoss = "N/A";
         private string _ram = string.Empty;
-        private string _user = string.Empty;
         private string _macAddress = string.Empty;
         private string _roomName = string.Empty;
         private double _cpuUsagePercent;
@@ -1163,12 +1153,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _ram;
             set { _ram = value; OnPropertyChanged(); }
-        }
-
-        public string User
-        {
-            get => _user;
-            set { _user = value; OnPropertyChanged(); }
         }
 
         public string MacAddress

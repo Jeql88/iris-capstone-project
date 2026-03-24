@@ -5,6 +5,7 @@ using System.Windows.Media;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Shared;
+using IRIS.UI.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IRIS.UI.Views.Common
@@ -25,7 +26,7 @@ namespace IRIS.UI.Views.Common
             var app = (App)Application.Current;
             var serviceProvider = app.GetServiceProvider();
             var authService = serviceProvider.GetRequiredService<IAuthenticationService>();
-            
+
             var username = authService.GetCurrentUser()?.Username ?? "User";
             UserGreetingText.Text = $"Hi, {username}!";
         }
@@ -80,11 +81,16 @@ namespace IRIS.UI.Views.Common
         private async void LogoutMenuBtn_Click(object sender, RoutedEventArgs e)
         {
             UserMenuPopup.IsOpen = false;
-            
-            var result = MessageBox.Show("Are you sure you want to logout?", "Confirm Logout",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
 
-            if (result == MessageBoxResult.Yes)
+            var dialog = new ConfirmationDialog(
+                "Confirm Logout",
+                "Are you sure you want to logout?",
+                "Warning24",
+                "Yes",
+                "No");
+            dialog.Owner = Application.Current.MainWindow;
+
+            if (dialog.ShowDialog() == true)
             {
                 var serviceProvider = ((App)Application.Current).GetServiceProvider();
                 var authService = serviceProvider.GetRequiredService<IAuthenticationService>();

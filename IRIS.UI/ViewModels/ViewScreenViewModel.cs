@@ -314,7 +314,6 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Shutdown");
             if (queued)
             {
-                ShowActionSuccessDialog("Command Queued", $"Shutdown command queued for {PCName}.");
                 return;
             }
 
@@ -349,7 +348,6 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Restart");
             if (queued)
             {
-                ShowActionSuccessDialog("Command Queued", $"Restart command queued for {PCName}.");
                 return;
             }
 
@@ -393,11 +391,6 @@ namespace IRIS.UI.ViewModels
 
             IsFreezeActive = !IsFreezeActive;
             _cache.SetFreezeState(_pcId, IsFreezeActive);
-            ShowActionSuccessDialog(
-                "Command Queued",
-                IsFreezeActive
-                    ? $"Freeze command queued for {PCName}."
-                    : $"Unfreeze command queued for {PCName}.");
         }
 
         private async Task RemoteDesktopAsync()
