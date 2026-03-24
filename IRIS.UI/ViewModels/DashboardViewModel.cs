@@ -45,7 +45,7 @@ namespace IRIS.UI.ViewModels
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
             ExportSelectedCommand = new RelayCommand(async () => await ExportSelectedAsync(), () => true);
 
-            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
 
             _ = InitializeAsync();
@@ -229,13 +229,6 @@ namespace IRIS.UI.ViewModels
         private async Task InitializeAsync()
         {
             await LoadRoomsAsync();
-
-            // If cache already has data (e.g. navigating back from Monitor), show it immediately
-            if (_cache.HasData)
-            {
-                ApplyCachedSummary();
-            }
-
             await ApplyPresetAsync();
             await LoadDataAsync();
             _refreshTimer.Start();
@@ -260,15 +253,11 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                // Refresh summary via shared cache (uses its own scope — safe from navigation disposal)
-                try
-                {
-                    _cache.CurrentRoomFilter = _selectedRoomId;
-                    await _cache.RefreshDashboardSummaryAsync();
-                    await _cache.RefreshPCDataAsync();
-                    ApplyCachedSummary();
-                }
-                catch { /* summary non-critical */ }
+                // Force refresh from DB instead of using stale cache
+                _cache.CurrentRoomFilter = _selectedRoomId;
+                await _cache.RefreshDashboardSummaryAsync();
+                await _cache.RefreshPCDataAsync();
+                ApplyCachedSummary();
 
                 // Load chart data with current date range — own scope for safe DB access
                 try
@@ -539,8 +528,8 @@ namespace IRIS.UI.ViewModels
         public void OnNavigatedTo()
         {
             _isActive = true;
-            _refreshTimer.Start();
             _ = LoadDataAsync();
+            _refreshTimer.Start();
         }
 
         public void OnNavigatedFrom()

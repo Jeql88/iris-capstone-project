@@ -109,7 +109,11 @@ namespace IRIS.UI.Services
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
 
-                _cachedLiveAlerts = await service.GetLiveAlertsAsync(CurrentRoomFilter, 30);
+                var allAlerts = await service.GetLiveAlertsAsync(CurrentRoomFilter, 30);
+                // Filter to only Critical and High severity
+                _cachedLiveAlerts = allAlerts
+                    .Where(a => a.Severity == "Critical" || a.Severity == "High")
+                    .ToList();
 
                 DataChanged?.Invoke();
             }
