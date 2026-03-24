@@ -15,6 +15,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -27,26 +28,11 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:SymbolIcon Symbol="Desktop24" FontSize="24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0"/>
-                    <TextBlock Text="PC Monitoring" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ui:SymbolIcon Symbol="Desktop24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="PC Monitoring" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" Width="180" Height="32" Margin="0,0,8,0">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding RoomNumber}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <ui:TextBox Width="200"
-                                Height="32"
-                                PlaceholderText="Search PCs..."
-                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
-                        <ui:TextBox.Icon>
-                            <ui:SymbolIcon Symbol="Search24"/>
-                        </ui:TextBox.Icon>
-                    </ui:TextBox>
                     <ui:Button Margin="8,0,0,0"
                                Height="32"
                                Icon="{ui:SymbolIcon ArrowClockwise24}"
@@ -143,8 +129,66 @@
                 </ui:Card>
             </Grid>
 
+            <!-- Filters -->
+            <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,12">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Filter PCs" FontSize="18" FontWeight="Bold" 
+                                   Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:TextBox PlaceholderText="Search PCs..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                                <ui:TextBox.Icon>
+                                    <ui:SymbolIcon Symbol="Search24"/>
+                                </ui:TextBox.Icon>
+                            </ui:TextBox>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                            <TextBlock Text="Status" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBox SelectedValue="{Binding SelectedPcStatus, Mode=TwoWay}" SelectedValuePath="Content">
+                                <ComboBoxItem Content="All Statuses" IsSelected="True"/>
+                                <ComboBoxItem Content="Online Only" />
+                                <ComboBoxItem Content="Offline Only" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RoomNumber}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <ui:Button Content="Apply Filters"
+                                   Command="{Binding ApplyFiltersCommand}"
+                                   Appearance="Primary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button Content="Reset"
+                                   Command="{Binding ResetFiltersCommand}"
+                                   Appearance="Secondary"/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:Card>
+
             <!-- PC Grid (full width) -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="3">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
                     <ItemsControl ItemsSource="{Binding FilteredPCs}">
                         <ItemsControl.ItemsPanel>
@@ -162,7 +206,6 @@
                                                 <TextBlock Text="{Binding PCName}" FontWeight="Bold"/>
                                                 <TextBlock Text="{Binding IPAddress, StringFormat=IP: {0}}"/>
                                                 <TextBlock Text="{Binding RoomName, StringFormat=Room: {0}}"/>
-                                                <TextBlock Text="{Binding User, StringFormat=User: {0}}"/>
                                             </StackPanel>
                                         </ToolTip>
                                     </Border.ToolTip>
@@ -306,18 +349,80 @@
                                             </ui:Badge>
 
                                             <!-- Quick actions -->
-                                            <StackPanel Grid.Row="4" Margin="0,6,0,0" Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <ui:Button Padding="6,3" Margin="0,0,4,0" Appearance="Secondary" ToolTip="View Screen"
+                                            <Grid Grid.Row="4" Margin="0,6,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="4"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- View Screen button -->
+                                                <ui:Button Grid.Column="1" Padding="6,3" Appearance="Secondary" ToolTip="View Screen"
                                                            Command="{Binding DataContext.ViewScreenForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                            CommandParameter="{Binding}">
                                                     <ui:SymbolIcon Symbol="Eye24" FontSize="12"/>
                                                 </ui:Button>
-                                                <ui:Button Padding="6,3" Appearance="Secondary" ToolTip="Health Timeline"
-                                                           Command="{Binding DataContext.ShowTimelineForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding}">
-                                                    <ui:SymbolIcon Symbol="HeartPulse24" FontSize="12"/>
+
+                                                <!-- More actions button with popup menu -->
+                                                <ui:Button Grid.Column="3" Padding="6,3" Appearance="Secondary" ToolTip="More actions"
+                                                           Click="MenuButton_Click">
+                                                    <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="12"/>
                                                 </ui:Button>
-                                            </StackPanel>
+
+                                                <!-- Popup menu -->
+                                                <Popup x:Name="ContextMenuPopup" Grid.Column="3"
+                                                       StaysOpen="False" AllowsTransparency="True"
+                                                       Placement="Top" VerticalOffset="-4"
+                                                       PopupAnimation="Fade">
+                                                    <Border CornerRadius="8" Padding="4"
+                                                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                            BorderThickness="1">
+                                                        <Border.Effect>
+                                                            <DropShadowEffect BlurRadius="12" Opacity="0.2" ShadowDepth="4"/>
+                                                        </Border.Effect>
+                                                        <StackPanel>
+                                                            <ui:Button Padding="10,6" Appearance="Secondary"
+                                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                                       Click="HealthTimeline_Click">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <ui:SymbolIcon Symbol="HeartPulse24" FontSize="14" Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="Health Timeline" FontSize="12" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </ui:Button>
+                                                            <ui:Button Padding="10,6" Appearance="Secondary"
+                                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                                       Click="RemoteDesktop_Click">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <ui:SymbolIcon Symbol="Desktop24" FontSize="14" Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="Remote Desktop" FontSize="12" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </ui:Button>
+                                                            <ui:Button Padding="10,6" Appearance="Secondary"
+                                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                                       Click="Freeze_Click">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <ui:SymbolIcon Symbol="LockClosed24" FontSize="14" Margin="0,0,8,0"/>
+                                                                    <TextBlock FontSize="12" VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Text" Value="Freeze"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsFreezeActive}" Value="True">
+                                                                                        <Setter Property="Text" Value="Unfreeze"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+                                                            </ui:Button>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Popup>
+                                            </Grid>
                                         </Grid>
 
                                         <!-- Back face (details) -->

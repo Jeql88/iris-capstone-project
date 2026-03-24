@@ -68,7 +68,7 @@ namespace IRIS.UI.Views.Personnel
             }
         }
 
-        private void LockScreen_Click(object sender, RoutedEventArgs e)
+        private void Freeze_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button) return;
             var border = FindParent<Border>(button);
@@ -84,7 +84,46 @@ namespace IRIS.UI.Views.Personnel
             if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
             {
                 vm.SelectedPC = pc;
-                vm.LockScreenCommand.Execute(null);
+                vm.FreezeCommand.Execute(null);
+            }
+        }
+
+        private void RemoteDesktop_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            var border = FindParent<Border>(button);
+            if (border != null)
+            {
+                var popup = FindChild<Popup>(border, "ContextMenuPopup");
+                if (popup != null)
+                {
+                    popup.IsOpen = false;
+                }
+            }
+
+            if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.SelectedPC = pc;
+                vm.RemoteDesktopCommand.Execute(null);
+            }
+        }
+
+        private void HealthTimeline_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            var border = FindParent<Border>(button);
+            if (border != null)
+            {
+                var popup = FindChild<Popup>(border, "ContextMenuPopup");
+                if (popup != null)
+                {
+                    popup.IsOpen = false;
+                }
+            }
+
+            if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.ShowTimelineForPCCommand.Execute(pc);
             }
         }
 

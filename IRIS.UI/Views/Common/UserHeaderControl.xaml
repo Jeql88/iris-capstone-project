@@ -1,0 +1,85 @@
+<UserControl x:Class="IRIS.UI.Views.Common.UserHeaderControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    
+    <UserControl.Resources>
+        <Style x:Key="DropdownMenuButtonStyle" TargetType="ui:Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#B85A5A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid Background="Transparent" Height="50" VerticalAlignment="Top">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- User Greeting with Dropdown -->
+        <StackPanel x:Name="UserMenuContainer" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0"
+                    MouseEnter="UserMenuContainer_MouseEnter">
+            <ui:Button x:Name="UserMenuButton" 
+                       Background="Transparent"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       BorderThickness="0"
+                       Padding="12,8"
+                       HorizontalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Person24" FontSize="18" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="UserGreetingText" Text="Hi, User!" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"/>
+                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="16" Margin="8,0,0,0"/>
+                </StackPanel>
+            </ui:Button>
+
+            <!-- Dropdown Menu -->
+            <Popup x:Name="UserMenuPopup" 
+                   PlacementTarget="{Binding ElementName=UserMenuButton}"
+                   Placement="Bottom"
+                   AllowsTransparency="True"
+                   PopupAnimation="Fade"
+                   IsOpen="False">
+                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="0"
+                        MouseEnter="DropdownBorder_MouseEnter"
+                        MouseLeave="DropdownBorder_MouseLeave">
+                    <StackPanel Width="200">
+                        <ui:Button x:Name="SettingsMenuBtn"
+                                   Click="SettingsMenuBtn_Click"
+                                   Style="{StaticResource DropdownMenuButtonStyle}"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Settings24" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <Separator Margin="0" Background="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+
+                        <ui:Button x:Name="LogoutMenuBtn"
+                                   Click="LogoutMenuBtn_Click"
+                                   Style="{StaticResource DropdownMenuButtonStyle}"
+                                   Foreground="#C0392B">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="Logout" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ui:Button>
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </StackPanel>
+    </Grid>
+</UserControl>

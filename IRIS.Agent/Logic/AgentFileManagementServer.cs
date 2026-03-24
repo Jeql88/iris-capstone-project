@@ -1,5 +1,6 @@
 using System.Net;
 using System.IO.Compression;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Serilog;
@@ -8,6 +9,7 @@ namespace IRIS.Agent.Logic
 {
     public sealed class AgentFileManagementServer : IDisposable
     {
+        private const string ActiveDesktopToken = "%ACTIVE_DESKTOP%";
         private readonly HttpListener _listener = new();
         private readonly int _port;
         private readonly string _rootPath;
@@ -110,6 +112,24 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                if (path.Equals("/api/files/drives", StringComparison.OrdinalIgnoreCase) && method == "GET")
+                {
+                    await HandleDrivesAsync(context);
+                    return;
+                }
+
+                if (path.Equals("/api/files/rename", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    await HandleRenameAsync(context);
+                    return;
+                }
+
+                if (path.Equals("/api/files/exists", StringComparison.OrdinalIgnoreCase) && method == "GET")
+                {
+                    await HandleExistsAsync(context);
+                    return;
+                }
+
                 if (path.Equals("/api/files/upload", StringComparison.OrdinalIgnoreCase) && method == "POST")
                 {
                     await HandleUploadAsync(context);
@@ -166,8 +186,14 @@ namespace IRIS.Agent.Logic
 
         private async Task HandleListFilesAsync(HttpListenerContext context)
         {
-            var relative = context.Request.QueryString["path"] ?? ".";
-            var fullPath = ResolvePath(relative);
+            var inputPath = context.Request.QueryString["path"] ?? ".";
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
 
             if (!Directory.Exists(fullPath))
             {
@@ -181,7 +207,7 @@ namespace IRIS.Agent.Logic
                 .Select(info => new
                 {
                     Name = info.Name,
-                    FullPath = MakeRelative(info.FullName),
+                    FullPath = info.FullName,
                     IsDirectory = (info.Attributes & FileAttributes.Directory) == FileAttributes.Directory,
                     Length = info is FileInfo fileInfo ? fileInfo.Length : 0,
                     LastWriteTimeUtc = info.LastWriteTimeUtc
@@ -191,10 +217,39 @@ namespace IRIS.Agent.Logic
             await WriteJsonAsync(context.Response, 200, entries);
         }
 
+        private async Task HandleExistsAsync(HttpListenerContext context)
+        {
+            var inputPath = context.Request.QueryString["path"];
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "path is required" });
+                return;
+            }
+
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
+
+            var fileExists = File.Exists(fullPath);
+            var dirExists = Directory.Exists(fullPath);
+
+            await WriteJsonAsync(context.Response, 200, new
+            {
+                exists = fileExists || dirExists,
+                isFile = fileExists,
+                isDirectory = dirExists
+            });
+        }
+
         private async Task HandleUploadAsync(HttpListenerContext context)
         {
-            var relativeDir = context.Request.QueryString["path"] ?? ".";
+            var inputDir = context.Request.QueryString["path"] ?? ".";
             var fileName = context.Request.QueryString["fileName"];
+            var overwrite = string.Equals(context.Request.QueryString["overwrite"], "true", StringComparison.OrdinalIgnoreCase);
 
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -202,22 +257,41 @@ namespace IRIS.Agent.Logic
                 return;
             }
 
-            var targetDir = ResolvePath(relativeDir);
-            Directory.CreateDirectory(targetDir);
+            string targetDir;
+            try { targetDir = ResolveFullPath(inputDir); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
 
-            var targetPath = ResolvePath(Path.Combine(relativeDir, fileName));
+            Directory.CreateDirectory(targetDir);
+            var targetPath = Path.Combine(targetDir, Path.GetFileName(fileName));
+
+            if (File.Exists(targetPath) && !overwrite)
+            {
+                await WriteJsonAsync(context.Response, 409, new { error = "File already exists", path = targetPath });
+                return;
+            }
 
             await using var file = File.Create(targetPath);
             await context.Request.InputStream.CopyToAsync(file);
 
-            await WriteJsonAsync(context.Response, 200, new { message = "Uploaded", path = MakeRelative(targetPath) });
+            await WriteJsonAsync(context.Response, 200, new { message = "Uploaded", path = targetPath });
         }
 
         private async Task HandleBrowseAsync(HttpListenerContext context)
         {
-            var relative = context.Request.QueryString["path"] ?? ".";
+            var inputPath = context.Request.QueryString["path"] ?? ".";
             var search = context.Request.QueryString["search"]?.Trim();
-            var fullPath = ResolvePath(relative);
+
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
 
             if (!Directory.Exists(fullPath))
             {
@@ -226,39 +300,72 @@ namespace IRIS.Agent.Logic
             }
 
             var dirInfo = new DirectoryInfo(fullPath);
-            var entries = dirInfo
-                .EnumerateFileSystemInfos()
-                .Where(info => string.IsNullOrWhiteSpace(search) || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .Select(info => new
+            var rawEntries = new List<(string Name, string FullPath, bool IsDirectory, long Length, DateTime LastWriteTimeUtc)>();
+
+            try
+            {
+                foreach (var info in dirInfo.EnumerateFileSystemInfos())
                 {
-                    Name = info.Name,
-                    FullPath = MakeRelative(info.FullName),
-                    IsDirectory = (info.Attributes & FileAttributes.Directory) == FileAttributes.Directory,
-                    Length = info is FileInfo fileInfo ? fileInfo.Length : 0,
-                    LastWriteTimeUtc = info.LastWriteTimeUtc
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(search) &&
+                            !info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        rawEntries.Add((
+                            info.Name,
+                            info.FullName,
+                            info.Attributes.HasFlag(FileAttributes.Directory),
+                            info is FileInfo fi ? fi.Length : 0L,
+                            info.LastWriteTimeUtc
+                        ));
+                    }
+                    catch { /* skip inaccessible entries */ }
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await WriteJsonAsync(context.Response, 403, new { error = "Access denied to directory" });
+                return;
+            }
+
+            var entries = rawEntries
+                .OrderByDescending(e => e.IsDirectory)
+                .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(e => new
+                {
+                    e.Name,
+                    e.FullPath,
+                    e.IsDirectory,
+                    e.Length,
+                    e.LastWriteTimeUtc
                 })
-                .OrderByDescending(x => x.IsDirectory)
-                .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             await WriteJsonAsync(context.Response, 200, new
             {
-                CurrentPath = MakeRelative(fullPath),
-                ParentPath = GetParentRelative(fullPath),
+                CurrentPath = dirInfo.FullName,
+                ParentPath = dirInfo.Parent?.FullName,
                 Entries = entries
             });
         }
 
         private async Task HandleDeleteAsync(HttpListenerContext context)
         {
-            var relativePath = context.Request.QueryString["path"];
-            if (string.IsNullOrWhiteSpace(relativePath))
+            var inputPath = context.Request.QueryString["path"];
+            if (string.IsNullOrWhiteSpace(inputPath))
             {
                 await WriteJsonAsync(context.Response, 400, new { error = "path is required" });
                 return;
             }
 
-            var fullPath = ResolvePath(relativePath);
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
 
             if (Directory.Exists(fullPath))
             {
@@ -279,14 +386,20 @@ namespace IRIS.Agent.Logic
 
         private async Task HandleDownloadAsync(HttpListenerContext context)
         {
-            var relativePath = context.Request.QueryString["path"];
-            if (string.IsNullOrWhiteSpace(relativePath))
+            var inputPath = context.Request.QueryString["path"];
+            if (string.IsNullOrWhiteSpace(inputPath))
             {
                 await WriteJsonAsync(context.Response, 400, new { error = "path is required" });
                 return;
             }
 
-            var fullPath = ResolvePath(relativePath);
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
 
             if (File.Exists(fullPath))
             {
@@ -408,6 +521,204 @@ namespace IRIS.Agent.Logic
             }
 
             return combined;
+        }
+
+        /// <summary>
+        /// Resolves a path that may be absolute (e.g. C:\Users) or relative to root.
+        /// Absolute paths are used directly; relative paths are sandboxed to _rootPath.
+        /// </summary>
+        private string ResolveFullPath(string inputPath)
+        {
+            var normalized = (inputPath ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(normalized) || normalized == ".")
+                return _rootPath;
+
+            if (normalized.StartsWith(ActiveDesktopToken, StringComparison.OrdinalIgnoreCase))
+            {
+                var activeDesktopPath = GetActiveUserDesktopPath();
+                var suffix = normalized.Length == ActiveDesktopToken.Length
+                    ? string.Empty
+                    : normalized[ActiveDesktopToken.Length..].TrimStart('\\', '/');
+
+                var combinedActivePath = string.IsNullOrWhiteSpace(suffix)
+                    ? activeDesktopPath
+                    : Path.Combine(activeDesktopPath, suffix);
+
+                return Path.GetFullPath(combinedActivePath);
+            }
+
+            // Handle absolute paths (C:\... or \\share\...)
+            if (Path.IsPathFullyQualified(normalized))
+            {
+                // Normalize drive-only paths like "C:" to "C:\\"
+                if (normalized.Length == 2 && normalized[1] == ':')
+                    normalized += "\\";
+                return Path.GetFullPath(normalized);
+            }
+
+            // Relative: resolve against root with sandboxing
+            normalized = normalized.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+            var combined = Path.GetFullPath(Path.Combine(_rootPath, normalized));
+            if (!combined.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Path escapes managed root.");
+            return combined;
+        }
+
+        private static string GetActiveUserDesktopPath()
+        {
+            try
+            {
+                var activeUserName = TryGetActiveConsoleUserName();
+                if (!string.IsNullOrWhiteSpace(activeUserName))
+                {
+                    var normalizedUserName = activeUserName.Contains('\\')
+                        ? activeUserName[(activeUserName.LastIndexOf('\\') + 1)..]
+                        : activeUserName;
+
+                    var candidate = Path.Combine(@"C:\Users", normalizedUserName, "Desktop");
+                    if (Directory.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to resolve active user desktop path");
+            }
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (!string.IsNullOrWhiteSpace(desktop) && Directory.Exists(desktop))
+            {
+                return desktop;
+            }
+
+            return @"C:\Users\Public\Desktop";
+        }
+
+        private static string? TryGetActiveConsoleUserName()
+        {
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "quser",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(3000);
+
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    return null;
+                }
+
+                var lines = output
+                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => line.Trim())
+                    .Where(line => line.Length > 0)
+                    .ToList();
+
+                // Prefer the actively logged-in session (marked with '>').
+                var activeLine = lines.FirstOrDefault(line => line.StartsWith(">", StringComparison.Ordinal));
+                if (activeLine != null)
+                {
+                    var cleaned = activeLine.TrimStart('>').Trim();
+                    return cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                }
+
+                // Fallback: first non-header row.
+                var firstSession = lines.FirstOrDefault(line =>
+                    !line.StartsWith("USERNAME", StringComparison.OrdinalIgnoreCase));
+                if (firstSession == null)
+                {
+                    return null;
+                }
+
+                return firstSession.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task HandleDrivesAsync(HttpListenerContext context)
+        {
+            var drives = DriveInfo.GetDrives()
+                .Where(d => { try { return d.IsReady; } catch { return false; } })
+                .Select(d =>
+                {
+                    try
+                    {
+                        return new
+                        {
+                            Name = d.Name,
+                            Label = d.VolumeLabel,
+                            TotalSize = d.TotalSize,
+                            FreeSpace = d.AvailableFreeSpace
+                        };
+                    }
+                    catch { return null; }
+                })
+                .Where(d => d != null)
+                .ToList();
+
+            await WriteJsonAsync(context.Response, 200, drives);
+        }
+
+        private async Task HandleRenameAsync(HttpListenerContext context)
+        {
+            var inputPath = context.Request.QueryString["path"];
+            var newName = context.Request.QueryString["newName"];
+
+            if (string.IsNullOrWhiteSpace(inputPath) || string.IsNullOrWhiteSpace(newName))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "path and newName are required" });
+                return;
+            }
+
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
+
+            var parentDir = Path.GetDirectoryName(fullPath);
+            if (parentDir == null)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "Cannot determine parent directory" });
+                return;
+            }
+
+            var newPath = Path.Combine(parentDir, Path.GetFileName(newName));
+
+            if (Directory.Exists(fullPath))
+            {
+                Directory.Move(fullPath, newPath);
+            }
+            else if (File.Exists(fullPath))
+            {
+                File.Move(fullPath, newPath);
+            }
+            else
+            {
+                await WriteJsonAsync(context.Response, 404, new { error = "Path not found" });
+                return;
+            }
+
+            await WriteJsonAsync(context.Response, 200, new { message = "Renamed", newPath });
         }
 
         private string MakeRelative(string fullPath)

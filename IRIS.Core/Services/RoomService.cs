@@ -9,19 +9,41 @@ namespace IRIS.Core.Services
     public class RoomService : IRoomService
     {
         private readonly IRISDbContext _context;
+        private readonly IAuthenticationService _authService;
 
-        public RoomService(IRISDbContext context)
+        public RoomService(IRISDbContext context, IAuthenticationService authService)
         {
             _context = context;
+            _authService = authService;
         }
 
         public async Task<List<RoomDto>> GetRoomsAsync()
         {
             return await _context.Rooms
                 .AsNoTracking()
+                .Where(r => r.RoomNumber != "DEFAULT")
                 .OrderBy(r => r.RoomNumber)
                 .Select(r => new RoomDto(r.Id, r.RoomNumber, r.Description, r.Capacity, r.IsActive, r.CreatedAt))
                 .ToListAsync();
+        }
+
+        public async Task<PaginatedResult<RoomDto>> GetRoomsPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _context.Rooms.AsNoTracking().Where(r => r.RoomNumber != "DEFAULT").OrderBy(r => r.RoomNumber);
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => new RoomDto(r.Id, r.RoomNumber, r.Description, r.Capacity, r.IsActive, r.CreatedAt))
+                .ToListAsync();
+
+            return new PaginatedResult<RoomDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<RoomDto?> GetRoomAsync(int id)
@@ -59,6 +81,10 @@ namespace IRIS.Core.Services
             _context.Rooms.Add(room);
             await _context.SaveChangesAsync();
 
+            await _authService.LogUserActionAsync(
+                "Lab Created",
+                $"Created lab {room.RoomNumber} with capacity {room.Capacity}");
+
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
 
@@ -88,6 +114,10 @@ namespace IRIS.Core.Services
 
             await _context.SaveChangesAsync();
 
+            await _authService.LogUserActionAsync(
+                "Lab Updated",
+                $"Updated lab {room.RoomNumber}");
+
             return new RoomDto(room.Id, room.RoomNumber, room.Description, room.Capacity, room.IsActive, room.CreatedAt);
         }
 
@@ -102,14 +132,25 @@ namespace IRIS.Core.Services
             }
 
             var defaultRoom = await EnsureDefaultRoomAsync();
+
+            // Reassign PCs to default room
             var roomPcs = await _context.PCs.Where(p => p.RoomId == room.Id).ToListAsync();
             foreach (var pc in roomPcs)
             {
                 pc.RoomId = defaultRoom.Id;
             }
 
+            // Delete associated policies
+            var roomPolicies = await _context.Policies.Where(p => p.RoomId == room.Id).ToListAsync();
+            _context.Policies.RemoveRange(roomPolicies);
+
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
+
+            await _authService.LogUserActionAsync(
+                "Lab Deleted",
+                $"Deleted lab {room.RoomNumber}");
+
             return true;
         }
 

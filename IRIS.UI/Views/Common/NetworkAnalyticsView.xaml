@@ -1,0 +1,143 @@
+<UserControl x:Class="IRIS.UI.Views.Common.NetworkAnalyticsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:oxy="http://oxyplot.org/wpf"
+             xmlns:converters="clr-namespace:IRIS.UI.Converters">
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24,18,24,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header with back button -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ui:Button x:Name="BackButton" Appearance="Secondary"
+                       Icon="{ui:SymbolIcon ArrowLeft24}"
+                       Content="Back to Dashboard"
+                       Click="BackButton_Click"
+                       VerticalAlignment="Center"
+                       Margin="0,0,16,0"/>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12" Margin="0,4,0,0"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Chart - large interactive -->
+        <ui:Card Grid.Row="1" Padding="16" Margin="0,0,0,16">
+            <Border Height="350" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="8">
+                <oxy:PlotView Model="{Binding ChartModel}"/>
+            </Border>
+        </ui:Card>
+
+        <!-- Data Table with pagination -->
+        <ui:Card Grid.Row="2">
+            <Grid Margin="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Table Header -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="TableSimple24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Data Points" FontSize="18" FontWeight="Bold"
+                                   Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
+                                  ItemsSource="{Binding PageSizeOptions}"
+                                  Width="70" Margin="0,0,5,0"/>
+                        <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" MinHeight="350">
+                    <DataGrid ItemsSource="{Binding PagedData}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              ColumnHeaderHeight="36"
+                              RowHeight="34"
+                              MinHeight="350"
+                              Margin="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="180"/>
+                            <DataGridTextColumn Header="Metric" Binding="{Binding Metric}" Width="150"/>
+                            <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty state -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TotalRecords}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <ui:SymbolIcon Symbol="DataHistogram24" FontSize="36" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="No data points available" Margin="0,8,0,0" FontSize="13"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Try a different room or date range" Margin="0,4,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Pagination controls -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <ui:Button Command="{Binding PreviousPageCommand}"
+                               Content="Previous"
+                               Icon="{ui:SymbolIcon ChevronLeft24}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
+
+                    <TextBlock Text="{Binding PageInfo}" FontSize="13"
+                               VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                    <ui:Button Command="{Binding NextPageCommand}"
+                               Content="Next"
+                               Icon="{ui:SymbolIcon ChevronRight24}"
+                               Appearance="Primary"
+                               Margin="10,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+
+        <!-- Loading overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                Background="#80000000" CornerRadius="8"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ui:ProgressRing IsIndeterminate="True" Width="40" Height="40"/>
+                <TextBlock Text="Loading data..." Foreground="White" FontSize="14" Margin="0,12,0,0"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

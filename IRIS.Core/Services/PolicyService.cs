@@ -8,60 +8,12 @@ namespace IRIS.Core.Services
     public class PolicyService : IPolicyService
     {
         private readonly IRISDbContext _context;
+        private readonly IAuthenticationService _authService;
 
-        public PolicyService(IRISDbContext context)
+        public PolicyService(IRISDbContext context, IAuthenticationService authService)
         {
             _context = context;
-        }
-
-        public async Task<IEnumerable<Policy>> GetPoliciesByRoomIdAsync(int roomId)
-        {
-            return await _context.Policies
-                .Where(p => p.RoomId == roomId)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Policy>> GetActivePoliciesByRoomIdAsync(int roomId)
-        {
-            return await _context.Policies
-                .Where(p => p.RoomId == roomId && p.IsActive)
-                .ToListAsync();
-        }
-
-        public async Task<Policy> CreatePolicyAsync(Policy policy)
-        {
-            policy.CreatedAt = DateTime.UtcNow;
-            _context.Policies.Add(policy);
-            await _context.SaveChangesAsync();
-            return policy;
-        }
-
-        public async Task<Policy> UpdatePolicyAsync(Policy policy)
-        {
-            policy.UpdatedAt = DateTime.UtcNow;
-            _context.Policies.Update(policy);
-            await _context.SaveChangesAsync();
-            return policy;
-        }
-
-        public async Task DeletePolicyAsync(int policyId)
-        {
-            var policy = await _context.Policies.FindAsync(policyId);
-            if (policy != null)
-            {
-                _context.Policies.Remove(policy);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task DeletePoliciesByRoomIdAsync(int roomId)
-        {
-            var policies = await _context.Policies
-                .Where(p => p.RoomId == roomId)
-                .ToListAsync();
-            
-            _context.Policies.RemoveRange(policies);
-            await _context.SaveChangesAsync();
+            _authService = authService;
         }
 
         public async Task<Policy> CreateOrUpdatePolicyAsync(
@@ -89,12 +41,19 @@ namespace IRIS.Core.Services
             var existingPolicy = await _context.Policies
                 .FirstOrDefaultAsync(p => p.RoomId == roomId);
 
+            var roomNumber = await _context.Rooms
+                .Where(r => r.Id == roomId)
+                .Select(r => r.RoomNumber)
+                .FirstOrDefaultAsync();
+
+            var roomLabel = string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber;
+
             if (existingPolicy != null)
             {
                 // Update existing policy
                 existingPolicy.ResetWallpaperOnStartup = resetWallpaperOnStartup;
                 existingPolicy.AutoShutdownIdleMinutes = autoShutdownIdleMinutes;
-                
+
                 // Update wallpaper path if provided
                 if (!string.IsNullOrEmpty(wallpaperPath))
                 {
@@ -117,12 +76,17 @@ namespace IRIS.Core.Services
                 existingPolicy.PacketLossCriticalThreshold = packetLossCriticalThreshold ?? existingPolicy.PacketLossCriticalThreshold;
                 existingPolicy.WarningSustainSeconds = warningSustainSeconds ?? existingPolicy.WarningSustainSeconds;
                 existingPolicy.CriticalSustainSeconds = criticalSustainSeconds ?? existingPolicy.CriticalSustainSeconds;
-                
+
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
-                
+
                 _context.Policies.Update(existingPolicy);
                 await _context.SaveChangesAsync();
+
+                await _authService.LogUserActionAsync(
+                    "Policy Enforcement Updated",
+                    $"Updated policy enforcement for lab {roomLabel}");
+
                 return existingPolicy;
             }
             else
@@ -155,27 +119,17 @@ namespace IRIS.Core.Services
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 _context.Policies.Add(newPolicy);
                 await _context.SaveChangesAsync();
+
+                await _authService.LogUserActionAsync(
+                    "Policy Enforcement Updated",
+                    $"Created policy enforcement for lab {roomLabel}");
+
                 return newPolicy;
             }
         }
 
-        public async Task<bool> UpdateWallpaperPolicyAsync(int roomId, string wallpaperPath)
-        {
-            var policy = await _context.Policies
-                .FirstOrDefaultAsync(p => p.RoomId == roomId);
-
-            if (policy != null)
-            {
-                policy.WallpaperPath = wallpaperPath;
-                policy.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
-        }
     }
 }

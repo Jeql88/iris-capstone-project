@@ -44,7 +44,7 @@ namespace IRIS.UI.ViewModels
             ExportNetworkAnalyticsCommand = new RelayCommand(async () => await ExportNetworkAnalyticsAsync(), () => true);
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
             ExportSelectedCommand = new RelayCommand(async () => await ExportSelectedAsync(), () => true);
-            
+
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
 
@@ -111,7 +111,7 @@ namespace IRIS.UI.ViewModels
 
         public string LastUpdatedText => _lastUpdatedUtc == DateTime.MinValue
             ? "Not yet updated"
-            : $"Updated {TimeZoneInfo.ConvertTimeFromUtc(_lastUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+            : $"Updated {DateTimeDisplayHelper.ToManilaFromUtc(_lastUpdatedUtc):HH:mm:ss}";
 
         public bool HasHeavyApplications => HeavyApplications.Count > 0;
         public bool HasLabStatuses => LabStatuses.Count > 0;
@@ -175,7 +175,12 @@ namespace IRIS.UI.ViewModels
                 _selectedRangePreset = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsCustomRange));
-                _ = ApplyPresetAsync();
+                OnPropertyChanged(nameof(ActiveRangeDescription));
+                // Only auto-apply preset if not already in custom mode
+                if (!string.Equals(value, "Custom", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = ApplyPresetAsync();
+                }
             }
         }
 
@@ -313,8 +318,12 @@ namespace IRIS.UI.ViewModels
 
         private async Task ApplyDateFilterAsync()
         {
-            SelectedRangePreset = "Custom";
             _useRolling24HourDefault = false;
+            _selectedRangePreset = "Custom";
+            OnPropertyChanged(nameof(SelectedRangePreset));
+            OnPropertyChanged(nameof(IsCustomRange));
+            OnPropertyChanged(nameof(ActiveRangeDescription));
+            _cache.CurrentRoomFilter = _selectedRoomId;
             await LoadDataAsync();
         }
 
@@ -502,6 +511,9 @@ namespace IRIS.UI.ViewModels
             model.Axes.Add(timeAxis);
             model.Axes.Add(valueAxis);
 
+            // Convert UTC timestamps to Manila time for display
+            var localPoints = points.Select(p => (Timestamp: DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), p.Value)).OrderBy(p => p.Timestamp).ToList();
+
             var series = new LineSeries
             {
                 Color = OxyColor.FromRgb(180, 40, 40),
@@ -511,7 +523,7 @@ namespace IRIS.UI.ViewModels
                 CanTrackerInterpolatePoints = false
             };
 
-            foreach (var p in points.OrderBy(p => p.Timestamp))
+            foreach (var p in localPoints)
             {
                 series.Points.Add(new OxyPlot.DataPoint(DateTimeAxis.ToDouble(p.Timestamp), p.Value));
             }
@@ -523,6 +535,13 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadDataAsync();
+        }
 
         public void OnNavigatedFrom()
         {

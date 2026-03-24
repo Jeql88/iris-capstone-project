@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.UI.ViewModels;
 using IRIS.UI.Views.Shared;
 
@@ -11,15 +13,20 @@ namespace IRIS.UI.Views.Common
     {
         private readonly SettingsViewModel _viewModel;
         private readonly IAuthenticationService _authService;
-        private readonly INavigationService _navigationService;
 
-        public SettingsView(SettingsViewModel viewModel, IAuthenticationService authService, INavigationService navigationService)
+        public SettingsView(SettingsViewModel viewModel, IAuthenticationService authService)
         {
             InitializeComponent();
             DataContext = viewModel;
             _viewModel = viewModel;
             _authService = authService;
-            _navigationService = navigationService;
+
+            var currentUser = _authService.GetCurrentUser();
+            if (currentUser?.Role == UserRole.Faculty)
+            {
+                DataRetentionHeader.Visibility = Visibility.Collapsed;
+                DataRetentionCard.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void ChangePassword_Click(object sender, RoutedEventArgs e)
@@ -76,20 +83,53 @@ namespace IRIS.UI.Views.Common
 
         private async void Logout_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("Are you sure you want to logout?", "Confirm Logout", 
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var dialog = new ConfirmationDialog(
+                "Confirm Logout",
+                "Are you sure you want to logout?",
+                "Warning24",
+                "Yes",
+                "No");
+            dialog.Owner = Application.Current.MainWindow;
 
-            if (result == MessageBoxResult.Yes)
+            if (dialog.ShowDialog() == true)
             {
                 await _authService.LogoutAsync();
-                
+
                 var serviceProvider = ((App)Application.Current).GetServiceProvider();
                 var authService = (IAuthenticationService)serviceProvider.GetService(typeof(IAuthenticationService))!;
                 var loginWindow = new LoginWindow(authService);
                 loginWindow.Show();
-                
+
                 Window.GetWindow(this)?.Close();
             }
+        }
+
+        private void SaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            // Read values directly from NumberBox controls to bypass any binding issues
+            _viewModel.HardwareRetentionDays = HardwareRetentionBox.Value ?? _viewModel.HardwareRetentionDays;
+            _viewModel.NetworkRetentionDays = NetworkRetentionBox.Value ?? _viewModel.NetworkRetentionDays;
+            _viewModel.AlertRetentionDays = AlertRetentionBox.Value ?? _viewModel.AlertRetentionDays;
+            _viewModel.WebsiteUsageRetentionDays = WebsiteRetentionBox.Value ?? _viewModel.WebsiteUsageRetentionDays;
+            _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
+            _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
+
+            if (_viewModel.SaveRetentionCommand.CanExecute(null))
+                _viewModel.SaveRetentionCommand.Execute(null);
+        }
+
+        private void RunCleanupNow_Click(object sender, RoutedEventArgs e)
+        {
+            // Read values directly from NumberBox controls first
+            _viewModel.HardwareRetentionDays = HardwareRetentionBox.Value ?? _viewModel.HardwareRetentionDays;
+            _viewModel.NetworkRetentionDays = NetworkRetentionBox.Value ?? _viewModel.NetworkRetentionDays;
+            _viewModel.AlertRetentionDays = AlertRetentionBox.Value ?? _viewModel.AlertRetentionDays;
+            _viewModel.WebsiteUsageRetentionDays = WebsiteRetentionBox.Value ?? _viewModel.WebsiteUsageRetentionDays;
+            _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
+            _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
+
+            if (_viewModel.RunCleanupNowCommand.CanExecute(null))
+                _viewModel.RunCleanupNowCommand.Execute(null);
         }
     }
 }

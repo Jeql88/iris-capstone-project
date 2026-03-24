@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Windows.Input;
 using System.Windows.Threading;
 using IRIS.Core.DTOs;
@@ -10,13 +9,17 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
+using System.Windows;
+using ClosedXML.Excel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
 {
     public class AlertsViewModel : INotifyPropertyChanged, INavigationAware
     {
-        private readonly IMonitoringService _monitoringService;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly IAuthenticationService _authenticationService;
         private readonly DispatcherTimer _refreshTimer;
         private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
@@ -26,23 +29,39 @@ namespace IRIS.UI.ViewModels
         private string _typeFilter = "All";
         private string _stateFilter = "Open";
         private string _searchText = string.Empty;
+        private RoomDto? _appliedRoom;
+        private string _appliedSeverityFilter = "All";
+        private string _appliedTypeFilter = "All";
+        private string _appliedStateFilter = "Open";
+        private string _appliedSearchText = string.Empty;
         private bool _isLoading;
         private DateTime _lastUpdatedUtc = DateTime.MinValue;
         private AlertRow? _selectedAlert;
+        private bool _isAllSelected;
+        private int _pageSize = 10;
+        private int _currentPage = 1;
+        private int _totalPages = 1;
 
-        public AlertsViewModel(IMonitoringService monitoringService, IAuthenticationService authenticationService)
+        public AlertsViewModel(IServiceScopeFactory scopeFactory, IAuthenticationService authenticationService)
         {
-            _monitoringService = monitoringService;
+            _scopeFactory = scopeFactory;
             _authenticationService = authenticationService;
             RefreshCommand = new RelayCommand(async () => await LoadAlertsAsync(), () => true);
-            ExportCommand = new RelayCommand(async () => await ExportCsvAsync(), () => true);
-            AcknowledgeCommand = new RelayCommand(async () => await AcknowledgeSelectedAsync(), () => SelectedAlert is { IsAcknowledged: false, IsResolved: false });
-            ResolveCommand = new RelayCommand(async () => await ResolveSelectedAsync(), () => SelectedAlert is { IsResolved: false });
+            ExportCommand = new RelayCommand(async () => await ExportExcelAsync(), () => true);
+            AcknowledgeCommand = new RelayCommand(async () => await AcknowledgeSelectedAsync(), () => true);
+            ResolveCommand = new RelayCommand(async () => await ResolveSelectedAsync(), () => true);
             AcknowledgeVisibleCommand = new RelayCommand(async () => await AcknowledgeVisibleAsync(), () => FilteredAlerts.Any(a => !a.IsAcknowledged && !a.IsResolved));
             ResolveVisibleCommand = new RelayCommand(async () => await ResolveVisibleAsync(), () => FilteredAlerts.Any(a => !a.IsResolved));
+            ToggleSelectAllCommand = new RelayCommand(ToggleSelectAll, () => true);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
+            NextPageCommand = new RelayCommand(() => GoToPage(_currentPage + 1), () => _currentPage < _totalPages);
+            PreviousPageCommand = new RelayCommand(() => GoToPage(_currentPage - 1), () => _currentPage > 1);
+            FirstPageCommand = new RelayCommand(() => GoToPage(1), () => _currentPage > 1);
+            LastPageCommand = new RelayCommand(() => GoToPage(_totalPages), () => _currentPage < _totalPages);
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            _refreshTimer.Tick += async (_, _) => await LoadAlertsAsync();
+            _refreshTimer.Tick += async (_, _) => await HandleAutoRefreshTickAsync();
 
             _ = InitializeAsync();
         }
@@ -50,9 +69,11 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<RoomDto> Rooms { get; } = new();
         public ObservableCollection<AlertRow> Alerts { get; } = new();
         public ObservableCollection<AlertRow> FilteredAlerts { get; } = new();
+        public ObservableCollection<AlertRow> PagedAlerts { get; } = new();
         public string[] SeverityOptions { get; } = { "All", "Critical", "High", "Medium", "Low" };
         public string[] TypeOptions { get; } = { "All", "Hardware", "Network", "Thermal", "System" };
         public string[] StateOptions { get; } = { "Open", "Resolved", "All" };
+        public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 
         public RoomDto? SelectedRoom
         {
@@ -61,7 +82,6 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedRoom = value;
                 OnPropertyChanged();
-                _ = LoadAlertsAsync();
             }
         }
 
@@ -72,7 +92,6 @@ namespace IRIS.UI.ViewModels
             {
                 _severityFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -83,7 +102,6 @@ namespace IRIS.UI.ViewModels
             {
                 _typeFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -94,7 +112,6 @@ namespace IRIS.UI.ViewModels
             {
                 _stateFilter = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -105,7 +122,6 @@ namespace IRIS.UI.ViewModels
             {
                 _searchText = value;
                 OnPropertyChanged();
-                ApplyFilters();
             }
         }
 
@@ -117,7 +133,7 @@ namespace IRIS.UI.ViewModels
 
         public string LastUpdatedText => _lastUpdatedUtc == DateTime.MinValue
             ? "Not yet updated"
-            : $"Updated {TimeZoneInfo.ConvertTimeFromUtc(_lastUpdatedUtc, TimeZoneInfo.Local):HH:mm:ss}";
+            : $"Updated {DateTimeDisplayHelper.ToManilaFromUtc(_lastUpdatedUtc):HH:mm:ss}";
 
         public int AlertCount => FilteredAlerts.Count;
         public int CriticalCount => FilteredAlerts.Count(a => a.Severity == "Critical");
@@ -142,12 +158,104 @@ namespace IRIS.UI.ViewModels
         public ICommand ResolveCommand { get; }
         public ICommand AcknowledgeVisibleCommand { get; }
         public ICommand ResolveVisibleCommand { get; }
+        public ICommand ToggleSelectAllCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
+        public ICommand NextPageCommand { get; }
+        public ICommand PreviousPageCommand { get; }
+        public ICommand FirstPageCommand { get; }
+        public ICommand LastPageCommand { get; }
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set
+            {
+                if (_pageSize != value)
+                {
+                    _pageSize = value;
+                    OnPropertyChanged();
+                    GoToPage(1);
+                }
+            }
+        }
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            set { _currentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+        }
+
+        public int TotalPages
+        {
+            get => _totalPages;
+            set { _totalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+        }
+
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({FilteredAlerts.Count} total entries)";
+
+        public bool IsAllSelected
+        {
+            get => _isAllSelected;
+            set
+            {
+                if (_isAllSelected == value)
+                {
+                    return;
+                }
+
+                _isAllSelected = value;
+                foreach (var alert in PagedAlerts)
+                {
+                    alert.IsSelected = value;
+                }
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedCount));
+            }
+        }
+
+        public int SelectedCount => FilteredAlerts.Count(a => a.IsSelected);
+
+        private void ToggleSelectAll()
+        {
+            IsAllSelected = !IsAllSelected;
+        }
+
+        private async Task ApplyFiltersAsync()
+        {
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
+
+            await LoadAlertsAsync();
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SelectedRoom = Rooms.FirstOrDefault();
+            SeverityFilter = "All";
+            TypeFilter = "All";
+            StateFilter = "Open";
+            SearchText = string.Empty;
+
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
+
+            await LoadAlertsAsync();
+        }
 
         private async Task InitializeAsync()
         {
-            var rooms = await _monitoringService.GetRoomsAsync();
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            var rooms = await monitoringService.GetRoomsAsync();
             Rooms.Clear();
-            Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+            Rooms.Add(new RoomDto(-1, "All Laboratories", "", 0, true, DateTime.UtcNow));
             foreach (var room in rooms)
             {
                 Rooms.Add(room);
@@ -158,11 +266,27 @@ namespace IRIS.UI.ViewModels
                 SelectedRoom = Rooms.FirstOrDefault();
             }
 
+            _appliedRoom = SelectedRoom;
+            _appliedSeverityFilter = SeverityFilter;
+            _appliedTypeFilter = TypeFilter;
+            _appliedStateFilter = StateFilter;
+            _appliedSearchText = SearchText;
+
             await LoadAlertsAsync();
             _refreshTimer.Start();
         }
 
-        private async Task LoadAlertsAsync()
+        private async Task HandleAutoRefreshTickAsync()
+        {
+            if (FilteredAlerts.Any(a => a.IsSelected))
+            {
+                return;
+            }
+
+            await LoadAlertsAsync(preserveCurrentPage: true);
+        }
+
+        private async Task LoadAlertsAsync(bool preserveCurrentPage = false)
         {
             if (!_isActive)
             {
@@ -182,10 +306,13 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                int? roomId = SelectedRoom != null && SelectedRoom.Id > 0 ? SelectedRoom.Id : null;
-                var includeResolved = string.Equals(StateFilter, "Resolved", StringComparison.OrdinalIgnoreCase) ||
-                                      string.Equals(StateFilter, "All", StringComparison.OrdinalIgnoreCase);
-                var alerts = await _monitoringService.GetAlertFeedAsync(roomId, 300, includeResolved);
+                int? roomId = _appliedRoom != null && _appliedRoom.Id > 0 ? _appliedRoom.Id : null;
+                var includeResolved = string.Equals(_appliedStateFilter, "Resolved", StringComparison.OrdinalIgnoreCase) ||
+                                      string.Equals(_appliedStateFilter, "All", StringComparison.OrdinalIgnoreCase);
+
+                using var scope = _scopeFactory.CreateScope();
+                var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var alerts = await monitoringService.GetAlertFeedAsync(roomId, 300, includeResolved);
 
                 Alerts.Clear();
                 foreach (var alert in alerts.OrderByDescending(a => a.CreatedAt))
@@ -194,7 +321,7 @@ namespace IRIS.UI.ViewModels
                     {
                         AlertId = alert.AlertId,
                         AlertKey = alert.AlertKey,
-                        Timestamp = alert.CreatedAt,
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(alert.CreatedAt),
                         Severity = alert.Severity,
                         Type = alert.Type,
                         PCName = alert.PCName,
@@ -209,7 +336,7 @@ namespace IRIS.UI.ViewModels
 
                 _lastUpdatedUtc = DateTime.UtcNow;
                 OnPropertyChanged(nameof(LastUpdatedText));
-                ApplyFilters();
+                ApplyFilters(preserveCurrentPage);
             }
             finally
             {
@@ -218,35 +345,35 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void ApplyFilters()
+        private void ApplyFilters(bool preserveCurrentPage = false)
         {
             var filtered = Alerts.AsEnumerable();
 
-            if (!string.Equals(SeverityFilter, "All", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(_appliedSeverityFilter, "All", StringComparison.OrdinalIgnoreCase))
             {
-                filtered = filtered.Where(a => a.Severity.Equals(SeverityFilter, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(a => a.Severity.Equals(_appliedSeverityFilter, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (!string.Equals(TypeFilter, "All", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(_appliedTypeFilter, "All", StringComparison.OrdinalIgnoreCase))
             {
-                filtered = filtered.Where(a => a.Type.Equals(TypeFilter, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(a => a.Type.Equals(_appliedTypeFilter, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (string.Equals(StateFilter, "Open", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_appliedStateFilter, "Open", StringComparison.OrdinalIgnoreCase))
             {
                 filtered = filtered.Where(a => !a.IsResolved);
             }
-            else if (string.Equals(StateFilter, "Resolved", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(_appliedStateFilter, "Resolved", StringComparison.OrdinalIgnoreCase))
             {
                 filtered = filtered.Where(a => a.IsResolved);
             }
 
-            if (!string.IsNullOrWhiteSpace(SearchText))
+            if (!string.IsNullOrWhiteSpace(_appliedSearchText))
             {
                 filtered = filtered.Where(a =>
-                    a.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    a.RoomName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    a.Message.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                    a.PCName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    a.RoomName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    a.Message.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase));
             }
 
             FilteredAlerts.Clear();
@@ -259,40 +386,95 @@ namespace IRIS.UI.ViewModels
             OnPropertyChanged(nameof(CriticalCount));
             OnPropertyChanged(nameof(HighCount));
             OnPropertyChanged(nameof(OpenCount));
+            OnPropertyChanged(nameof(SelectedCount));
+            IsAllSelected = false;
             (AcknowledgeVisibleCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ResolveVisibleCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            GoToPage(preserveCurrentPage ? CurrentPage : 1);
+        }
+
+        private void GoToPage(int page)
+        {
+            TotalPages = Math.Max(1, (int)Math.Ceiling(FilteredAlerts.Count / (double)_pageSize));
+            CurrentPage = Math.Clamp(page, 1, TotalPages);
+
+            PagedAlerts.Clear();
+            foreach (var row in FilteredAlerts.Skip((CurrentPage - 1) * _pageSize).Take(_pageSize))
+                PagedAlerts.Add(row);
+
+            _isAllSelected = false;
+            OnPropertyChanged(nameof(IsAllSelected));
+            OnPropertyChanged(nameof(PageInfo));
+            (NextPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (PreviousPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (FirstPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (LastPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private async Task AcknowledgeSelectedAsync()
         {
-            if (SelectedAlert == null || SelectedAlert.IsAcknowledged || SelectedAlert.IsResolved)
+            var ids = FilteredAlerts
+                .Where(a => a.IsSelected && !a.IsAcknowledged && !a.IsResolved)
+                .Select(a => a.AlertId)
+                .Distinct()
+                .ToList();
+
+            if (!ids.Any())
             {
+                ShowInfoDialog("No Alerts Selected", "Please select one or more alert rows before acknowledging.");
                 return;
             }
 
+            var confirm = new ConfirmationDialog(
+                "Acknowledge Selected Alerts",
+                $"Acknowledge {ids.Count} selected alert(s)?",
+                "Checkmark24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
-            var ok = await _monitoringService.AcknowledgeAlertAsync(SelectedAlert.AlertId, userId);
-            if (ok)
-            {
-                await LoadAlertsAsync();
-            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            await monitoringService.AcknowledgeAlertsAsync(ids, userId);
+            await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Acknowledged", $"Acknowledged {ids.Count} selected alert(s) successfully.");
         }
 
         private async Task ResolveSelectedAsync()
         {
-            if (SelectedAlert == null || SelectedAlert.IsResolved)
+            var ids = FilteredAlerts
+                .Where(a => a.IsSelected && !a.IsResolved)
+                .Select(a => a.AlertId)
+                .Distinct()
+                .ToList();
+
+            if (!ids.Any())
             {
+                ShowInfoDialog("No Alerts Selected", "Please select one or more alert rows before resolving.");
                 return;
             }
 
+            var confirm = new ConfirmationDialog(
+                "Resolve Selected Alerts",
+                $"Resolve {ids.Count} selected alert(s)?",
+                "CheckmarkCircle24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
-            var ok = await _monitoringService.ResolveAlertAsync(SelectedAlert.AlertId, userId);
-            if (ok)
-            {
-                await LoadAlertsAsync();
-            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            await monitoringService.ResolveAlertsAsync(ids, userId);
+            await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Resolved", $"Resolved {ids.Count} selected alert(s) successfully.");
         }
 
         private async Task AcknowledgeVisibleAsync()
@@ -303,15 +485,25 @@ namespace IRIS.UI.ViewModels
                 .Distinct()
                 .ToList();
 
-            if (!ids.Any())
-            {
+            if (!ids.Any()) return;
+
+            var confirm = new ConfirmationDialog(
+                "Acknowledge Visible Alerts",
+                $"Acknowledge {ids.Count} visible alert(s)?",
+                "Checkmark24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
                 return;
-            }
 
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
-            await _monitoringService.AcknowledgeAlertsAsync(ids, userId);
+
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            await monitoringService.AcknowledgeAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Acknowledged", $"Acknowledged {ids.Count} visible alert(s) successfully.");
         }
 
         private async Task ResolveVisibleAsync()
@@ -322,24 +514,43 @@ namespace IRIS.UI.ViewModels
                 .Distinct()
                 .ToList();
 
-            if (!ids.Any())
-            {
+            if (!ids.Any()) return;
+
+            var confirm = new ConfirmationDialog(
+                "Resolve Visible Alerts",
+                $"Resolve {ids.Count} visible alert(s)?",
+                "CheckmarkCircle24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
                 return;
-            }
 
             var currentUser = _authenticationService.GetCurrentUser();
             var userId = currentUser?.Id ?? 1;
-            await _monitoringService.ResolveAlertsAsync(ids, userId);
+
+            using var scope = _scopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+            await monitoringService.ResolveAlertsAsync(ids, userId);
             await LoadAlertsAsync();
+
+            ShowSuccessDialog("Alerts Resolved", $"Resolved {ids.Count} visible alert(s) successfully.");
         }
 
-        private async Task ExportCsvAsync()
+        private async Task ExportExcelAsync()
         {
+            // Confirm export
+            var confirm = new ConfirmationDialog(
+                "Export Alerts",
+                $"Export {FilteredAlerts.Count} alert(s) to Excel?",
+                "ArrowDownload24");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true)
+                return;
+
             var saveDialog = new SaveFileDialog
             {
-                Filter = "CSV files (*.csv)|*.csv",
-                DefaultExt = "csv",
-                FileName = $"IRIS_Alerts_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                Filter = "Excel files (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                FileName = $"IRIS_Alerts_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
             };
 
             if (saveDialog.ShowDialog() != true)
@@ -347,30 +558,72 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var csv = new StringBuilder();
-            csv.AppendLine("Timestamp,Severity,Type,PC,Room,Message");
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Alerts");
+
+            // Headers
+            worksheet.Cell(1, 1).Value = "Timestamp";
+            worksheet.Cell(1, 2).Value = "Severity";
+            worksheet.Cell(1, 3).Value = "Type";
+            worksheet.Cell(1, 4).Value = "PC";
+            worksheet.Cell(1, 5).Value = "Room";
+            worksheet.Cell(1, 6).Value = "Message";
+
+            var row = 2;
             foreach (var alert in FilteredAlerts)
             {
-                csv.AppendLine(string.Join(",",
-                    EscapeCsv(TimeZoneInfo.ConvertTimeFromUtc(alert.Timestamp, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss")),
-                    EscapeCsv(alert.Severity),
-                    EscapeCsv(alert.Type),
-                    EscapeCsv(alert.PCName),
-                    EscapeCsv(alert.RoomName),
-                    EscapeCsv(alert.Message)));
+                worksheet.Cell(row, 1).Value = alert.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cell(row, 2).Value = alert.Severity;
+                worksheet.Cell(row, 3).Value = alert.Type;
+                worksheet.Cell(row, 4).Value = alert.PCName;
+                worksheet.Cell(row, 5).Value = alert.RoomName;
+                worksheet.Cell(row, 6).Value = alert.Message;
+                row++;
             }
 
-            await File.WriteAllTextAsync(saveDialog.FileName, csv.ToString());
+            // Adjust columns
+            worksheet.Columns().AdjustToContents();
+
+            using var memoryStream = new MemoryStream();
+            workbook.SaveAs(memoryStream);
+            await File.WriteAllBytesAsync(saveDialog.FileName, memoryStream.ToArray());
+
+            // Show success dialog
+            var success = new ConfirmationDialog(
+                "Export Successful",
+                $"Exported {FilteredAlerts.Count} alert(s) to {saveDialog.FileName}",
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            success.Owner = Application.Current.MainWindow;
+            success.ShowDialog();
         }
 
-        private static string EscapeCsv(string value)
+        private static void ShowSuccessDialog(string title, string message)
         {
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
-            {
-                return $"\"{value.Replace("\"", "\"\"")}\"";
-            }
+            var success = new ConfirmationDialog(
+                title,
+                message,
+                "Checkmark24",
+                "OK",
+                "Cancel",
+                false);
+            success.Owner = Application.Current.MainWindow;
+            success.ShowDialog();
+        }
 
-            return value;
+        private static void ShowInfoDialog(string title, string message)
+        {
+            var info = new ConfirmationDialog(
+                title,
+                message,
+                "Info24",
+                "OK",
+                "Cancel",
+                false);
+            info.Owner = Application.Current.MainWindow;
+            info.ShowDialog();
         }
 
         public void OnNavigatedFrom()
@@ -379,13 +632,26 @@ namespace IRIS.UI.ViewModels
             _refreshTimer.Stop();
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            if (!_refreshTimer.IsEnabled)
+            {
+                _refreshTimer.Start();
+            }
+
+            _ = LoadAlertsAsync(preserveCurrentPage: true);
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public class AlertRow
+    public class AlertRow : INotifyPropertyChanged
     {
+        private bool _isSelected;
+
         public int AlertId { get; set; }
         public string AlertKey { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
@@ -399,5 +665,20 @@ namespace IRIS.UI.ViewModels
         public bool IsResolved { get; set; }
         public DateTime? ResolvedAt { get; set; }
         public string State => IsResolved ? "Resolved" : (IsAcknowledged ? "Acknowledged" : "New");
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 }

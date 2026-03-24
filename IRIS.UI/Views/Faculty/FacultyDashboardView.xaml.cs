@@ -20,11 +20,15 @@ namespace IRIS.UI.Views.Faculty
             Loaded += (s, e) => _navigationService?.NavigateTo("Monitor");
         }
 
-        public void SetNavigationService(INavigationService navigationService) => _navigationService = navigationService;
+        public void SetNavigationService(INavigationService navigationService) 
+        {
+            _navigationService = navigationService;
+            UserHeader.SetNavigationService(navigationService);
+        }
 
         private void SetActiveButton(Button activeButton)
         {
-            foreach (var btn in new[] { MonitorBtn, SoftwareManagementBtn, SettingsBtn })
+            foreach (var btn in new[] { MonitorBtn, FileManagementBtn })
             {
                 btn.Background = Brushes.Transparent;
                 btn.Foreground = DefaultForeground;
@@ -35,20 +39,18 @@ namespace IRIS.UI.Views.Faculty
 
         private void MonitorBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(MonitorBtn);
             _navigationService?.NavigateTo("Monitor");
         }
 
-        private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)
+        private void FileManagementBtn_Click(object sender, RoutedEventArgs e)
         {
-            SetActiveButton(SoftwareManagementBtn);
-            _navigationService?.NavigateTo("SoftwareManagement");
-        }
-
-        private void SettingsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            SetActiveButton(SettingsBtn);
-            _navigationService?.NavigateTo("Settings");
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
+            SetActiveButton(FileManagementBtn);
+            _navigationService?.NavigateTo("FileManagement");
         }
 
         private async void LogoutBtn_Click(object sender, RoutedEventArgs e)

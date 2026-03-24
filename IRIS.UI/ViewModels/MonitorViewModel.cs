@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -7,8 +8,10 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Threading;
 using System.Collections.Specialized;
+using System.Windows;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.Core.DTOs;
@@ -29,7 +32,10 @@ namespace IRIS.UI.ViewModels
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(2200) };
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
-        private int? _selectedRoomId = null;
+        private string _selectedPcStatus = "All Statuses";
+        private RoomDto? _appliedRoom;
+        private string _appliedSearchText = string.Empty;
+        private string _appliedPcStatus = "All Statuses";
         private int _totalPCCount;
         private int _onlinePCCount;
         private int _offlinePCCount;
@@ -69,9 +75,13 @@ namespace IRIS.UI.ViewModels
             ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
             ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
             CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
-            LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => SelectedPC != null);
+            FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
+            RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
+            RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
             RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
 
@@ -95,7 +105,16 @@ namespace IRIS.UI.ViewModels
             {
                 _searchText = value;
                 OnPropertyChanged();
-                ApplyFilter();
+            }
+        }
+
+        public string SelectedPcStatus
+        {
+            get => _selectedPcStatus;
+            set
+            {
+                _selectedPcStatus = value;
+                OnPropertyChanged();
             }
         }
 
@@ -105,12 +124,7 @@ namespace IRIS.UI.ViewModels
             set
             {
                 _selectedRoom = value;
-                _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
                 OnPropertyChanged();
-                if (_isInitialized)
-                {
-                    _ = LoadPCDataAsync();
-                }
             }
         }
 
@@ -213,7 +227,8 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(HasTimelineEvents));
                 OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (LockScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (FreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RemoteDesktopCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
@@ -225,9 +240,31 @@ namespace IRIS.UI.ViewModels
         public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
-        public ICommand LockScreenCommand { get; }
+        public ICommand FreezeCommand { get; }
+        public ICommand RemoteDesktopCommand { get; }
+        public ICommand RemoteDesktopForPCCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand RefreshSelectedPcTimelineCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
+
+        private async Task ApplyFiltersAsync()
+        {
+            _appliedRoom = SelectedRoom;
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedPcStatus = SelectedPcStatus;
+
+            ApplyFilter();
+            await Task.CompletedTask;
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SearchText = string.Empty;
+            SelectedPcStatus = "All Statuses";
+            SelectedRoom = Rooms.FirstOrDefault();
+            await ApplyFiltersAsync();
+        }
 
         private async Task InitializeAsync()
         {
@@ -239,6 +276,10 @@ namespace IRIS.UI.ViewModels
             {
                 ApplyCachedPCData();
             }
+
+            _appliedRoom = SelectedRoom;
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedPcStatus = SelectedPcStatus;
 
             await LoadPCDataAsync();
             _refreshTimer.Start();
@@ -267,7 +308,7 @@ namespace IRIS.UI.ViewModels
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
                 // Refresh via shared cache (uses its own DI scope — safe from navigation disposal)
-                _cache.CurrentRoomFilter = _selectedRoomId;
+                _cache.CurrentRoomFilter = null;
                 await _cache.RefreshPCDataAsync();
 
                 var pcs = _cache.CachedPCs;
@@ -321,6 +362,13 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _refreshTimer.Start();
+            _ = LoadPCDataAsync();
+        }
+
         public void OnNavigatedFrom()
         {
             _isActive = false;
@@ -348,11 +396,24 @@ namespace IRIS.UI.ViewModels
                 {
                     // Update in-place — each setter fires PropertyChanged, UI updates smoothly
                     UpdateDisplayModel(existing, pc);
+
+                    var cachedFreezeState = _cache.GetFreezeState(pc.Id);
+                    if (cachedFreezeState.HasValue)
+                    {
+                        existing.IsFreezeActive = cachedFreezeState.Value;
+                    }
                 }
                 else
                 {
                     // Brand-new PC — add it
                     var display = CreateDisplayModel(pc);
+
+                    var cachedFreezeState = _cache.GetFreezeState(pc.Id);
+                    if (cachedFreezeState.HasValue)
+                    {
+                        display.IsFreezeActive = cachedFreezeState.Value;
+                    }
+
                     PCs.Add(display);
                 }
             }
@@ -402,7 +463,6 @@ namespace IRIS.UI.ViewModels
                 NetworkDownloadMbps = pc.NetworkDownloadMbps,
                 NetworkLatencyMs = pc.NetworkLatencyMs,
                 PacketLossPercent = pc.PacketLossPercent,
-                User = pc.User,
                 SnapshotImageBase64 = null,
                 TopAlertSeverity = "None",
                 TopAlertMessage = "No active alerts",
@@ -438,7 +498,6 @@ namespace IRIS.UI.ViewModels
             display.NetworkDownloadMbps = pc.NetworkDownloadMbps;
             display.NetworkLatencyMs = pc.NetworkLatencyMs;
             display.PacketLossPercent = pc.PacketLossPercent;
-            display.User = pc.User;
             display.LastMetricTimestamp = pc.LastMetricTimestamp;
             // SnapshotImageBase64 and alert fields are NOT overwritten — they're loaded separately
         }
@@ -450,15 +509,16 @@ namespace IRIS.UI.ViewModels
                 await _cache.RefreshRoomsAsync();
                 var rooms = _cache.CachedRooms;
                 Rooms.Clear();
-                Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+                Rooms.Add(new RoomDto(-1, "All Laboratories", "", 0, true, DateTime.UtcNow));
                 foreach (var room in rooms)
                 {
                     Rooms.Add(room);
                 }
 
-                if (SelectedRoom == null && Rooms.Any())
+                // Default to "All Rooms" so the monitor shows all PCs immediately
+                if (SelectedRoom == null && Rooms.Count > 0)
                 {
-                    SelectedRoom = Rooms.First();
+                    SelectedRoom = Rooms[0];
                 }
             }
             catch
@@ -470,17 +530,33 @@ namespace IRIS.UI.ViewModels
         private void ApplyFilter()
         {
             var desired = new List<PCDisplayModel>();
+            var appliedRoomName = _appliedRoom != null && _appliedRoom.Id > 0
+                ? _appliedRoom.RoomNumber
+                : null;
+
             foreach (var pc in PCs)
             {
-                bool matchesSearch = string.IsNullOrEmpty(SearchText) ||
-                    pc.PCName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    pc.IPAddress.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+                bool matchesRoom = string.IsNullOrWhiteSpace(appliedRoomName) ||
+                    string.Equals(pc.RoomName, appliedRoomName, StringComparison.OrdinalIgnoreCase);
 
-                if (matchesSearch)
+                bool matchesSearch = string.IsNullOrEmpty(_appliedSearchText) ||
+                    pc.PCName.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase) ||
+                    pc.IPAddress.Contains(_appliedSearchText, StringComparison.OrdinalIgnoreCase);
+
+                bool matchesStatus = _appliedPcStatus.StartsWith("All", StringComparison.OrdinalIgnoreCase)
+                    || (_appliedPcStatus.StartsWith("Online", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    || (_appliedPcStatus.StartsWith("Offline", StringComparison.OrdinalIgnoreCase) && string.Equals(pc.Status, "Offline", StringComparison.OrdinalIgnoreCase));
+
+                if (matchesRoom && matchesSearch && matchesStatus)
                 {
                     desired.Add(pc);
                 }
             }
+
+            desired = desired
+                .OrderBy(pc => pc.PCName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(pc => pc.Id)
+                .ToList();
 
             // Build a set of desired IDs for quick removal lookup
             var desiredIds = new HashSet<int>(desired.Select(p => p.Id));
@@ -523,7 +599,7 @@ namespace IRIS.UI.ViewModels
                     Severity = alert.Severity,
                     Type = alert.Type,
                     Message = alert.Message,
-                    Timestamp = alert.Timestamp
+                    Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(alert.Timestamp)
                 });
             }
 
@@ -735,12 +811,12 @@ namespace IRIS.UI.ViewModels
                 {
                     SelectedPcTimeline.Add(new PCHealthTimelineDisplayModel
                     {
-                        Timestamp = timelineEvent.Timestamp,
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(timelineEvent.Timestamp),
                         RelativeTime = ToRelativeTime(timelineEvent.Timestamp),
                         Severity = string.IsNullOrWhiteSpace(timelineEvent.Severity) ? "Info" : timelineEvent.Severity,
                         Category = string.IsNullOrWhiteSpace(timelineEvent.Category) ? "System" : timelineEvent.Category,
                         Title = timelineEvent.Title,
-                        Message = timelineEvent.Message
+                        Message = FormatTimelineMessage(timelineEvent)
                     });
                 }
 
@@ -790,10 +866,160 @@ namespace IRIS.UI.ViewModels
             OnPropertyChanged(nameof(TimelineEmptyMessage));
         }
 
-        private async Task LockScreenAsync()
+        private static string FormatTimelineMessage(PcHealthTimelineEvent timelineEvent)
+        {
+            if (!string.IsNullOrWhiteSpace(timelineEvent.Message)
+                && timelineEvent.Message.Contains("Last agent heartbeat", StringComparison.OrdinalIgnoreCase))
+            {
+                var manilaTimestamp = DateTimeDisplayHelper.ToManilaFromUtc(timelineEvent.Timestamp);
+                return $"Last agent heartbeat at {manilaTimestamp:MMM dd, yyyy HH:mm:ss} Asia/Manila.";
+            }
+
+            return timelineEvent.Message;
+        }
+
+        private async Task ToggleFreezeAsync()
         {
             await Task.CompletedTask;
-            // TODO: Implement lock screen functionality
+
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(SelectedPC.Status, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowOfflineActionDialog("change freeze state");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedPC.MacAddress))
+            {
+                var missingMacDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Cannot send freeze command: missing PC MAC address.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                missingMacDialog.Owner = Application.Current.MainWindow;
+                missingMacDialog.ShowDialog();
+                return;
+            }
+
+            var commandType = SelectedPC.IsFreezeActive ? "FreezeOff" : "FreezeOn";
+
+            var confirmationDialog = new ConfirmationDialog(
+                SelectedPC.IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
+                SelectedPC.IsFreezeActive
+                    ? $"Unfreeze {SelectedPC.PCName}?"
+                    : $"Freeze {SelectedPC.PCName}?",
+                "LockClosed24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var queued = await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress, commandType);
+            if (!queued)
+            {
+                var commandErrorDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Failed to queue freeze command.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                commandErrorDialog.Owner = Application.Current.MainWindow;
+                commandErrorDialog.ShowDialog();
+                return;
+            }
+
+            SelectedPC.IsFreezeActive = !SelectedPC.IsFreezeActive;
+            _cache.SetFreezeState(SelectedPC.Id, SelectedPC.IsFreezeActive);
+        }
+
+        private void RemoteDesktopConnect()
+        {
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(SelectedPC.Status, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowOfflineActionDialog("open Remote Desktop");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedPC.IPAddress) || SelectedPC.IPAddress == "N/A")
+            {
+                var missingIpDialog = new ConfirmationDialog(
+                    "Remote Desktop",
+                    "Cannot open Remote Desktop: missing target IP address.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                missingIpDialog.Owner = Application.Current.MainWindow;
+                missingIpDialog.ShowDialog();
+                return;
+            }
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Open Remote Desktop connection to {SelectedPC.PCName}?",
+                "Desktop24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "mstsc",
+                    Arguments = $"/v:{SelectedPC.IPAddress}",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                var errorDialog = new ConfirmationDialog(
+                    "Remote Desktop Error",
+                    $"Failed to open Remote Desktop. {ex.Message}",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                errorDialog.Owner = Application.Current.MainWindow;
+                errorDialog.ShowDialog();
+            }
+        }
+
+        private static void ShowOfflineActionDialog(string actionName)
+        {
+            var offlineDialog = new ConfirmationDialog(
+                "PC Offline",
+                $"Cannot {actionName} because this PC is offline.",
+                "Desktop24",
+                "OK",
+                "Cancel",
+                false);
+            offlineDialog.Owner = Application.Current.MainWindow;
+            offlineDialog.ShowDialog();
+        }
+
+        private void RemoteDesktopForPC(PCDisplayModel? pc)
+        {
+            if (pc == null) return;
+            SelectedPC = pc;
+            RemoteDesktopConnect();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -818,7 +1044,6 @@ namespace IRIS.UI.ViewModels
         private string _networkLatency = "N/A";
         private string _packetLoss = "N/A";
         private string _ram = string.Empty;
-        private string _user = string.Empty;
         private string _macAddress = string.Empty;
         private string _roomName = string.Empty;
         private double _cpuUsagePercent;
@@ -838,6 +1063,7 @@ namespace IRIS.UI.ViewModels
         private int _alertCount;
         private bool _isSelected;
         private bool _isFlipped;
+        private bool _isFreezeActive;
 
         public int Id
         {
@@ -927,12 +1153,6 @@ namespace IRIS.UI.ViewModels
         {
             get => _ram;
             set { _ram = value; OnPropertyChanged(); }
-        }
-
-        public string User
-        {
-            get => _user;
-            set { _user = value; OnPropertyChanged(); }
         }
 
         public string MacAddress
@@ -1055,6 +1275,12 @@ namespace IRIS.UI.ViewModels
         {
             get => _isFlipped;
             set { _isFlipped = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFreezeActive
+        {
+            get => _isFreezeActive;
+            set { _isFreezeActive = value; OnPropertyChanged(); }
         }
 
         // Legacy property aliases for backward compatibility

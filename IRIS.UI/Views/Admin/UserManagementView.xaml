@@ -4,20 +4,23 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="340"/>
-        </Grid.ColumnDefinitions>
-
         <!-- LEFT: User List Section -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="25,20">
                 <!-- Header -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                    <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                    <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
-                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid Margin="0,0,0,25">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                        <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
+                                   Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ui:Button Content="Add New User" 
+                               Command="{Binding OpenAddModalCommand}"
+                               Icon="{ui:SymbolIcon Add24}"
+                               Appearance="Primary"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center"/>
+                </Grid>
 
                 <!-- Search and Filters Card -->
                 <ui:Card Margin="0,0,0,20">
@@ -31,12 +34,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Search Box -->
                             <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <ui:TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
                                             PlaceholderText="Search by name or username..."
                                             Icon="{ui:SymbolIcon Search24}"/>
@@ -44,27 +46,26 @@
 
                             <!-- Role Filter -->
                             <StackPanel Grid.Column="1" Margin="0,0,15,0">
-                                <TextBlock Text="Roles" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
+                                <TextBlock Text="Roles" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <ComboBox SelectedValue="{Binding SelectedRole, Mode=TwoWay}" 
                                              SelectedValuePath="Content">
-                                    <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="#1a1a1a"/>
-                                    <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
-                                    <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
-                                    <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Status Filter -->
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Status" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                                <ComboBox SelectedValue="{Binding SelectedStatus, Mode=TwoWay}" 
-                                             SelectedValuePath="Content">
-                                    <ComboBoxItem Content="All Status" IsSelected="True" Foreground="#1a1a1a"/>
-                                    <ComboBoxItem Content="Active" Foreground="#1a1a1a"/>
-                                    <ComboBoxItem Content="Inactive" Foreground="#1a1a1a"/>
+                                    <ComboBoxItem Content="All Roles" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </ComboBox>
                             </StackPanel>
                         </Grid>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                            <ui:Button Content="Apply Filters"
+                                       Command="{Binding ApplyFiltersCommand}"
+                                       Appearance="Primary"
+                                       Margin="0,0,10,0"/>
+                            <ui:Button Content="Reset"
+                                       Command="{Binding ResetFiltersCommand}"
+                                       Appearance="Secondary"/>
+                        </StackPanel>
                     </StackPanel>
                 </ui:Card>
 
@@ -79,44 +80,76 @@
 
                         <!-- Table Header -->
                         <Grid Grid.Row="0" Margin="0,0,0,20">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="PeopleList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon Symbol="PeopleList24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="System Users" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                                           Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#1a1a1a"/>
+                                <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}" 
                                              ItemsSource="{Binding PageSizeOptions}"
                                              Width="70" Margin="0,0,5,0"/>
-                                <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="#1a1a1a"/>
+                                <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Grid>
 
                         <!-- DataGrid -->
-                        <ui:DataGrid Grid.Row="1" ItemsSource="{Binding Users}" 
-                                     SelectedItem="{Binding SelectedUser}"
-                                     AutoGenerateColumns="False" IsReadOnly="True"
-                                     MinHeight="350">
-                            <ui:DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#D6E9FF"/>
-                                            <Setter Property="Foreground" Value="#1a1a1a"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ui:DataGrid.RowStyle>
-                            <ui:DataGrid.Columns>
-                                <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2*"/>
-                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="2*"/>
-                                <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
-                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="1*"/>
-                            </ui:DataGrid.Columns>
-                        </ui:DataGrid>
+                        <Grid Grid.Row="1" MinHeight="350">
+                            <ui:DataGrid ItemsSource="{Binding Users}" 
+                                         AutoGenerateColumns="False"
+                                         IsReadOnly="True"
+                                         SelectionChanged="UsersDataGrid_SelectionChanged">
+                                <ui:DataGrid.Columns>
+                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
+                                    <DataGridTemplateColumn Header="Actions" Width="1*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="5">
+                                                    <ui:Button Content="Edit" 
+                                                               Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}"
+                                                               Icon="{ui:SymbolIcon Edit24}"
+                                                               Appearance="Secondary"
+                                                               Padding="8,4"
+                                                               Margin="8,0,12,0"/>
+                                                    <ui:Button Content="Delete" 
+                                                               Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}"
+                                                               Icon="{ui:SymbolIcon Delete24}"
+                                                               Appearance="Danger"
+                                                               Padding="8,4"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </ui:DataGrid.Columns>
+                            </ui:DataGrid>
+
+                            <Border VerticalAlignment="Top"
+                                    Margin="0,42,0,0"
+                                    Height="290"
+                                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Users.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="People24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="No users found" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Try adjusting the filters" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
                         <!-- Pagination Controls -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
@@ -127,7 +160,7 @@
                                        Margin="0,0,10,0"/>
                             
                             <TextBlock Text="{Binding PageInfo}" FontSize="13" 
-                                       VerticalAlignment="Center" Margin="15,0" Foreground="#1a1a1a"/>
+                                       VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             
                             <ui:Button Command="{Binding NextPageCommand}" 
                                        Content="Next" 
@@ -140,115 +173,143 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- RIGHT: Add/Edit User Sidebar -->
-        <Border Grid.Column="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                CornerRadius="12,0,0,12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="20">
-                    <!-- Add New User Section -->
-                    <ui:Card Margin="0,0,0,20">
-                        <StackPanel Margin="15">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" 
-                                           Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ui:TextBox x:Name="AddFullNameTextBox" 
-                                        PlaceholderText="Enter full name"
-                                        Icon="{ui:SymbolIcon Person24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ui:TextBox x:Name="AddUsernameTextBox" 
-                                        PlaceholderText="Enter username"
-                                        Icon="{ui:SymbolIcon PersonAccounts24}"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ComboBox x:Name="AddRoleComboBox" Margin="0,0,0,20">
-                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Faculty" IsSelected="True" Foreground="#1a1a1a"/>
-                            </ComboBox>
-                            
-                            <ui:Button x:Name="AddUserButton" 
-                                       Content="Add New User" 
-                                       Icon="{ui:SymbolIcon Add24}"
-                                       Appearance="Primary"
-                                       HorizontalAlignment="Stretch"
-                                       Click="AddUser_Click"/>
-                        </StackPanel>
-                    </ui:Card>
+        <!-- Add User Modal -->
+        <Grid Background="#80000000" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="White" 
+                    Width="1000"
+                    MaxWidth="1000"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid Width="400">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Manage User Section -->
-                    <ui:Card>
-                        <StackPanel Margin="15">
-                            <Grid Margin="0,0,0,20">
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Manage User" FontSize="18" FontWeight="Bold" 
-                                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                                </StackPanel>
-                                <ui:Button x:Name="HelpIcon" 
-                                           Icon="{ui:SymbolIcon QuestionCircle24}"
-                                           Appearance="Secondary"
-                                           Click="HelpIcon_Click"
-                                           HorizontalAlignment="Right"/>
-                            </Grid>
-                            
-                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ui:TextBox x:Name="EditFullNameTextBox" 
-                                        PlaceholderText="Select a user..."
-                                        Icon="{ui:SymbolIcon Person24}"
-                                        IsEnabled="False"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ui:TextBox x:Name="EditUsernameTextBox" 
-                                        PlaceholderText="Select a user..."
-                                        Icon="{ui:SymbolIcon PersonAccounts24}"
-                                        IsEnabled="False"
-                                        Margin="0,0,0,15"/>
-                            
-                            <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#1a1a1a"/>
-                            <ComboBox x:Name="EditRoleComboBox" IsEnabled="False" Margin="0,0,0,15">
-                                <ComboBoxItem Content="System Administrator" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="IT Personnel" Foreground="#1a1a1a"/>
-                                <ComboBoxItem Content="Faculty" Foreground="#1a1a1a"/>
-                            </ComboBox>
-                            
-                            <!-- Clear Selection Button -->
-                            <ui:Button x:Name="ClearSelectionButton" 
-                                       Content="Clear Selection" 
-                                       Icon="{ui:SymbolIcon Dismiss24}"
-                                       Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"
-                                       Click="ClearSelection_Click" 
-                                       Visibility="Collapsed"
-                                       Margin="0,0,0,10"/>
-                            
-                            <ui:Button x:Name="EditUserButton" 
-                                       Content="Edit User" 
-                                       Icon="{ui:SymbolIcon Edit24}"
-                                       Appearance="Secondary"
-                                       HorizontalAlignment="Stretch"
-                                       IsEnabled="False" 
-                                       Click="EditUser_Click"
-                                       Margin="0,0,0,10"/>
-                            
-                            <ui:Button x:Name="DeactivateUserButton" 
-                                       Content="Deactivate User" 
-                                       Icon="{ui:SymbolIcon Delete24}"
-                                       Appearance="Danger"
-                                       HorizontalAlignment="Stretch"
-                                       IsEnabled="False" 
-                                       Click="DeactivateUser_Click"/>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="PersonAdd24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Add New User" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
                         </StackPanel>
-                    </ui:Card>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
+                        <ui:TextBox x:Name="AddFullNameTextBox" 
+                                    PlaceholderText="Enter full name"
+                                    Icon="{ui:SymbolIcon Person24}"
+                                    TextChanged="AddUserInput_Changed"
+                                    Margin="0,0,0,15"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
+                        <ui:TextBox x:Name="AddUsernameTextBox" 
+                                    PlaceholderText="Enter username"
+                                    Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    TextChanged="AddUserInput_Changed"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox x:Name="AddRoleComboBox" Margin="0,0,0,15">
+                            <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="Faculty" IsSelected="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel" 
+                                   Command="{Binding CloseAddModalCommand}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button x:Name="AddUserButton" 
+                                   Content="Add User" 
+                                   Icon="{ui:SymbolIcon Add24}"
+                                   Appearance="Primary"
+                                   IsEnabled="False"
+                                   Click="AddUser_Click"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
+
+        <!-- Edit User Modal -->
+        <Grid Background="#80000000" Visibility="{Binding IsEditModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ui:Card Background="White" 
+                    Width="1000"
+                    MaxWidth="1000"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <Grid Width="400">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="PersonEdit24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Edit User" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Full Name" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
+                        <ui:TextBox x:Name="EditFullNameTextBox" 
+                                    Text="{Binding EditFullName, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Enter full name"
+                                    Icon="{ui:SymbolIcon Person24}"
+                                    TextChanged="EditUserInput_Changed"
+                                    Margin="0,0,0,15"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Username" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text=" *" FontSize="13" FontWeight="Bold" Foreground="#B00020"/>
+                        </StackPanel>
+                        <ui:TextBox x:Name="EditUsernameTextBox" 
+                                    Text="{Binding EditUsername, UpdateSourceTrigger=PropertyChanged}"
+                                    PlaceholderText="Enter username"
+                                    Icon="{ui:SymbolIcon PersonAccounts24}"
+                                    TextChanged="EditUserInput_Changed"
+                                    Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Role" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox x:Name="EditRoleComboBox" SelectedValue="{Binding EditRole, Mode=TwoWay}" SelectedValuePath="Content" Margin="0,0,0,15">
+                            <ComboBoxItem Content="System Administrator" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="IT Personnel" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBoxItem Content="Faculty" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        </ComboBox>
+
+                        <TextBlock x:Name="EditValidationTextBlock"
+                                   FontSize="12"
+                                   Foreground="#B00020"
+                                   Margin="0,0,0,10"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                        <ui:Button Content="Cancel" 
+                                   Command="{Binding CloseEditModalCommand}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"/>
+                        <ui:Button x:Name="EditUserButton" 
+                                   Content="Update User" 
+                                   Icon="{ui:SymbolIcon Edit24}"
+                                   Appearance="Primary"
+                                   Click="EditUser_Click"/>
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
     </Grid>
 </UserControl>

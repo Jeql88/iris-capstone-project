@@ -20,19 +20,30 @@ namespace IRIS.Core.Services
             var normalizedCommand = commandType.Trim();
             if (!normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase) &&
-                !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase))
+                !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase) &&
+                !normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase) &&
+                !normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(false);
             }
 
-            var normalizedMacAddress = macAddress.Trim();
+            var normalizedMacAddress = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
+            {
+                return Task.FromResult(false);
+            }
+
             CleanupExpiredCommand(normalizedMacAddress);
 
             var finalCommand = normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase)
                 ? "Shutdown"
                 : normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase)
                     ? "Restart"
-                    : "RefreshMetrics";
+                    : normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase)
+                        ? "RefreshMetrics"
+                        : normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase)
+                            ? "FreezeOn"
+                            : "FreezeOff";
 
             _pendingCommands[normalizedMacAddress] = new PendingCommandEntry(
                 finalCommand,
@@ -48,7 +59,12 @@ namespace IRIS.Core.Services
                 return Task.FromResult<string?>(null);
             }
 
-            var normalizedMacAddress = macAddress.Trim();
+            var normalizedMacAddress = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
+            {
+                return Task.FromResult<string?>(null);
+            }
+
             CleanupExpiredCommand(normalizedMacAddress);
 
             if (!_pendingCommands.TryRemove(normalizedMacAddress, out var pendingCommand))
@@ -70,6 +86,15 @@ namespace IRIS.Core.Services
             {
                 _pendingCommands.TryRemove(macAddress, out _);
             }
+        }
+
+        private static string NormalizeMacAddress(string macAddress)
+        {
+            var normalized = new string(macAddress
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+
+            return normalized.ToUpperInvariant();
         }
 
         private sealed record PendingCommandEntry(string CommandType, DateTime CreatedAtUtc);

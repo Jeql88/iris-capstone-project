@@ -6,21 +6,6 @@
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <Style x:Key="SummaryLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
-        </Style>
-        <Style x:Key="AlertsActionButtonStyle" TargetType="ui:Button">
-            <Setter Property="Height" Value="34"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="MinWidth" Value="94"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-        <Style x:Key="AlertsFilterComboStyle" TargetType="ComboBox">
-            <Setter Property="Height" Value="34"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="10,6"/>
-        </Style>
     </UserControl.Resources>
 
     <Grid Margin="24,18">
@@ -40,19 +25,18 @@
 
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon Symbol="Alert24" FontSize="24" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,10,0"/>
-                    <TextBlock Text="Alerts" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ui:SymbolIcon Symbol="Alert24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="Alerts" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Text="{Binding LastUpdatedText}" FontSize="12" Margin="34,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Text="{Binding LastUpdatedText}" FontSize="12" Margin="44,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <ui:Button Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge All Visible" Appearance="Secondary" Command="{Binding AcknowledgeVisibleCommand}" Margin="0,0,6,0" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="170"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve All Visible" Appearance="Secondary" Command="{Binding ResolveVisibleCommand}" Margin="0,0,6,0" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="148"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}" Content="Acknowledge Selected" Appearance="Secondary" Command="{Binding AcknowledgeCommand}" Margin="0,0,6,0" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="170"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Selected" Appearance="Primary" Command="{Binding ResolveCommand}" Margin="0,0,6,0" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="140"/>
-                <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" Content="Refresh" Appearance="Secondary" Command="{Binding RefreshCommand}" Margin="0,0,6,0" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="90" ToolTip="Refresh alerts"/>
-                <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export CSV" Appearance="Secondary" Command="{Binding ExportCommand}" Style="{StaticResource AlertsActionButtonStyle}" MinWidth="108"/>
+                <ui:Button Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge Visible" Appearance="Secondary" Command="{Binding AcknowledgeVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Visible" Appearance="Secondary" Command="{Binding ResolveVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}" Content="Ack Selected" Appearance="Secondary" Command="{Binding AcknowledgeCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Selected" Appearance="Primary" Command="{Binding ResolveCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
+                <!-- Export button moved to table header for alignment with page size control -->
             </StackPanel>
         </Grid>
 
@@ -147,60 +131,100 @@
         </Grid>
 
         <!-- Filter bar -->
-        <ui:Card Grid.Row="2" Padding="14,10" Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Search -->
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="SEARCH" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="2,0,0,4" Opacity="0.7"/>
-                    <ui:TextBox PlaceholderText="Search PC, room, or message..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Height="34" FontSize="12">
-                        <ui:TextBox.Icon>
-                            <ui:SymbolIcon Symbol="Search24"/>
-                        </ui:TextBox.Icon>
-                    </ui:TextBox>
+        <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,6">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                    <TextBlock Text="Filter Alerts" FontSize="18" FontWeight="Bold" 
+                               Foreground="{DynamicResource IRISSecondaryBrush}"/>
                 </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Severity -->
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="SEVERITY" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="2,0,0,4" Opacity="0.7"/>
-                    <ComboBox Width="140" ItemsSource="{Binding SeverityOptions}" SelectedItem="{Binding SeverityFilter}" Style="{StaticResource AlertsFilterComboStyle}"/>
-                </StackPanel>
+                    <!-- Search -->
+                    <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                        <TextBlock Text="Search" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:TextBox PlaceholderText="Search PC, laboratory, or message..." Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                    Icon="{ui:SymbolIcon Search24}"/>
+                    </StackPanel>
 
-                <!-- Type -->
-                <StackPanel Grid.Column="4">
-                    <TextBlock Text="TYPE" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="2,0,0,4" Opacity="0.7"/>
-                    <ComboBox Width="140" ItemsSource="{Binding TypeOptions}" SelectedItem="{Binding TypeFilter}" Style="{StaticResource AlertsFilterComboStyle}"/>
-                </StackPanel>
+                    <!-- Severity -->
+                    <StackPanel Grid.Column="1" Margin="0,0,15,0">
+                        <TextBlock Text="Severity" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox ItemsSource="{Binding SeverityOptions}" SelectedItem="{Binding SeverityFilter}"/>
+                    </StackPanel>
 
-                <!-- State -->
-                <StackPanel Grid.Column="6">
-                    <TextBlock Text="STATE" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="2,0,0,4" Opacity="0.7"/>
-                    <ComboBox Width="120" ItemsSource="{Binding StateOptions}" SelectedItem="{Binding StateFilter}" Style="{StaticResource AlertsFilterComboStyle}"/>
-                </StackPanel>
+                    <!-- Type -->
+                    <StackPanel Grid.Column="2" Margin="0,0,15,0">
+                        <TextBlock Text="Type" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox ItemsSource="{Binding TypeOptions}" SelectedItem="{Binding TypeFilter}"/>
+                    </StackPanel>
 
-                <!-- Room -->
-                <StackPanel Grid.Column="8">
-                    <TextBlock Text="LAB" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="2,0,0,4" Opacity="0.7"/>
-                    <ComboBox Width="180" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber" Style="{StaticResource AlertsFilterComboStyle}"/>
+                    <!-- State -->
+                    <StackPanel Grid.Column="3" Margin="0,0,15,0">
+                        <TextBlock Text="State" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox ItemsSource="{Binding StateOptions}" SelectedItem="{Binding StateFilter}"/>
+                    </StackPanel>
+
+                    <!-- Laboratory -->
+                    <StackPanel Grid.Column="4" Margin="0,0,15,0">
+                        <TextBlock Text="Laboratory" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}" DisplayMemberPath="RoomNumber"/>
+                    </StackPanel>
+
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                    <ui:Button Content="Apply Filters"
+                               Command="{Binding ApplyFiltersCommand}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
+                    <ui:Button Content="Reset"
+                               Command="{Binding ResetFiltersCommand}"
+                               Appearance="Secondary"/>
                 </StackPanel>
-            </Grid>
+            </StackPanel>
         </ui:Card>
 
-        <!-- Data grid -->
+        <!-- Data grid with pagination -->
         <ui:Card Grid.Row="3">
             <Grid>
-                <DataGrid ItemsSource="{Binding FilteredAlerts}"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Table Header -->
+                <Grid Grid.Row="0" Margin="12,12,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Alert24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="System Alerts" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
+                                  ItemsSource="{Binding PageSizeOptions}"
+                                  Width="70" Margin="0,0,5,0"/>
+                        <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Margin="8,0,0,0" Padding="10,6" FontSize="12"/>
+                        
+                    </StackPanel>
+                </Grid>
+
+                <DataGrid Grid.Row="1" ItemsSource="{Binding PagedAlerts}"
                           SelectedItem="{Binding SelectedAlert}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
@@ -210,30 +234,40 @@
                           CanUserDeleteRows="False"
                           ColumnHeaderHeight="36"
                           RowHeight="34"
-                          Margin="8">
+                          MinHeight="350"
+                          Margin="8,0,8,0">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="160"/>
-                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90"/>
-                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="100"/>
-                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="100"/>
-                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="140"/>
-                        <DataGridTextColumn Header="Room" Binding="{Binding RoomName}" Width="100"/>
+                        <DataGridTemplateColumn Width="40">
+                            <DataGridTemplateColumn.Header>
+                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                              VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
+                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="140"/>
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="140"/>
+                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="140"/>
+                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="190"/>
+                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="120"/>
                         <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Empty state -->
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding IsLoading}" Value="False"/>
-                                        <Condition Binding="{Binding AlertCount}" Value="0"/>
-                                    </MultiDataTrigger.Conditions>
+                                <DataTrigger Binding="{Binding AlertCount}" Value="0">
                                     <Setter Property="Visibility" Value="Visible"/>
-                                </MultiDataTrigger>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
@@ -242,6 +276,24 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="Try adjusting your filters or check back later" Margin="0,4,0,0" FontSize="11"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Pagination controls -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,12">
+                    <ui:Button Command="{Binding PreviousPageCommand}"
+                               Content="Previous"
+                               Icon="{ui:SymbolIcon ChevronLeft24}"
+                               Appearance="Primary"
+                               Margin="0,0,10,0"/>
+
+                    <TextBlock Text="{Binding PageInfo}" FontSize="13"
+                               VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                    <ui:Button Command="{Binding NextPageCommand}"
+                               Content="Next"
+                               Icon="{ui:SymbolIcon ChevronRight24}"
+                               Appearance="Primary"
+                               Margin="10,0,0,0"/>
                 </StackPanel>
             </Grid>
         </ui:Card>

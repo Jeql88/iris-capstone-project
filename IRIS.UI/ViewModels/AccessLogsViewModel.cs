@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -7,6 +8,8 @@ using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
+using Microsoft.Win32;
 using System.Threading;
 
 namespace IRIS.UI.ViewModels
@@ -14,10 +17,17 @@ namespace IRIS.UI.ViewModels
     public class AccessLogsViewModel : INotifyPropertyChanged, INavigationAware
     {
         private readonly IAccessLogsService _accessLogsService;
+        private readonly RelayCommand _previousPageRelayCommand;
+        private readonly RelayCommand _nextPageRelayCommand;
         private readonly SemaphoreSlim _loadLogsSemaphore = new(1, 1);
         private string _searchText = string.Empty;
-        private string _selectedAction = "All Actions";
+        private string _appliedSearchText = string.Empty;
         private string _selectedRole = "All Roles";
+        private string _appliedRole = "All Roles";
+        private DateTime? _startDate;
+        private DateTime? _endDate;
+        private DateTime? _appliedStartDate;
+        private DateTime? _appliedEndDate;
         private int _currentPage = 1;
         private int _pageSize = 10;
         private int _totalPages = 1;
@@ -28,9 +38,14 @@ namespace IRIS.UI.ViewModels
         {
             _accessLogsService = accessLogsService;
             RefreshCommand = new RelayCommand(async () => await LoadLogsAsync(), () => true);
-            PreviousPageCommand = new RelayCommand(async () => await PreviousPageAsync(), () => true);
-            NextPageCommand = new RelayCommand(async () => await NextPageAsync(), () => true);
-            
+            ExportCommand = new RelayCommand(async () => await ExportLogsAsync(), () => true);
+            ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
+            ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
+            _previousPageRelayCommand = new RelayCommand(async () => await PreviousPageAsync(), () => HasPreviousPage);
+            _nextPageRelayCommand = new RelayCommand(async () => await NextPageAsync(), () => HasNextPage);
+            PreviousPageCommand = _previousPageRelayCommand;
+            NextPageCommand = _nextPageRelayCommand;
+
             _ = LoadLogsAsync();
         }
 
@@ -40,37 +55,72 @@ namespace IRIS.UI.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
-        }
-
-        public string SelectedAction
-        {
-            get => _selectedAction;
-            set { _selectedAction = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _searchText = value; OnPropertyChanged(); }
         }
 
         public string SelectedRole
         {
             get => _selectedRole;
-            set { _selectedRole = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set { _selectedRole = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? StartDate
+        {
+            get => _startDate;
+            set { _startDate = value; OnPropertyChanged(); }
+        }
+
+        public DateTime? EndDate
+        {
+            get => _endDate;
+            set { _endDate = value; OnPropertyChanged(); }
         }
 
         public int PageSize
         {
             get => _pageSize;
-            set { _pageSize = value; OnPropertyChanged(); CurrentPage = 1; _ = LoadLogsAsync(); }
+            set
+            {
+                if (_pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                CurrentPage = 1;
+                _ = LoadLogsAsync();
+            }
         }
 
         public int CurrentPage
         {
             get => _currentPage;
-            set { _currentPage = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+            set
+            {
+                _currentPage = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int TotalPages
         {
             get => _totalPages;
-            set { _totalPages = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageInfo)); }
+            set
+            {
+                _totalPages = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageInfo));
+                OnPropertyChanged(nameof(HasPreviousPage));
+                OnPropertyChanged(nameof(HasNextPage));
+                _previousPageRelayCommand.RaiseCanExecuteChanged();
+                _nextPageRelayCommand.RaiseCanExecuteChanged();
+            }
         }
 
         public int TotalCount
@@ -84,8 +134,46 @@ namespace IRIS.UI.ViewModels
         public bool HasNextPage => CurrentPage < TotalPages;
 
         public ICommand RefreshCommand { get; }
+        public ICommand ExportCommand { get; }
+        public ICommand ApplyFiltersCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
         public ICommand PreviousPageCommand { get; }
         public ICommand NextPageCommand { get; }
+
+        private async Task ApplyFiltersAsync()
+        {
+            if (StartDate.HasValue && EndDate.HasValue && EndDate.Value.Date < StartDate.Value.Date)
+            {
+                MessageBox.Show(
+                    "'To' date cannot be earlier than 'From' date.",
+                    "Invalid Date Range",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            _appliedSearchText = SearchText?.Trim() ?? string.Empty;
+            _appliedRole = SelectedRole;
+            _appliedStartDate = StartDate?.Date;
+            _appliedEndDate = EndDate?.Date;
+            CurrentPage = 1;
+            await LoadLogsAsync();
+        }
+
+        private async Task ResetFiltersAsync()
+        {
+            SearchText = string.Empty;
+            SelectedRole = "All Roles";
+            StartDate = null;
+            EndDate = null;
+            _appliedSearchText = string.Empty;
+            _appliedRole = "All Roles";
+            _appliedStartDate = null;
+            _appliedEndDate = null;
+            PageSize = 10;
+            CurrentPage = 1;
+            await LoadLogsAsync();
+        }
 
         private async Task LoadLogsAsync()
         {
@@ -106,22 +194,14 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                UserRole? roleFilter = null;
-                if (SelectedRole != "All Roles")
-                {
-                    roleFilter = SelectedRole switch
-                    {
-                        "System Administrator" => UserRole.SystemAdministrator,
-                        "IT Personnel" => UserRole.ITPersonnel,
-                        "Faculty" => UserRole.Faculty,
-                        _ => null
-                    };
-                }
+                UserRole? roleFilter = GetRoleFilter(_appliedRole);
 
                 var result = await _accessLogsService.GetAccessLogsAsync(
-                    CurrentPage, PageSize, SearchText, 
-                    SelectedAction == "All Actions" ? null : SelectedAction, 
-                    roleFilter);
+                    CurrentPage, PageSize, _appliedSearchText,
+                    null,
+                    roleFilter,
+                    _appliedStartDate.HasValue ? DateTime.SpecifyKind(_appliedStartDate.Value, DateTimeKind.Utc) : null,
+                    _appliedEndDate.HasValue ? DateTime.SpecifyKind(_appliedEndDate.Value.AddDays(1).AddSeconds(-1), DateTimeKind.Utc) : null);
 
                 AccessLogs.Clear();
                 foreach (var log in result.Items)
@@ -129,7 +209,7 @@ namespace IRIS.UI.ViewModels
                     AccessLogs.Add(new AccessLogDisplayModel
                     {
                         Id = log.Id,
-                        Timestamp = log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(log.Timestamp).ToString("yyyy-MM-dd HH:mm:ss"),
                         Username = log.User?.Username ?? "Unknown",
                         UserRole = log.User?.Role.ToString().Replace("SystemAdministrator", "System Administrator").Replace("ITPersonnel", "IT Personnel") ?? "Unknown",
                         Action = log.Action,
@@ -140,8 +220,6 @@ namespace IRIS.UI.ViewModels
 
                 TotalCount = result.TotalCount;
                 TotalPages = result.TotalPages;
-                OnPropertyChanged(nameof(HasPreviousPage));
-                OnPropertyChanged(nameof(HasNextPage));
             }
             catch (Exception ex)
             {
@@ -171,9 +249,95 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private async Task ExportLogsAsync()
+        {
+            var hasFilters = !string.IsNullOrWhiteSpace(_appliedSearchText)
+                             || _appliedRole != "All Roles"
+                             || _appliedStartDate.HasValue
+                             || _appliedEndDate.HasValue;
+
+            var confirmationMessage = hasFilters
+                ? "This will export all access logs that match the applied filters (Search, Role, From, and To), not just the current page. Continue?"
+                : "No applied filters are set. This will export all access logs, not just the current page. Continue?";
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Export Access Logs",
+                confirmationMessage,
+                "ArrowDownload24");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var saveDialog = new SaveFileDialog
+            {
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                FileName = $"IRIS_AccessLogs_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                var roleFilter = GetRoleFilter(_appliedRole);
+                var startDate = _appliedStartDate?.Date;
+                var endDate = _appliedEndDate?.Date.AddDays(1).AddSeconds(-1);
+
+                var bytes = await _accessLogsService.ExportAccessLogsToExcelAsync(
+                    _appliedSearchText,
+                    null,
+                    roleFilter,
+                    startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : null,
+                    endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : null);
+
+                await File.WriteAllBytesAsync(saveDialog.FileName, bytes);
+                var exportSuccessDialog = new ConfirmationDialog(
+                    "Export Complete",
+                    "Access logs were exported to an Excel file.",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                exportSuccessDialog.Owner = Application.Current.MainWindow;
+                exportSuccessDialog.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export access logs: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static UserRole? GetRoleFilter(string selectedRole)
+        {
+            if (selectedRole == "All Roles")
+            {
+                return null;
+            }
+
+            return selectedRole switch
+            {
+                "System Administrator" => UserRole.SystemAdministrator,
+                "IT Personnel" => UserRole.ITPersonnel,
+                "Faculty" => UserRole.Faculty,
+                _ => null
+            };
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        public void OnNavigatedTo()
+        {
+            _isActive = true;
+            _ = LoadLogsAsync();
+        }
 
         public void OnNavigatedFrom()
         {

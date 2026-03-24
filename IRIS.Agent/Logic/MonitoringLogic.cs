@@ -24,8 +24,10 @@ namespace IRIS.Agent.Logic
         private readonly int _pingTimeoutMs;
         private readonly string _commandServerHost;
         private readonly int _commandServerPort;
+        private readonly int _freezeAutoUnfreezeMinutes;
         private readonly string _machineName;
         private readonly SemaphoreSlim _contextLock = new(1, 1);
+        private readonly FreezeOverlayController _freezeOverlayController = new();
 
         private long _lastBytesSent = -1;
         private long _lastBytesReceived = -1;
@@ -38,7 +40,8 @@ namespace IRIS.Agent.Logic
             string pingHost,
             int pingTimeoutMs,
             string commandServerHost,
-            int commandServerPort)
+            int commandServerPort,
+            int freezeAutoUnfreezeMinutes)
         {
             _context = context;
             _macAddress = macAddress;
@@ -46,6 +49,7 @@ namespace IRIS.Agent.Logic
             _pingTimeoutMs = pingTimeoutMs;
             _commandServerHost = commandServerHost;
             _commandServerPort = commandServerPort;
+            _freezeAutoUnfreezeMinutes = Math.Clamp(freezeAutoUnfreezeMinutes, 1, 120);
             _machineName = Environment.MachineName;
 
             try
@@ -252,7 +256,7 @@ namespace IRIS.Agent.Logic
                 _lastBytesReceived = bytesReceived;
                 _lastNetworkSample = now;
 
-                Log.Information("Network metrics captured for PC {MacAddress}: Up={Up:F2} Mbps, Down={Down:F2} Mbps, Latency={Lat:F1} ms, Loss={Loss:F1}%",
+                Log.Information("Network metrics captured for PC {MacAddress}: Up={Up:F2} Mbps, Down={Down:F2} Mbps, Latency={Lat:F0} ms, Loss={Loss:F1}%",
                     pc.MacAddress,
                     uploadMbps ?? 0,
                     downloadMbps ?? 0,
@@ -311,15 +315,29 @@ namespace IRIS.Agent.Logic
                     await SendHeartbeatAsync();
                     await CaptureHardwareMetricsAsync();
                     await CaptureNetworkMetricsAsync();
+                    return;
+                }
+
+                if (response.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("Executing freeze-on command for PC {MacAddress}", _macAddress);
+                    _freezeOverlayController.Freeze(_freezeAutoUnfreezeMinutes);
+                    return;
+                }
+
+                if (response.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("Executing freeze-off command for PC {MacAddress}", _macAddress);
+                    _freezeOverlayController.Unfreeze();
                 }
             }
             catch (OperationCanceledException)
             {
-                // Server timeout/unreachable; retry on next poll
+                Log.Debug("Power command poll timed out for PC {MacAddress} when connecting to {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
             }
-            catch (SocketException)
+            catch (SocketException ex)
             {
-                // Server unavailable; retry on next poll
+                Log.Debug(ex, "Power command server is unreachable for PC {MacAddress} at {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
             }
             catch (Exception ex)
             {

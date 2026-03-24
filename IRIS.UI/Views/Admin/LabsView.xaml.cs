@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows;
 using IRIS.UI.ViewModels;
 
 namespace IRIS.UI.Views.Admin
@@ -9,6 +10,13 @@ namespace IRIS.UI.Views.Admin
         {
             InitializeComponent();
             DataContext = viewModel;
+        }
+
+        private void CloseModal_Click(object sender, RoutedEventArgs e)
+        {
+            var viewModel = DataContext as LabsViewModel;
+            if (viewModel != null)
+                viewModel.IsAssignedPCsModalOpen = false;
         }
     }
 }

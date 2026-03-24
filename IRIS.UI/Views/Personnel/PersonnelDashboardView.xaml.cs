@@ -27,11 +27,15 @@ namespace IRIS.UI.Views.Personnel
             Loaded += (s, e) => dashboardContent = MainContent.Content as ScrollViewer;
         }
 
-        public void SetNavigationService(INavigationService navigationService) => _navigationService = navigationService;
+        public void SetNavigationService(INavigationService navigationService) 
+        {
+            _navigationService = navigationService;
+            UserHeader.SetNavigationService(navigationService);
+        }
 
         private void SetActiveButton(Button activeButton)
         {
-            foreach (var btn in new[] { DashboardBtn, MonitorBtn, SoftwareManagementBtn, PolicyBtn, LabsBtn, UsageMetricsBtn, SettingsBtn })
+            foreach (var btn in new[] { DashboardBtn, MonitorBtn, FileManagementBtn, PolicyBtn, LabsBtn, UsageMetricsBtn })
             {
                 btn.Background = Brushes.Transparent;
                 btn.Foreground = DefaultForeground;
@@ -52,6 +56,8 @@ namespace IRIS.UI.Views.Personnel
 
         private void MonitorBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(MonitorBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("Monitor");
@@ -59,6 +65,8 @@ namespace IRIS.UI.Views.Personnel
 
         private void PolicyBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(PolicyBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("PolicyEnforcement");
@@ -66,30 +74,29 @@ namespace IRIS.UI.Views.Personnel
 
         private void LabsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(LabsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("Labs");
         }
 
-        private void SoftwareManagementBtn_Click(object sender, RoutedEventArgs e)
+        private void FileManagementBtn_Click(object sender, RoutedEventArgs e)
         {
-            SetActiveButton(SoftwareManagementBtn);
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
+            SetActiveButton(FileManagementBtn);
             CollapseRightPanel();
-            _navigationService?.NavigateTo("SoftwareManagement");
+            _navigationService?.NavigateTo("FileManagement");
         }
 
         private void UsageMetricsBtn_Click(object sender, RoutedEventArgs e)
         {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
             SetActiveButton(UsageMetricsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("UsageMetrics");
-        }
-
-        private void SettingsBtn_Click(object sender, RoutedEventArgs e)
-        {
-            SetActiveButton(SettingsBtn);
-            CollapseRightPanel();
-            _navigationService?.NavigateTo("Settings");
         }
 
         private async void LogoutBtn_Click(object sender, RoutedEventArgs e)
