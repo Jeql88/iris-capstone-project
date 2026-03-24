@@ -255,7 +255,7 @@ namespace IRIS.UI.ViewModels
             var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
             var rooms = await monitoringService.GetRoomsAsync();
             Rooms.Clear();
-            Rooms.Add(new RoomDto(-1, "All Rooms", "", 0, true, DateTime.UtcNow));
+            Rooms.Add(new RoomDto(-1, "All Laboratories", "", 0, true, DateTime.UtcNow));
             foreach (var room in rooms)
             {
                 Rooms.Add(room);

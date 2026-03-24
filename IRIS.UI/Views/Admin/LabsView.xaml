@@ -373,7 +373,7 @@
                             <ui:SymbolIcon Symbol="Laptop24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                             <TextBlock Text="Manage Laboratory PCs" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding ModalRoomNumber, StringFormat='Room: {0}'}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding ModalRoomNumber, StringFormat='Laboratory: {0}'}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,8,0,0"/>
                     </StackPanel>
 
                     <!-- Tab Control -->
@@ -483,6 +483,36 @@
                         </TextBlock>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button Content="{Binding UnassignedSelectionToggleText}"
+                                       Command="{Binding ToggleUnassignedSelectionCommand}"
+                                       Appearance="Secondary"
+                                       Margin="0,0,10,0">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, ElementName=UnassignedPCsTab}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+                            <ui:Button Content="{Binding AssignedSelectionToggleText}"
+                                       Command="{Binding ToggleAssignedSelectionCommand}"
+                                       Appearance="Secondary"
+                                       Margin="0,0,10,0">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, ElementName=AssignedPCsTab}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
                             <ui:Button Content="Assign Selected" 
                                        Command="{Binding AssignPCsToModalRoomCommand}"
                                        Icon="{ui:SymbolIcon Add24}"

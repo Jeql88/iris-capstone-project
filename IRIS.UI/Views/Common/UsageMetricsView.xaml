@@ -11,7 +11,6 @@
     <Grid Margin="25,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -24,55 +23,8 @@
             </StackPanel>
         </Grid>
 
-        <!-- Summary Cards -->
-        <Grid Grid.Row="1" Margin="0,0,0,25">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="15"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <ui:Card Grid.Column="0">
-                <Grid Margin="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
-                            Background="{DynamicResource IRISPrimaryBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Apps24" FontSize="26" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Applications Used" FontSize="13" Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalApplications}" FontSize="32" FontWeight="Bold"
-                                   Foreground="{DynamicResource IRISPrimaryBrush}"/>
-                    </StackPanel>
-                </Grid>
-            </ui:Card>
-
-            <ui:Card Grid.Column="2">
-                <Grid Margin="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Width="55" Height="55" CornerRadius="10"
-                            Background="{DynamicResource IRISSecondaryBrush}" Margin="0,0,18,0">
-                        <ui:SymbolIcon Symbol="Globe24" FontSize="26" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Websites Visited" FontSize="13" Foreground="#666666"/>
-                        <TextBlock Text="{Binding TotalWebsites}" FontSize="32" FontWeight="Bold"
-                                   Foreground="{DynamicResource IRISSecondaryBrush}"/>
-                    </StackPanel>
-                </Grid>
-            </ui:Card>
-        </Grid>
-
         <!-- Tab Content Area -->
-        <ui:Card Grid.Row="2">
+        <ui:Card Grid.Row="1">
             <Grid Margin="15">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -239,7 +191,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
-                                <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
+                                <DataGridTextColumn Header="Laboratories" Binding="{Binding RoomNumber}" Width="100"/>
                                 <DataGridTextColumn Header="Duration" Binding="{Binding FormattedDuration}" Width="120"/>
                                 <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="150"/>
                                 <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="150"/>
@@ -389,7 +341,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="PC Name" Binding="{Binding PCName}" Width="150"/>
-                                <DataGridTextColumn Header="Room" Binding="{Binding RoomNumber}" Width="100"/>
+                                <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomNumber}" Width="100"/>
                                 <DataGridTextColumn Header="Visits" Binding="{Binding VisitCount}" Width="120"/>
                             </ui:DataGrid.Columns>
                         </ui:DataGrid>

@@ -294,10 +294,20 @@ namespace IRIS.UI.ViewModels
         public RelayCommand AssignPCsToModalRoomCommand { get; }
         public RelayCommand UnassignCommand { get; }
         public RelayCommand ViewAssignedPCsCommand { get; }
+        public RelayCommand ToggleAssignedSelectionCommand { get; }
+        public RelayCommand ToggleUnassignedSelectionCommand { get; }
         public RelayCommand PreviousPageCommand { get; }
         public RelayCommand NextPageCommand { get; }
         public RelayCommand ApplyFiltersCommand { get; }
         public RelayCommand ResetFiltersCommand { get; }
+
+        public string AssignedSelectionToggleText => AssignedPCs.Any() && AssignedPCs.All(pc => pc.IsSelected)
+            ? "Deselect All"
+            : "Select All";
+
+        public string UnassignedSelectionToggleText => UnassignedPCs.Any() && UnassignedPCs.All(pc => pc.IsSelected)
+            ? "Deselect All"
+            : "Select All";
 
         public LabsViewModel(IRoomService roomService, IPCAdminService pcAdminService)
         {
@@ -353,6 +363,8 @@ namespace IRIS.UI.ViewModels
             AssignPCsToModalRoomCommand = new RelayCommand(async () => await AssignPCsToModalRoomAsync(), () => true);
             UnassignCommand = new RelayCommand(async () => await UnassignAsync(), () => true);
             ViewAssignedPCsCommand = new RelayCommand(async (param) => await ViewAssignedPCsAsync(param), () => true);
+            ToggleAssignedSelectionCommand = new RelayCommand(async () => await ToggleAssignedSelectionAsync(), () => true);
+            ToggleUnassignedSelectionCommand = new RelayCommand(async () => await ToggleUnassignedSelectionAsync(), () => true);
 
             _ = InitializeAsync();
         }
@@ -483,19 +495,28 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                var pcs = await _pcAdminService.GetUnassignedPCsAsync();
+                var pcs = (await _pcAdminService.GetUnassignedPCsAsync())
+                    .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                DetachSelectionHandlers(UnassignedPCs);
                 UnassignedPCs.Clear();
                 foreach (var pc in pcs)
                 {
-                    UnassignedPCs.Add(new SelectablePC
+                    var selectablePc = new SelectablePC
                     {
                         Id = pc.Id,
                         MacAddress = pc.MacAddress,
                         Hostname = pc.Hostname,
                         Room = pc.RoomId.ToString(),
                         IsSelected = false
-                    });
+                    };
+
+                    selectablePc.PropertyChanged += OnSelectablePcPropertyChanged;
+                    UnassignedPCs.Add(selectablePc);
                 }
+
+                OnPropertyChanged(nameof(UnassignedSelectionToggleText));
             }
             finally
             {
@@ -554,19 +575,28 @@ namespace IRIS.UI.ViewModels
         {
             if (SelectedRoom == null) return;
 
-            var pcs = await _pcAdminService.GetPCsByRoomAsync(SelectedRoom.Id);
+            var pcs = (await _pcAdminService.GetPCsByRoomAsync(SelectedRoom.Id))
+                .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            DetachSelectionHandlers(AssignedPCs);
             AssignedPCs.Clear();
             foreach (var pc in pcs)
             {
-                AssignedPCs.Add(new SelectablePC
+                var selectablePc = new SelectablePC
                 {
                     Id = pc.Id,
                     MacAddress = pc.MacAddress,
                     Hostname = pc.Hostname,
                     Room = pc.RoomId.ToString(),
                     IsSelected = false
-                });
+                };
+
+                selectablePc.PropertyChanged += OnSelectablePcPropertyChanged;
+                AssignedPCs.Add(selectablePc);
             }
+
+            OnPropertyChanged(nameof(AssignedSelectionToggleText));
         }
 
         private async Task ViewAssignedPCsAsync(object? param)
@@ -580,23 +610,87 @@ namespace IRIS.UI.ViewModels
             if (room != null)
                 ModalRoomNumber = room.RoomNumber;
 
-            var pcs = await _pcAdminService.GetPCsByRoomAsync(roomId);
+            var pcs = (await _pcAdminService.GetPCsByRoomAsync(roomId))
+                .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            DetachSelectionHandlers(AssignedPCs);
             AssignedPCs.Clear();
             foreach (var pc in pcs)
             {
-                AssignedPCs.Add(new SelectablePC
+                var selectablePc = new SelectablePC
                 {
                     Id = pc.Id,
                     MacAddress = pc.MacAddress,
                     Hostname = pc.Hostname,
                     Room = pc.RoomId.ToString(),
                     IsSelected = false
-                });
+                };
+
+                selectablePc.PropertyChanged += OnSelectablePcPropertyChanged;
+                AssignedPCs.Add(selectablePc);
             }
+
+            OnPropertyChanged(nameof(AssignedSelectionToggleText));
 
             await LoadUnassignedAsync();
             SelectedPCsTabIndex = 0;
             IsAssignedPCsModalOpen = true;
+        }
+
+        private async Task ToggleAssignedSelectionAsync()
+        {
+            await Task.CompletedTask;
+
+            if (!AssignedPCs.Any())
+            {
+                return;
+            }
+
+            var shouldSelectAll = !AssignedPCs.All(pc => pc.IsSelected);
+            foreach (var pc in AssignedPCs)
+            {
+                pc.IsSelected = shouldSelectAll;
+            }
+
+            OnPropertyChanged(nameof(AssignedSelectionToggleText));
+        }
+
+        private async Task ToggleUnassignedSelectionAsync()
+        {
+            await Task.CompletedTask;
+
+            if (!UnassignedPCs.Any())
+            {
+                return;
+            }
+
+            var shouldSelectAll = !UnassignedPCs.All(pc => pc.IsSelected);
+            foreach (var pc in UnassignedPCs)
+            {
+                pc.IsSelected = shouldSelectAll;
+            }
+
+            OnPropertyChanged(nameof(UnassignedSelectionToggleText));
+        }
+
+        private void OnSelectablePcPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (!string.Equals(e.PropertyName, nameof(SelectablePC.IsSelected), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(AssignedSelectionToggleText));
+            OnPropertyChanged(nameof(UnassignedSelectionToggleText));
+        }
+
+        private void DetachSelectionHandlers(IEnumerable<SelectablePC> pcs)
+        {
+            foreach (var pc in pcs)
+            {
+                pc.PropertyChanged -= OnSelectablePcPropertyChanged;
+            }
         }
 
         private async Task CreateAsync()

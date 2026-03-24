@@ -206,7 +206,6 @@
                                                 <TextBlock Text="{Binding PCName}" FontWeight="Bold"/>
                                                 <TextBlock Text="{Binding IPAddress, StringFormat=IP: {0}}"/>
                                                 <TextBlock Text="{Binding RoomName, StringFormat=Room: {0}}"/>
-                                                <TextBlock Text="{Binding User, StringFormat=User: {0}}"/>
                                             </StackPanel>
                                         </ToolTip>
                                     </Border.ToolTip>

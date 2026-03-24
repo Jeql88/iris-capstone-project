@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Services;
+using IRIS.UI.Views.Dialogs;
 using IRIS.UI.ViewModels;
 using IRIS.UI.Views.Shared;
 
@@ -18,6 +20,13 @@ namespace IRIS.UI.Views.Common
             DataContext = viewModel;
             _viewModel = viewModel;
             _authService = authService;
+
+            var currentUser = _authService.GetCurrentUser();
+            if (currentUser?.Role == UserRole.Faculty)
+            {
+                DataRetentionHeader.Visibility = Visibility.Collapsed;
+                DataRetentionCard.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void ChangePassword_Click(object sender, RoutedEventArgs e)
@@ -74,18 +83,23 @@ namespace IRIS.UI.Views.Common
 
         private async void Logout_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("Are you sure you want to logout?", "Confirm Logout", 
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var dialog = new ConfirmationDialog(
+                "Confirm Logout",
+                "Are you sure you want to logout?",
+                "Warning24",
+                "Yes",
+                "No");
+            dialog.Owner = Application.Current.MainWindow;
 
-            if (result == MessageBoxResult.Yes)
+            if (dialog.ShowDialog() == true)
             {
                 await _authService.LogoutAsync();
-                
+
                 var serviceProvider = ((App)Application.Current).GetServiceProvider();
                 var authService = (IAuthenticationService)serviceProvider.GetService(typeof(IAuthenticationService))!;
                 var loginWindow = new LoginWindow(authService);
                 loginWindow.Show();
-                
+
                 Window.GetWindow(this)?.Close();
             }
         }
