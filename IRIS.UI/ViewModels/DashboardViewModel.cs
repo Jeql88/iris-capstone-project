@@ -44,6 +44,9 @@ namespace IRIS.UI.ViewModels
             ExportNetworkAnalyticsCommand = new RelayCommand(async () => await ExportNetworkAnalyticsAsync(), () => true);
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
             ExportSelectedCommand = new RelayCommand(async () => await ExportSelectedAsync(), () => true);
+            ResetLatencyZoomCommand = new RelayCommand(() => ResetZoom(LatencyPlot), () => true);
+            ResetBandwidthZoomCommand = new RelayCommand(() => ResetZoom(BandwidthPlot), () => true);
+            ResetPacketLossZoomCommand = new RelayCommand(() => ResetZoom(PacketLossPlot), () => true);
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
             _refreshTimer.Tick += async (s, e) => await RefreshDataAsync();
@@ -212,6 +215,9 @@ namespace IRIS.UI.ViewModels
         public ICommand ExportNetworkAnalyticsCommand { get; }
         public ICommand ExportHardwareAnalyticsCommand { get; }
         public ICommand ExportSelectedCommand { get; }
+        public ICommand ResetLatencyZoomCommand { get; }
+        public ICommand ResetBandwidthZoomCommand { get; }
+        public ICommand ResetPacketLossZoomCommand { get; }
 
         public string[] ExportOptions { get; } = { "Network Analytics", "Hardware Analytics" };
 
@@ -252,6 +258,8 @@ namespace IRIS.UI.ViewModels
                 {
                     return;
                 }
+
+                IsLoading = true;
 
                 // Force refresh from DB instead of using stale cache
                 _cache.CurrentRoomFilter = _selectedRoomId;
@@ -482,8 +490,8 @@ namespace IRIS.UI.ViewModels
                 IntervalType = DateTimeIntervalType.Hours,
                 MinorIntervalType = DateTimeIntervalType.Minutes,
                 FontSize = 11,
-                IsZoomEnabled = false,
-                IsPanEnabled = false
+                IsZoomEnabled = true,
+                IsPanEnabled = true
             };
 
             var valueAxis = new LinearAxis
@@ -491,8 +499,8 @@ namespace IRIS.UI.ViewModels
                 Position = AxisPosition.Left,
                 LabelFormatter = valueFormatter,
                 FontSize = 11,
-                IsZoomEnabled = false,
-                IsPanEnabled = false,
+                IsZoomEnabled = true,
+                IsPanEnabled = true,
                 MinimumPadding = 0.1,
                 MaximumPadding = 0.1
             };
@@ -503,13 +511,15 @@ namespace IRIS.UI.ViewModels
             // Convert UTC timestamps to Manila time for display
             var localPoints = points.Select(p => (Timestamp: DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), p.Value)).OrderBy(p => p.Timestamp).ToList();
 
-            var series = new LineSeries
+            var series = new AreaSeries
             {
                 Color = OxyColor.FromRgb(180, 40, 40),
+                Fill = OxyColor.FromArgb(40, 180, 40, 40),
                 StrokeThickness = 2,
                 MarkerType = MarkerType.None,
                 LineJoin = LineJoin.Round,
-                CanTrackerInterpolatePoints = false
+                CanTrackerInterpolatePoints = false,
+                TrackerFormatString = "{0}\nTime: {2:MMM dd HH:mm}\nValue: {4:F2}"
             };
 
             foreach (var p in localPoints)
@@ -519,6 +529,12 @@ namespace IRIS.UI.ViewModels
 
             model.Series.Add(series);
             return model;
+        }
+
+        private static void ResetZoom(PlotModel plot)
+        {
+            plot.ResetAllAxes();
+            plot.InvalidatePlot(false);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

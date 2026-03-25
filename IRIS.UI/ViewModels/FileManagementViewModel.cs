@@ -36,12 +36,14 @@ namespace IRIS.UI.ViewModels
         private string _currentLocalPath = string.Empty;
         private FileItemModel? _selectedLocalFile;
         private bool _isAtLocalDriveRoot = true;
+        private string _localSearchText = string.Empty;
 
         // Remote browser state
         private string _currentRemotePath = string.Empty;
         private FileItemModel? _selectedRemoteFile;
         private bool _isAtRemoteDriveRoot = true;
         private string? _remoteParentPath;
+        private string _remoteSearchText = string.Empty;
 
         private string _statusMessage = "Ready";
         private bool _isBusy;
@@ -97,6 +99,9 @@ namespace IRIS.UI.ViewModels
             DeselectAllPCsCommand = new RelayCommand(() => { foreach (var pc in BulkPCs) pc.IsSelected = false; OnPropertyChanged(nameof(BulkPCs)); }, () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => _selectedPC != null);
 
+            LocalFiles.CollectionChanged += (_, _) => ApplyLocalFilter();
+            RemoteFiles.CollectionChanged += (_, _) => ApplyRemoteFilter();
+
             _ = InitializeAsync();
         }
 
@@ -108,6 +113,8 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<PCModel> PCs { get; } = new();
         public ObservableCollection<FileItemModel> LocalFiles { get; } = new();
         public ObservableCollection<FileItemModel> RemoteFiles { get; } = new();
+        public ObservableCollection<FileItemModel> FilteredLocalFiles { get; } = new();
+        public ObservableCollection<FileItemModel> FilteredRemoteFiles { get; } = new();
         public ObservableCollection<PCModel> BulkPCs { get; } = new();
         public ObservableCollection<string> BulkPendingFiles { get; } = new();
 
@@ -132,12 +139,14 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedPC = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedPC));
                 RaiseAllRemoteCanExecuteChanged();
                 if (_selectedPC != null)
                     _ = LoadRemoteDrivesAsync();
                 else
                 {
                     RemoteFiles.Clear();
+                    FilteredRemoteFiles.Clear();
                     CurrentRemotePath = string.Empty;
                     IsAtRemoteDriveRoot = true;
                 }
@@ -200,6 +209,20 @@ namespace IRIS.UI.ViewModels
         {
             get => _isBusy;
             set { _isBusy = value; OnPropertyChanged(); }
+        }
+
+        public bool HasSelectedPC => SelectedPC != null;
+
+        public string LocalSearchText
+        {
+            get => _localSearchText;
+            set { _localSearchText = value; OnPropertyChanged(); ApplyLocalFilter(); }
+        }
+
+        public string RemoteSearchText
+        {
+            get => _remoteSearchText;
+            set { _remoteSearchText = value; OnPropertyChanged(); ApplyRemoteFilter(); }
         }
 
         public RoomDto? SelectedBulkRoom
@@ -569,6 +592,18 @@ namespace IRIS.UI.ViewModels
                 var dir = Path.GetDirectoryName(item.FullPath)!;
                 var newPath = Path.Combine(dir, newName);
 
+                if ((File.Exists(newPath) || Directory.Exists(newPath)) && newPath != item.FullPath)
+                {
+                    var dlg = new ConfirmationDialog(
+                        "File Already Exists",
+                        $"A file named '{newName}' already exists.\nRename to a unique name automatically?",
+                        "Warning24", "Rename", "Cancel");
+                    dlg.Owner = Application.Current.MainWindow;
+                    if (dlg.ShowDialog() != true) return;
+                    newName = GetUniqueLocalName(dir, newName);
+                    newPath = Path.Combine(dir, newName);
+                }
+
                 await Task.Run(() =>
                 {
                     if (item.IsDirectory)
@@ -807,6 +842,21 @@ namespace IRIS.UI.ViewModels
             try
             {
                 IsBusy = true;
+
+                var remoteDir = Path.GetDirectoryName(item.FullPath)!;
+                var remotePath = Path.Combine(remoteDir, newName);
+                bool exists = await CheckRemoteFileExistsAsync(_selectedPC, remotePath);
+                if (exists)
+                {
+                    var dlg = new ConfirmationDialog(
+                        "File Already Exists",
+                        $"A file named '{newName}' already exists on the remote PC.\nRename to a unique name automatically?",
+                        "Warning24", "Rename", "Cancel");
+                    dlg.Owner = Application.Current.MainWindow;
+                    if (dlg.ShowDialog() != true) return;
+                    newName = await GetUniqueRemoteNameAsync(_selectedPC, remoteDir, newName);
+                }
+
                 var apiPath = $"/files/rename?path={Uri.EscapeDataString(item.FullPath)}&newName={Uri.EscapeDataString(newName)}";
                 var responsePair = await SendAgentRequestWithFallbackAsync(
                     _selectedPC,
@@ -1331,6 +1381,32 @@ namespace IRIS.UI.ViewModels
         }
 
         // ═══════════════════════════════════════
+        // FILTERING
+        // ═══════════════════════════════════════
+
+        private void ApplyLocalFilter()
+        {
+            FilteredLocalFiles.Clear();
+            var search = _localSearchText.Trim();
+            foreach (var file in LocalFiles)
+            {
+                if (string.IsNullOrEmpty(search) || file.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    FilteredLocalFiles.Add(file);
+            }
+        }
+
+        private void ApplyRemoteFilter()
+        {
+            FilteredRemoteFiles.Clear();
+            var search = _remoteSearchText.Trim();
+            foreach (var file in RemoteFiles)
+            {
+                if (string.IsNullOrEmpty(search) || file.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    FilteredRemoteFiles.Add(file);
+            }
+        }
+
+        // ═══════════════════════════════════════
         // HELPERS
         // ═══════════════════════════════════════
 
@@ -1339,6 +1415,34 @@ namespace IRIS.UI.ViewModels
             var dialog = new Views.Dialogs.RenameDialog(currentName);
             dialog.Owner = Application.Current.MainWindow;
             return dialog.ShowDialog() == true ? dialog.NewName : null;
+        }
+
+        private static string GetUniqueLocalName(string dir, string name)
+        {
+            var baseName = Path.GetFileNameWithoutExtension(name);
+            var ext = Path.GetExtension(name);
+            int counter = 1;
+            string candidate;
+            do
+            {
+                candidate = $"{baseName}({counter}){ext}";
+                counter++;
+            } while (File.Exists(Path.Combine(dir, candidate)) || Directory.Exists(Path.Combine(dir, candidate)));
+            return candidate;
+        }
+
+        private async Task<string> GetUniqueRemoteNameAsync(PCModel pc, string dir, string name)
+        {
+            var baseName = Path.GetFileNameWithoutExtension(name);
+            var ext = Path.GetExtension(name);
+            int counter = 1;
+            string candidate;
+            do
+            {
+                candidate = $"{baseName}({counter}){ext}";
+                counter++;
+            } while (await CheckRemoteFileExistsAsync(pc, Path.Combine(dir, candidate)));
+            return candidate;
         }
 
         private void RaiseAllRemoteCanExecuteChanged()

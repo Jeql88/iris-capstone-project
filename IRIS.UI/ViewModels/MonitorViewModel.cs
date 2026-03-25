@@ -54,6 +54,7 @@ namespace IRIS.UI.ViewModels
         private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
         private bool _isInitialized;
         private bool _isActive = true;
+        private bool _isLoading;
         private bool _isTimelineLoading;
 
         public MonitorViewModel(
@@ -79,7 +80,7 @@ namespace IRIS.UI.ViewModels
             FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
             RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
-            RefreshCommand = new RelayCommand(async () => await LoadPCDataAsync(), () => true);
+            RefreshCommand = new RelayCommand(async () => { IsLoading = true; await LoadPCDataAsync(); }, () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
@@ -201,6 +202,12 @@ namespace IRIS.UI.ViewModels
             set { _selectedPcTimelineTitle = value; OnPropertyChanged(); }
         }
 
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
+        }
+
         public bool IsTimelineLoading
         {
             get => _isTimelineLoading;
@@ -277,6 +284,7 @@ namespace IRIS.UI.ViewModels
             _appliedSearchText = SearchText?.Trim() ?? string.Empty;
             _appliedPcStatus = SelectedPcStatus;
 
+            IsLoading = true;
             await LoadPCDataAsync();
             _refreshTimer.Start();
         }
@@ -352,6 +360,7 @@ namespace IRIS.UI.ViewModels
             }
             finally
             {
+                IsLoading = false;
                 _loadPcDataSemaphore.Release();
             }
         }
