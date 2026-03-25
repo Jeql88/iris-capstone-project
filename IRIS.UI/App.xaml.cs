@@ -149,7 +149,11 @@ namespace IRIS.UI
             services.AddTransient<MonitorViewModel>();
             services.AddTransient<ViewScreenViewModel>();
             services.AddTransient<FileManagementViewModel>();
-            services.AddTransient<PolicyEnforcementViewModel>();
+            services.AddTransient(sp => new PolicyEnforcementViewModel(
+                sp.GetRequiredService<IMonitoringService>(),
+                sp.GetRequiredService<IPolicyService>(),
+                sp.GetRequiredService<IRISDbContext>(),
+                sp.GetRequiredService<IConfiguration>()));
             services.AddTransient<LabsViewModel>();
             services.AddTransient<UsageMetricsViewModel>();
             services.AddTransient<AlertsViewModel>();

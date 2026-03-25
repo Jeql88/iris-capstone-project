@@ -280,12 +280,14 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseWallpaperCommand { get; }
         public ICommand LoadCurrentSettingsCommand { get; }
 
-        public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext, IConfiguration? configuration = null)
+        public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext, IConfiguration configuration)
         {
             _monitoringService = monitoringService;
             _policyService = policyService;
             _dbContext = dbContext;
-            _wallpaperShareRoot = configuration?["WallpaperShareRoot"]?.TrimEnd('\\', '/');
+            _wallpaperShareRoot = configuration["WallpaperShareRoot"]?.TrimEnd('\\', '/');
+            System.Diagnostics.Debug.WriteLine($"[PolicyEnforcementViewModel] WallpaperShareRoot from config: '{_wallpaperShareRoot ?? "<null>"}';");
+            System.Diagnostics.Debug.WriteLine($"[PolicyEnforcementViewModel] All config keys: {string.Join(", ", configuration.AsEnumerable().Select(x => x.Key))}");
             Rooms = new ObservableCollection<RoomItem>();
             SelectedRoomPolicies = new ObservableCollection<RoomPolicyDisplay>();
 
