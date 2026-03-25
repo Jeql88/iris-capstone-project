@@ -1,5 +1,7 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -7,6 +9,7 @@ using System.Windows.Threading;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Dialogs;
+using Microsoft.Extensions.Configuration;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
@@ -20,6 +23,7 @@ namespace IRIS.UI.ViewModels
         private readonly IMonitoringService _monitoringService;
         private readonly IPolicyService _policyService;
         private readonly IRISDbContext _dbContext;
+        private readonly string? _wallpaperShareRoot;
         private readonly DispatcherTimer _refreshTimer;
         private readonly DispatcherTimer _messageTimer;
         private bool _wallpaperResetEnabled;
@@ -276,11 +280,12 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseWallpaperCommand { get; }
         public ICommand LoadCurrentSettingsCommand { get; }
 
-        public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext)
+        public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext, IConfiguration? configuration = null)
         {
             _monitoringService = monitoringService;
             _policyService = policyService;
             _dbContext = dbContext;
+            _wallpaperShareRoot = configuration?["WallpaperShareRoot"]?.TrimEnd('\\', '/');
             Rooms = new ObservableCollection<RoomItem>();
             SelectedRoomPolicies = new ObservableCollection<RoomPolicyDisplay>();
 
@@ -772,10 +777,32 @@ namespace IRIS.UI.ViewModels
                 FilterIndex = 1
             };
 
-            if (openFileDialog.ShowDialog() == true)
+            if (openFileDialog.ShowDialog() != true)
+                return;
+
+            var sourceFile = openFileDialog.FileName;
+            var fileName = Path.GetFileName(sourceFile);
+
+            if (!string.IsNullOrWhiteSpace(_wallpaperShareRoot))
             {
-                SelectedWallpaperPath = openFileDialog.FileName;
+                try
+                {
+                    Directory.CreateDirectory(_wallpaperShareRoot);
+                    var destination = Path.Combine(_wallpaperShareRoot, fileName);
+                    File.Copy(sourceFile, destination, overwrite: true);
+                    SelectedWallpaperPath = fileName;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    StatusMessage = $"Could not copy wallpaper to share: {ex.Message}";
+                    StatusMessageColor = "#EF4444";
+                    StartMessageTimer();
+                }
             }
+
+            // Fallback: store full path (works only when agent is on the same PC)
+            SelectedWallpaperPath = sourceFile;
         }
 
         private void StartMessageTimer()
