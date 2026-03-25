@@ -259,7 +259,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void OpenEditModal(UserDisplayModel user)
+        private void OpenEditModal(UserDisplayModel? user)
         {
             if (user != null)
             {
@@ -271,7 +271,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void DeleteUserClick(UserDisplayModel user)
+        private void DeleteUserClick(UserDisplayModel? user)
         {
             if (user == null) return;
 

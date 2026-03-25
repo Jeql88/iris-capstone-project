@@ -18,9 +18,7 @@ namespace IRIS.UI.Views.Personnel
         private void PCCard_Click(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is DependencyObject source && FindParent<Button>(source) != null)
-            {
                 return;
-            }
 
             if (sender is FrameworkElement element && element.Tag is PCDisplayModel pc)
             {
@@ -29,6 +27,29 @@ namespace IRIS.UI.Views.Personnel
                     vm.ToggleCardDetailsCommand.Execute(pc);
                 }
             }
+        }
+
+        private void Page_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (DataContext is not MonitorViewModel vm || vm.SelectedPC == null)
+                return;
+
+            // Walk visual tree — if click is inside a card or a popup, don't deselect
+            if (e.OriginalSource is DependencyObject source)
+            {
+                var current = source;
+                while (current != null)
+                {
+                    if (current is Border b && b.Tag is PCDisplayModel)
+                        return;
+                    if (current is System.Windows.Controls.Primitives.Popup)
+                        return;
+                    current = VisualTreeHelper.GetParent(current);
+                }
+            }
+
+            vm.SelectedPC.IsFlipped = false;
+            vm.SelectedPC = null;
         }
 
         private void RoomBorder_Click(object sender, MouseButtonEventArgs e)

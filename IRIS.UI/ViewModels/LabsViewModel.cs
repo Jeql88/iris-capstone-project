@@ -461,22 +461,24 @@ namespace IRIS.UI.ViewModels
             RoomsView.Refresh();
         }
 
-        private async Task PreviousPageAsync()
+        private Task PreviousPageAsync()
         {
             if (HasPreviousPage)
             {
                 CurrentPage--;
                 RebuildPagedRooms(SelectedRoom?.Id);
             }
+            return Task.CompletedTask;
         }
 
-        private async Task NextPageAsync()
+        private Task NextPageAsync()
         {
             if (HasNextPage)
             {
                 CurrentPage++;
                 RebuildPagedRooms(SelectedRoom?.Id);
             }
+            return Task.CompletedTask;
         }
 
         private async Task LoadUnassignedAsync()

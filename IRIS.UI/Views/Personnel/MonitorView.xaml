@@ -9,7 +9,7 @@
         <converters:Base64ToImageSourceConverter x:Key="Base64ToImageSourceConverter"/>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid PreviewMouseDown="Page_PreviewMouseDown">
         <!-- Main content -->
         <Grid Margin="16,10,16,10">
             <Grid.RowDefinitions>

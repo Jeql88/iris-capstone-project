@@ -26,9 +26,10 @@
         </Grid.ColumnDefinitions>
 
         <!-- User Greeting with Dropdown -->
-        <StackPanel x:Name="UserMenuContainer" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0"
-                    MouseEnter="UserMenuContainer_MouseEnter">
-            <ui:Button x:Name="UserMenuButton" 
+        <StackPanel x:Name="UserMenuContainer" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
+            <ui:Button x:Name="UserMenuButton"
+                       Click="UserMenuButton_Click"
+                       Cursor="Hand"
                        Background="Transparent"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                        BorderThickness="0"
@@ -42,19 +43,18 @@
             </ui:Button>
 
             <!-- Dropdown Menu -->
-            <Popup x:Name="UserMenuPopup" 
+            <Popup x:Name="UserMenuPopup"
                    PlacementTarget="{Binding ElementName=UserMenuButton}"
                    Placement="Bottom"
                    AllowsTransparency="True"
                    PopupAnimation="Fade"
+                   StaysOpen="False"
                    IsOpen="False">
-                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                <Border Background="White"
                         BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
-                        Padding="0"
-                        MouseEnter="DropdownBorder_MouseEnter"
-                        MouseLeave="DropdownBorder_MouseLeave">
+                        Padding="0">
                     <StackPanel Width="200">
                         <ui:Button x:Name="SettingsMenuBtn"
                                    Click="SettingsMenuBtn_Click"

@@ -269,6 +269,7 @@ namespace IRIS.UI.ViewModels
 
         private async Task InitializeAsync()
         {
+            if (_isInitialized) return;
             await LoadRoomsAsync();
             _isInitialized = true;
 

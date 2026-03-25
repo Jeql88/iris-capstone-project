@@ -69,8 +69,10 @@
 
         <!-- ═══ PC SELECTOR ═══ -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Room:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Width="160" Margin="0,0,12,0"
+            <TextBlock Text="Laboratory:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Width="200" Margin="0,0,12,0"
+                      IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True"
+                      TextSearch.TextPath="RoomNumber"
                       ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
@@ -293,10 +295,13 @@
 
                 <TextBlock Grid.Row="0" Text="📦 Bulk Upload to Multiple PCs" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
 
-                <!-- Row 1: Room selector for bulk upload -->
+                <!-- Row 1: Laboratory selector for bulk upload -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Room:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox Width="160" ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedBulkRoom}">
+                    <TextBlock Text="Laboratory:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="200"
+                              IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True"
+                              TextSearch.TextPath="RoomNumber"
+                              ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedBulkRoom}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding RoomNumber}"/>
@@ -339,14 +344,16 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Column="0" Text="Target:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <RadioButton Grid.Column="1" Content="All PCs in room" Margin="0,0,16,0"
+                    <RadioButton Grid.Column="1" Content="All PCs in laboratory" Margin="0,0,16,0"
                                  IsChecked="{Binding BulkUploadToAll}" GroupName="BulkTarget"/>
                     <RadioButton Grid.Column="2" Content="Selected PCs only" Margin="0,0,12,0"
                                  IsChecked="{Binding BulkUploadToAll, Converter={StaticResource InvertBoolConverter}}" GroupName="BulkTarget"/>
                     <ui:Button Grid.Column="3" Content="Select All" Margin="0,0,4,0" Padding="8,2"
-                               Command="{Binding SelectAllPCsCommand}" Appearance="Secondary"/>
+                               Command="{Binding SelectAllPCsCommand}" Appearance="Secondary"
+                               Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}"/>
                     <ui:Button Grid.Column="4" Content="Deselect All" Padding="8,2"
-                               Command="{Binding DeselectAllPCsCommand}" Appearance="Secondary"/>
+                               Command="{Binding DeselectAllPCsCommand}" Appearance="Secondary"
+                               Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}"/>
                 </Grid>
 
                 <!-- Row 4: PC checkboxes (visible when not uploading to all) -->

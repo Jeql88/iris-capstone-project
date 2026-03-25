@@ -32,9 +32,9 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <ui:Button x:Name="ConfirmButton" Content="Confirm" Width="100" Margin="0,0,8,0" Click="ConfirmButton_Click" 
+            <ui:Button x:Name="ConfirmButton" Content="Confirm" MinWidth="100" Margin="0,0,8,0" Click="ConfirmButton_Click"
                        Appearance="Primary" Icon="{ui:SymbolIcon Checkmark24}"/>
-            <ui:Button x:Name="CancelButton" Content="Cancel" Width="100" Click="CancelButton_Click" 
+            <ui:Button x:Name="CancelButton" Content="Cancel" MinWidth="100" Click="CancelButton_Click"
                        Appearance="Secondary" Icon="{ui:SymbolIcon Dismiss24}"/>
         </StackPanel>
     </Grid>

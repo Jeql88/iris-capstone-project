@@ -23,6 +23,7 @@ namespace IRIS.UI.ViewModels
         private readonly IRoomService _roomService;
         private readonly IConfiguration _configuration;
         private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
+        private static readonly HttpClient _pingClient = new() { Timeout = TimeSpan.FromSeconds(3) };
 
         private readonly int _agentFileApiPort;
         private readonly string _agentApiToken;
@@ -272,7 +273,7 @@ namespace IRIS.UI.ViewModels
             {
                 var rooms = await _roomService.GetRoomsAsync();
                 Rooms.Clear();
-                Rooms.Add(new RoomDto(-1, "All Rooms", string.Empty, 0, true, DateTime.UtcNow));
+                Rooms.Add(new RoomDto(-1, "All Laboratories", string.Empty, 0, true, DateTime.UtcNow));
                 foreach (var room in rooms.OrderBy(r => r.RoomNumber))
                     Rooms.Add(room);
 
@@ -1142,22 +1143,65 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            // ── Phase A: Check ALL PCs for reachability first ──
             IsBulkUploading = true;
             BulkProgress = 0;
-            var totalOps = targetPCs.Count * BulkPendingFiles.Count;
+            BulkStatusMessage = "Checking PC availability...";
+
+            var reachabilityTasks = targetPCs.Select(async pc =>
+            {
+                bool reachable = await IsAgentReachableAsync(pc);
+                return (PC: pc, IsReachable: reachable);
+            }).ToList();
+
+            var results = await Task.WhenAll(reachabilityTasks);
+            var onlinePCs = results.Where(r => r.IsReachable).Select(r => r.PC).ToList();
+            var offlinePCNames = results.Where(r => !r.IsReachable).Select(r => r.PC.Hostname ?? r.PC.IPAddress ?? "Unknown").ToList();
+
+            // ── Phase B: Single decision point ──
+            var labName = _selectedBulkRoom?.RoomNumber ?? "selected laboratory";
+
+            if (onlinePCs.Count == 0)
+            {
+                IsBulkUploading = false;
+                BulkStatusMessage = "No PCs are reachable. Upload cancelled.";
+                var noReachableMsg = $"All PCs in {labName} are offline or unreachable:\n\n" +
+                    string.Join("\n", offlinePCNames.Select(n => $"  • {n}"));
+                var noReachableDlg = new ConfirmationDialog("No Reachable PCs", noReachableMsg, "Warning24", "OK", "Cancel", false);
+                noReachableDlg.Owner = Application.Current.MainWindow;
+                noReachableDlg.ShowDialog();
+                return;
+            }
+
+            if (offlinePCNames.Count > 0)
+            {
+                var skipMsg = $"The following PCs in {labName} are offline and will be skipped:\n\n" +
+                    string.Join("\n", offlinePCNames.Select(n => $"  • {n}")) +
+                    $"\n\nProceed with uploading to the remaining {onlinePCs.Count} online PC(s)?";
+                var skipDlg = new ConfirmationDialog("Offline PCs Detected", skipMsg, "Warning24", "Proceed", "Cancel");
+                skipDlg.Owner = Application.Current.MainWindow;
+
+                if (skipDlg.ShowDialog() != true)
+                {
+                    IsBulkUploading = false;
+                    BulkStatusMessage = "Bulk upload cancelled.";
+                    return;
+                }
+            }
+
+            // ── Phase C: Upload to online PCs only ──
+            var totalOps = onlinePCs.Count * BulkPendingFiles.Count;
             var completedOps = 0;
             var successCount = 0;
             var failCount = 0;
             var skippedFiles = new List<string>();
 
-            // Use the active logged-in user's desktop on each remote PC.
-            // The token is resolved by AgentFileManagementServer.
             var remoteDesktop = "%ACTIVE_DESKTOP%";
             var remoteFolderPath = Path.Combine(remoteDesktop, BulkFolderName.Trim());
 
-            BulkStatusMessage = $"Uploading {BulkPendingFiles.Count} file(s) to {targetPCs.Count} PC(s) into '{BulkFolderName}'...";
+            BulkStatusMessage = $"Uploading {BulkPendingFiles.Count} file(s) to {onlinePCs.Count} PC(s) into '{BulkFolderName}'...";
 
-            foreach (var pc in targetPCs)
+            foreach (var pc in onlinePCs)
             {
                 foreach (var localPath in BulkPendingFiles.ToList())
                 {
@@ -1167,7 +1211,6 @@ namespace IRIS.UI.ViewModels
 
                         if (File.Exists(localPath))
                         {
-                            // Check if file already exists on this PC
                             var remoteFilePath = Path.Combine(remoteFolderPath, fileName);
                             bool exists = await CheckRemoteFileExistsAsync(pc, remoteFilePath);
                             if (exists)
@@ -1207,16 +1250,27 @@ namespace IRIS.UI.ViewModels
                 }
             }
 
-            var skippedMsg = skippedFiles.Count > 0 ? $" Skipped: {skippedFiles.Count}." : "";
-            BulkStatusMessage = $"Bulk upload complete. Success: {successCount}, Failed: {failCount}.{skippedMsg}";
             BulkProgress = 100;
             IsBulkUploading = false;
+
+            // ── Summary dialog ──
+            var summary = $"Success: {successCount}, Failed: {failCount}";
+            if (skippedFiles.Count > 0)
+                summary += $", Skipped: {skippedFiles.Count}";
+            if (offlinePCNames.Count > 0)
+                summary += $"\n\nOffline PCs skipped ({offlinePCNames.Count}):\n" +
+                    string.Join("\n", offlinePCNames.Select(n => $"  • {n}"));
+
+            BulkStatusMessage = $"Bulk upload complete. Success: {successCount}, Failed: {failCount}.";
+            var summaryDlg = new ConfirmationDialog("Bulk Upload Complete", summary, "Checkmark24", "OK", "Cancel", false);
+            summaryDlg.Owner = Application.Current.MainWindow;
+            summaryDlg.ShowDialog();
 
             BulkPendingFiles.Clear();
             (StartBulkUploadCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
             // Refresh remote pane if we're looking at the same PC
-            if (_selectedPC != null && targetPCs.Any(p => p.Id == _selectedPC.Id) && !string.IsNullOrWhiteSpace(CurrentRemotePath))
+            if (_selectedPC != null && onlinePCs.Any(p => p.Id == _selectedPC.Id) && !string.IsNullOrWhiteSpace(CurrentRemotePath))
                 await BrowseRemotePathAsync(CurrentRemotePath);
         }
 
@@ -1299,6 +1353,28 @@ namespace IRIS.UI.ViewModels
         {
             var path = relativePath.StartsWith('/') ? relativePath : "/" + relativePath;
             return new Uri($"http://{ipAddress}:{_agentFileApiPort}/api{path}");
+        }
+
+        private async Task<bool> IsAgentReachableAsync(PCModel pc)
+        {
+            try
+            {
+                foreach (var target in await GetAgentTargetsAsync(pc))
+                {
+                    try
+                    {
+                        using var request = new HttpRequestMessage(HttpMethod.Get,
+                            $"http://{target}:{_agentFileApiPort}/api/files/exists?path=C:\\");
+                        AttachAuthHeader(request);
+                        using var response = await _pingClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                        return true;
+                    }
+                    catch (HttpRequestException) { }
+                    catch (TaskCanceledException) { }
+                }
+            }
+            catch { }
+            return false;
         }
 
         private async Task<(HttpResponseMessage Response, string Target)> SendAgentRequestWithFallbackAsync(

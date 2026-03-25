@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Threading;
 using System.Windows.Media;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Services;
@@ -13,7 +12,7 @@ namespace IRIS.UI.Views.Common
     public partial class UserHeaderControl : UserControl
     {
         private INavigationService? _navigationService;
-        private DispatcherTimer? _closeDropdownTimer;
+        private DateTime _lastPopupCloseTime;
 
         public UserHeaderControl()
         {
@@ -29,6 +28,8 @@ namespace IRIS.UI.Views.Common
 
             var username = authService.GetCurrentUser()?.Username ?? "User";
             UserGreetingText.Text = $"Hi, {username}!";
+
+            UserMenuPopup.Closed += (s, args) => _lastPopupCloseTime = DateTime.UtcNow;
         }
 
         public void SetNavigationService(INavigationService navigationService)
@@ -46,27 +47,12 @@ namespace IRIS.UI.Views.Common
             Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void UserMenuContainer_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        private void UserMenuButton_Click(object sender, RoutedEventArgs e)
         {
-            _closeDropdownTimer?.Stop();
-            UserMenuPopup.IsOpen = true;
-        }
-
-        private void DropdownBorder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            _closeDropdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.3) };
-            _closeDropdownTimer.Tick += (s, args) =>
-            {
-                UserMenuPopup.IsOpen = false;
-                _closeDropdownTimer.Stop();
-            };
-            _closeDropdownTimer.Start();
-        }
-
-        private void DropdownBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            _closeDropdownTimer?.Stop();
-            UserMenuPopup.IsOpen = true;
+            // Prevent reopening if popup just closed from StaysOpen=False
+            if ((DateTime.UtcNow - _lastPopupCloseTime).TotalMilliseconds < 200)
+                return;
+            UserMenuPopup.IsOpen = !UserMenuPopup.IsOpen;
         }
 
         private void SettingsMenuBtn_Click(object sender, RoutedEventArgs e)
