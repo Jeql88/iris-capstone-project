@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Text;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Dialogs;
@@ -368,18 +369,37 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var commandType = IsFreezeActive ? "FreezeOff" : "FreezeOn";
-            var confirmationDialog = new ConfirmationDialog(
-                IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
-                IsFreezeActive
-                    ? $"Unfreeze {PCName}?"
-                    : $"Freeze {PCName}?",
-                "LockClosed24");
-            confirmationDialog.Owner = Application.Current.MainWindow;
-
-            if (confirmationDialog.ShowDialog() != true)
+            string commandType;
+            if (IsFreezeActive)
             {
-                return;
+                var confirmationDialog = new ConfirmationDialog(
+                    "Confirm Unfreeze",
+                    $"Unfreeze {PCName}?",
+                    "LockClosed24");
+                confirmationDialog.Owner = Application.Current.MainWindow;
+
+                if (confirmationDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                commandType = "FreezeOff";
+            }
+            else
+            {
+                var freezeDialog = new FreezeMessageDialog(
+                    "Freeze PC",
+                    $"Enter the message to show on {PCName} while frozen:",
+                    FreezeMessageDialog.DefaultFreezeMessage);
+                freezeDialog.Owner = Application.Current.MainWindow;
+
+                if (freezeDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                var encodedMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(freezeDialog.FreezeMessage));
+                commandType = $"FreezeOn::{encodedMessage}";
             }
 
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, commandType);
