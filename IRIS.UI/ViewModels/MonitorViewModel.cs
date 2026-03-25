@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using System.Threading;
 using System.Collections.Specialized;
 using System.Windows;
+using System.Text;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Dialogs;
@@ -47,7 +48,7 @@ namespace IRIS.UI.ViewModels
         private bool _isPcAlertsPanelOpen;
         private bool _isTimelinePanelOpen;
         private string _selectedPcAlertsTitle = "Device Alerts";
-        private string _selectedPcTimelineTitle = "PC Health Timeline";
+        private string _selectedPcTimelineTitle = "Device Timeline";
         private DateTime _lastAlertRefreshUtc = DateTime.MinValue;
         private DateTime _lastAgentRefreshRequestUtc = DateTime.MinValue;
         private readonly SemaphoreSlim _loadPcDataSemaphore = new(1, 1);
@@ -271,12 +272,6 @@ namespace IRIS.UI.ViewModels
             await LoadRoomsAsync();
             _isInitialized = true;
 
-            // If cache already has data (e.g. navigating back from Dashboard), show it immediately
-            if (_cache.HasData)
-            {
-                ApplyCachedPCData();
-            }
-
             _appliedRoom = SelectedRoom;
             _appliedSearchText = SearchText?.Trim() ?? string.Empty;
             _appliedPcStatus = SelectedPcStatus;
@@ -307,7 +302,7 @@ namespace IRIS.UI.ViewModels
                 var previousSelectionId = SelectedPC?.Id;
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
-                // Refresh via shared cache (uses its own DI scope — safe from navigation disposal)
+                // Force refresh from DB - always get latest data
                 _cache.CurrentRoomFilter = null;
                 await _cache.RefreshPCDataAsync();
 
@@ -321,12 +316,10 @@ namespace IRIS.UI.ViewModels
                 // Always apply filter first so PCs are visible even if alerts/snapshots fail
                 ApplyFilter();
 
+                // Force alert refresh every time
                 try
                 {
-                    if ((DateTime.UtcNow - _lastAlertRefreshUtc).TotalSeconds >= 10)
-                    {
-                        await LoadLiveAlertsAsync();
-                    }
+                    await LoadLiveAlertsAsync();
                 }
                 catch { /* Alert loading failure must not block PC display */ }
 
@@ -365,8 +358,8 @@ namespace IRIS.UI.ViewModels
         public void OnNavigatedTo()
         {
             _isActive = true;
-            _refreshTimer.Start();
             _ = LoadPCDataAsync();
+            _refreshTimer.Start();
         }
 
         public void OnNavigatedFrom()
@@ -821,8 +814,8 @@ namespace IRIS.UI.ViewModels
                 }
 
                 SelectedPcTimelineTitle = SelectedPC != null
-                    ? $"PC Health Timeline • {SelectedPC.PCName}"
-                    : "PC Health Timeline";
+                    ? $"Device Timeline • {SelectedPC.PCName}"
+                    : "Device Timeline";
 
                 OnPropertyChanged(nameof(HasTimelineEvents));
                 OnPropertyChanged(nameof(TimelineEmptyMessage));
@@ -907,19 +900,37 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var commandType = SelectedPC.IsFreezeActive ? "FreezeOff" : "FreezeOn";
-
-            var confirmationDialog = new ConfirmationDialog(
-                SelectedPC.IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
-                SelectedPC.IsFreezeActive
-                    ? $"Unfreeze {SelectedPC.PCName}?"
-                    : $"Freeze {SelectedPC.PCName}?",
-                "LockClosed24");
-            confirmationDialog.Owner = Application.Current.MainWindow;
-
-            if (confirmationDialog.ShowDialog() != true)
+            string commandType;
+            if (SelectedPC.IsFreezeActive)
             {
-                return;
+                var confirmationDialog = new ConfirmationDialog(
+                    "Confirm Unfreeze",
+                    $"Unfreeze {SelectedPC.PCName}?",
+                    "LockClosed24");
+                confirmationDialog.Owner = Application.Current.MainWindow;
+
+                if (confirmationDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                commandType = "FreezeOff";
+            }
+            else
+            {
+                var freezeDialog = new FreezeMessageDialog(
+                    "Freeze PC",
+                    $"Enter the message to show on {SelectedPC.PCName} while frozen:",
+                    FreezeMessageDialog.DefaultFreezeMessage);
+                freezeDialog.Owner = Application.Current.MainWindow;
+
+                if (freezeDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                var encodedMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(freezeDialog.FreezeMessage));
+                commandType = $"FreezeOn::{encodedMessage}";
             }
 
             var queued = await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress, commandType);

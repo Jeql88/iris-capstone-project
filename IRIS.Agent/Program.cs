@@ -147,7 +147,8 @@ namespace IRIS.Agent
                 await pcController.RegisterPCAsync();
 
                 // Initialize wallpaper policy enforcer
-                var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress);
+                var wallpaperShareRoot = configuration["AgentSettings:WallpaperShareRoot"];
+                var wallpaperEnforcer = new WallpaperPolicyEnforcer(context, networkInfo.MacAddress, wallpaperShareRoot);
 
                 // Enforce wallpaper policy on startup
                 await wallpaperEnforcer.EnforceWallpaperPolicyAsync();
@@ -312,24 +313,24 @@ namespace IRIS.Agent
             }
         }
 
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern int MessageBoxTimeout(IntPtr hWnd, string lpText, string lpCaption, uint uType, ushort wLanguageId, uint dwMilliseconds);
-
-        private const uint MB_OKCANCEL = 1;
-        private const uint MB_ICONWARNING = 0x30;
-        private const int IDCANCEL = 2;
-
-        private static Task CheckIdleShutdownAsync(int idleMinutes)
+        private static async Task CheckIdleShutdownAsync(int idleMinutes)
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
 
             if (idleTime.TotalMinutes >= idleMinutes)
             {
-                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Shutting down...");
-                Process.Start("shutdown", "/s /t 10 /c \"Auto-shutdown due to idle time policy\"");
+                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Showing shutdown warning...");
+                var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                    "Auto-Shutdown Warning",
+                    "This PC will shut down due to idle time policy in 15 seconds.\n\nClick Cancel to prevent shutdown.",
+                    15000);
+
+                if (!wasCancelled)
+                {
+                    Process.Start("shutdown", "/s /t 0");
+                }
             }
-            return Task.CompletedTask;
         }
 
         private static TimeSpan GetIdleTime()

@@ -520,22 +520,22 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <ui:Badge Margin="0,0,10,0" VerticalAlignment="Top">
-                                                <ui:Badge.Style>
-                                                    <Style TargetType="ui:Badge">
-                                                        <Setter Property="Appearance" Value="Caution"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Severity}" Value="Critical">
-                                                                <Setter Property="Appearance" Value="Danger"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Severity}" Value="Low">
-                                                                <Setter Property="Appearance" Value="Info"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </ui:Badge.Style>
-                                                <TextBlock Text="{Binding Severity}" FontSize="10"/>
-                                            </ui:Badge>
+                                                <ui:Badge Margin="0,0,10,0" VerticalAlignment="Top">
+                                                    <ui:Badge.Style>
+                                                        <Style TargetType="ui:Badge">
+                                                            <Setter Property="Appearance" Value="Caution"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                    <Setter Property="Appearance" Value="Danger"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Severity}" Value="High">
+                                                                    <Setter Property="Appearance" Value="Caution"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:Badge.Style>
+                                                    <TextBlock Text="{Binding Severity}" FontSize="10"/>
+                                                </ui:Badge>
                                             <StackPanel Grid.Column="1">
                                                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="12"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">

@@ -46,3 +46,5 @@ csx/
 *.ser
 *.SQLITE
 *.dbmdl
+/IMPLEMENTATION_SUMMARY.md
+/QUICK_REFERENCE.md

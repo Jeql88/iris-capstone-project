@@ -297,15 +297,33 @@ namespace IRIS.Agent.Logic
 
                 if (response.Equals("Shutdown", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("Executing immediate shutdown from server command for PC {MacAddress}", _macAddress);
-                    Process.Start("shutdown", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
+                    Log.Warning("Received remote shutdown command for PC {MacAddress}; showing user warning dialog", _macAddress);
+                    var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                        "Remote Shutdown Warning",
+                        "This PC will shut down due to a remote command in 15 seconds.\n\nClick Cancel to prevent shutdown.",
+                        15000);
+
+                    if (!wasCancelled)
+                    {
+                        Process.Start("shutdown", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
+                    }
+
                     return;
                 }
 
                 if (response.Equals("Restart", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("Executing immediate restart from server command for PC {MacAddress}", _macAddress);
-                    Process.Start("shutdown", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                    Log.Warning("Received remote restart command for PC {MacAddress}; showing user warning dialog", _macAddress);
+                    var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                        "Remote Restart Warning",
+                        "This PC will restart due to a remote command in 15 seconds.\n\nClick Cancel to prevent restart.",
+                        15000);
+
+                    if (!wasCancelled)
+                    {
+                        Process.Start("shutdown", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                    }
+
                     return;
                 }
 
@@ -318,10 +336,11 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
-                if (response.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase))
+                if (response.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase) ||
+                    response.StartsWith("FreezeOn::", StringComparison.OrdinalIgnoreCase))
                 {
                     Log.Warning("Executing freeze-on command for PC {MacAddress}", _macAddress);
-                    _freezeOverlayController.Freeze(_freezeAutoUnfreezeMinutes);
+                    _freezeOverlayController.Freeze(_freezeAutoUnfreezeMinutes, ExtractFreezeMessage(response));
                     return;
                 }
 
@@ -342,6 +361,32 @@ namespace IRIS.Agent.Logic
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to process pending power command for PC {MacAddress}", _macAddress);
+            }
+        }
+
+        private static string? ExtractFreezeMessage(string command)
+        {
+            var delimiterIndex = command.IndexOf("::", StringComparison.Ordinal);
+            if (delimiterIndex < 0 || delimiterIndex + 2 >= command.Length)
+            {
+                return null;
+            }
+
+            var payload = command[(delimiterIndex + 2)..];
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return null;
+            }
+
+            try
+            {
+                var bytes = Convert.FromBase64String(payload);
+                var decoded = System.Text.Encoding.UTF8.GetString(bytes);
+                return string.IsNullOrWhiteSpace(decoded) ? null : decoded.Trim();
+            }
+            catch
+            {
+                return null;
             }
         }
 
