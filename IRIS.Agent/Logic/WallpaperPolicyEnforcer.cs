@@ -239,9 +239,12 @@ namespace IRIS.Agent.Logic
 
         private string ResolveWallpaperPath(string wallpaperPath)
         {
+            Log.Debug("Resolving wallpaper path: {WallpaperPath}, ShareRoot: {ShareRoot}", wallpaperPath, _wallpaperShareRoot ?? "<null>");
+            
             // If the configured path already exists (local disk or UNC), use it
             if (File.Exists(wallpaperPath))
             {
+                Log.Debug("Wallpaper path exists as-is: {WallpaperPath}", wallpaperPath);
                 return wallpaperPath;
             }
 
@@ -250,9 +253,11 @@ namespace IRIS.Agent.Logic
             {
                 var sanitizedRelative = wallpaperPath.TrimStart('\\', '/');
                 var combined = Path.Combine(_wallpaperShareRoot, sanitizedRelative);
+                Log.Debug("Combined relative path with share root: {Combined}", combined);
                 return combined;
             }
 
+            Log.Debug("Returning wallpaper path as-is (rooted or no share root): {WallpaperPath}", wallpaperPath);
             return wallpaperPath;
         }
 

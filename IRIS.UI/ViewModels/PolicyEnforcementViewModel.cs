@@ -791,6 +791,9 @@ namespace IRIS.UI.ViewModels
                     var destination = Path.Combine(_wallpaperShareRoot, fileName);
                     File.Copy(sourceFile, destination, overwrite: true);
                     SelectedWallpaperPath = fileName;
+                    StatusMessage = $"Wallpaper copied to share: {destination}";
+                    StatusMessageColor = "#10B981";
+                    StartMessageTimer();
                     return;
                 }
                 catch (Exception ex)
@@ -803,6 +806,9 @@ namespace IRIS.UI.ViewModels
 
             // Fallback: store full path (works only when agent is on the same PC)
             SelectedWallpaperPath = sourceFile;
+            StatusMessage = $"Wallpaper selected (local path): {sourceFile}";
+            StatusMessageColor = "#F59E0B";
+            StartMessageTimer();
         }
 
         private void StartMessageTimer()
