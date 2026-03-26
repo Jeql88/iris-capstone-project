@@ -306,19 +306,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <Grid Margin="0,0,0,12">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Pulse24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="Latency" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    </StackPanel>
-                                    <ui:Button Content="Reset Zoom" Padding="6,2" Appearance="Secondary" FontSize="10"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"
-                                               Command="{Binding ResetLatencyZoomCommand}"/>
-                                </Grid>
-                                <Border Grid.Row="1" x:Name="LatencyChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="LatencyChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding LatencyPlot}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <ui:SymbolIcon Symbol="Pulse24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Latency" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+                                <Border Grid.Row="1" x:Name="LatencyChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="LatencyChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding LatencyPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
 
@@ -328,19 +326,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <Grid Margin="0,0,0,12">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Wifi124" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="Network Performance" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    </StackPanel>
-                                    <ui:Button Content="Reset Zoom" Padding="6,2" Appearance="Secondary" FontSize="10"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"
-                                               Command="{Binding ResetBandwidthZoomCommand}"/>
-                                </Grid>
-                                <Border Grid.Row="1" x:Name="BandwidthChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="BandwidthChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding BandwidthPlot}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <ui:SymbolIcon Symbol="Wifi124" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Network Performance" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+                                <Border Grid.Row="1" x:Name="BandwidthChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="BandwidthChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding BandwidthPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
                     </Grid>
@@ -359,19 +355,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <Grid Margin="0,0,0,12">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Symbol="Warning24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="Packet Loss %" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    </StackPanel>
-                                    <ui:Button Content="Reset Zoom" Padding="6,2" Appearance="Secondary" FontSize="10"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"
-                                               Command="{Binding ResetPacketLossZoomCommand}"/>
-                                </Grid>
-                                <Border Grid.Row="1" x:Name="PacketLossChartBorder" Height="220" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="PacketLossChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding PacketLossPlot}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <ui:SymbolIcon Symbol="Warning24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Packet Loss %" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+                                <Border Grid.Row="1" x:Name="PacketLossChartBorder" Height="220" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="PacketLossChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding PacketLossPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
 
@@ -441,6 +435,7 @@
                             </Grid>
                         </ui:Card>
                     </Grid>
+
                 </Grid>
             </ScrollViewer>
             </ContentControl>
