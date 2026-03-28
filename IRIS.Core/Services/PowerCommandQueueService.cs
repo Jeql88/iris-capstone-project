@@ -18,10 +18,12 @@ namespace IRIS.Core.Services
             }
 
             var normalizedCommand = commandType.Trim();
+            var isFreezeOnWithPayload = normalizedCommand.StartsWith("FreezeOn::", StringComparison.OrdinalIgnoreCase);
             if (!normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase) &&
+                !isFreezeOnWithPayload &&
                 !normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(false);
@@ -41,6 +43,8 @@ namespace IRIS.Core.Services
                     ? "Restart"
                     : normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase)
                         ? "RefreshMetrics"
+                        : isFreezeOnWithPayload
+                            ? normalizedCommand
                         : normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase)
                             ? "FreezeOn"
                             : "FreezeOff";

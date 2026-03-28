@@ -10,6 +10,8 @@ namespace IRIS.Agent.Logic
 {
     public sealed class FreezeOverlayController : IDisposable
     {
+        public const string DefaultFreezeMessage = "This PC is temporarily frozen by the administrator.";
+
         private readonly object _stateLock = new();
         private readonly System.Threading.Timer _autoUnfreezeTimer;
         private readonly ManualResetEventSlim _overlayReady = new(false);
@@ -17,6 +19,7 @@ namespace IRIS.Agent.Logic
         private Thread? _overlayThread;
         private List<FreezeOverlayForm> _overlayForms = new();
         private DateTime? _freezeUntilUtc;
+        private string _currentFreezeMessage = DefaultFreezeMessage;
         private bool _isFrozen;
         private bool _disposed;
 
@@ -36,19 +39,33 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        public void Freeze(int autoUnfreezeMinutes)
+        public void Freeze(int autoUnfreezeMinutes, string? freezeMessage = null)
         {
             var timeoutMinutes = Math.Clamp(autoUnfreezeMinutes, 1, 120);
+            var message = string.IsNullOrWhiteSpace(freezeMessage)
+                ? DefaultFreezeMessage
+                : freezeMessage.Trim();
+            List<FreezeOverlayForm>? formsToUpdate = null;
 
             lock (_stateLock)
             {
                 ThrowIfDisposed();
                 _freezeUntilUtc = DateTime.UtcNow.AddMinutes(timeoutMinutes);
+                _currentFreezeMessage = message;
                 if (_isFrozen)
                 {
+                    formsToUpdate = _overlayForms.ToList();
                     Log.Information("Freeze already active; extended auto-unfreeze to {FreezeUntilUtc}", _freezeUntilUtc);
-                    return;
                 }
+            }
+
+            if (formsToUpdate != null)
+            {
+                foreach (var form in formsToUpdate)
+                {
+                    form.SetMessage(message);
+                }
+                return;
             }
 
             StartOverlayThread();
@@ -153,7 +170,7 @@ namespace IRIS.Agent.Logic
             try
             {
                 var forms = Screen.AllScreens
-                    .Select(screen => new FreezeOverlayForm(screen.Bounds))
+                    .Select(screen => new FreezeOverlayForm(screen.Bounds, _currentFreezeMessage))
                     .ToList();
 
                 lock (_stateLock)
@@ -222,9 +239,10 @@ namespace IRIS.Agent.Logic
 
         private sealed class FreezeOverlayForm : Form
         {
+            private readonly Label _messageLabel;
             internal bool AllowCloseFlag;
 
-            public FreezeOverlayForm(Rectangle bounds)
+            public FreezeOverlayForm(Rectangle bounds, string message)
             {
                 FormBorderStyle = FormBorderStyle.None;
                 StartPosition = FormStartPosition.Manual;
@@ -234,9 +252,9 @@ namespace IRIS.Agent.Logic
                 BackColor = Color.Black;
                 ForeColor = Color.White;
 
-                var message = new Label
+                _messageLabel = new Label
                 {
-                    Text = "This PC is temporarily frozen by the administrator.",
+                    Text = message,
                     Dock = DockStyle.Fill,
                     TextAlign = ContentAlignment.MiddleCenter,
                     Font = new Font("Segoe UI", 24, FontStyle.Bold),
@@ -244,7 +262,25 @@ namespace IRIS.Agent.Logic
                     BackColor = Color.Black
                 };
 
-                Controls.Add(message);
+                Controls.Add(_messageLabel);
+            }
+
+            internal void SetMessage(string message)
+            {
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action<string>(SetMessage), message);
+                    return;
+                }
+
+                _messageLabel.Text = string.IsNullOrWhiteSpace(message)
+                    ? DefaultFreezeMessage
+                    : message;
             }
 
             protected override void OnFormClosing(FormClosingEventArgs e)

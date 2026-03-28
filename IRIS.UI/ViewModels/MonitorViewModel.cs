@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using System.Threading;
 using System.Collections.Specialized;
 using System.Windows;
+using System.Text;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Dialogs;
@@ -902,19 +903,37 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var commandType = SelectedPC.IsFreezeActive ? "FreezeOff" : "FreezeOn";
-
-            var confirmationDialog = new ConfirmationDialog(
-                SelectedPC.IsFreezeActive ? "Confirm Unfreeze" : "Confirm Freeze",
-                SelectedPC.IsFreezeActive
-                    ? $"Unfreeze {SelectedPC.PCName}?"
-                    : $"Freeze {SelectedPC.PCName}?",
-                "LockClosed24");
-            confirmationDialog.Owner = Application.Current.MainWindow;
-
-            if (confirmationDialog.ShowDialog() != true)
+            string commandType;
+            if (SelectedPC.IsFreezeActive)
             {
-                return;
+                var confirmationDialog = new ConfirmationDialog(
+                    "Confirm Unfreeze",
+                    $"Unfreeze {SelectedPC.PCName}?",
+                    "LockClosed24");
+                confirmationDialog.Owner = Application.Current.MainWindow;
+
+                if (confirmationDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                commandType = "FreezeOff";
+            }
+            else
+            {
+                var freezeDialog = new FreezeMessageDialog(
+                    "Freeze PC",
+                    $"Enter the message to show on {SelectedPC.PCName} while frozen:",
+                    FreezeMessageDialog.DefaultFreezeMessage);
+                freezeDialog.Owner = Application.Current.MainWindow;
+
+                if (freezeDialog.ShowDialog() != true)
+                {
+                    return;
+                }
+
+                var encodedMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(freezeDialog.FreezeMessage));
+                commandType = $"FreezeOn::{encodedMessage}";
             }
 
             var queued = await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress, commandType);

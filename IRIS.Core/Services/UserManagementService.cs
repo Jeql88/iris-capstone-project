@@ -18,12 +18,38 @@ namespace IRIS.Core.Services
 
         public async Task<User> CreateUserAsync(string username, string password, UserRole role, string? fullName = null)
         {
-            if (await UsernameExistsAsync(username))
-                throw new InvalidOperationException("Username already exists");
+            var normalizedUsername = username?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedUsername))
+            {
+                throw new InvalidOperationException("Username is required");
+            }
+
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+
+            if (existingUser != null)
+            {
+                if (existingUser.IsActive)
+                {
+                    throw new InvalidOperationException("Username already exists");
+                }
+
+                existingUser.PasswordHash = HashPassword(password);
+                existingUser.Role = role;
+                existingUser.FullName = fullName;
+                existingUser.IsActive = true;
+                existingUser.MustChangePassword = true;
+
+                await _context.SaveChangesAsync();
+
+                await _authService.LogUserActionAsync("User Created", $"Created user {normalizedUsername} with role {role}");
+
+                return existingUser;
+            }
 
             var user = new User
             {
-                Username = username,
+                Username = normalizedUsername,
                 PasswordHash = HashPassword(password),
                 Role = role,
                 FullName = fullName,
@@ -34,7 +60,7 @@ namespace IRIS.Core.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            await _authService.LogUserActionAsync("User Created", $"Created user {username} with role {role}");
+            await _authService.LogUserActionAsync("User Created", $"Created user {normalizedUsername} with role {role}");
 
             return user;
         }
