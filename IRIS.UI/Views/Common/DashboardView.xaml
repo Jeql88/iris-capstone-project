@@ -306,14 +306,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <ui:SymbolIcon Symbol="Pulse24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Latency" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </StackPanel>
-                                <Border Grid.Row="1" x:Name="LatencyChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="LatencyChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding LatencyPlot}"/>
+                                <Border Grid.Row="1" x:Name="LatencyChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="LatencyChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding LatencyPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
 
@@ -323,14 +326,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <ui:SymbolIcon Symbol="Wifi124" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Network Performance" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </StackPanel>
-                                <Border Grid.Row="1" x:Name="BandwidthChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="BandwidthChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding BandwidthPlot}"/>
+                                <Border Grid.Row="1" x:Name="BandwidthChartBorder" Height="200" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="BandwidthChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding BandwidthPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
                     </Grid>
@@ -349,14 +355,17 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <ui:SymbolIcon Symbol="Warning24" FontSize="16" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Packet Loss %" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 </StackPanel>
-                                <Border Grid.Row="1" x:Name="PacketLossChartBorder" Height="220" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" MouseLeftButtonUp="PacketLossChartBorder_MouseLeftButtonUp">
-                                    <oxy:PlotView Model="{Binding PacketLossPlot}"/>
+                                <Border Grid.Row="1" x:Name="PacketLossChartBorder" Height="220" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="6" Cursor="Hand" PreviewMouseLeftButtonDown="PacketLossChartBorder_DoubleClick">
+                                    <oxy:PlotView Model="{Binding PacketLossPlot}" Controller="{Binding HoverController}"/>
                                 </Border>
+                                <TextBlock Grid.Row="2" Text="Double-click chart to view details" FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" HorizontalAlignment="Center"/>
                             </Grid>
                         </ui:Card>
 
@@ -426,9 +435,11 @@
                             </Grid>
                         </ui:Card>
                     </Grid>
+
                 </Grid>
             </ScrollViewer>
             </ContentControl>
+            <local:LoadingSpinner Grid.Row="1" IsActive="{Binding IsLoading}" Text="Loading dashboard..." Panel.ZIndex="100"/>
         </Grid>
 
         <!-- Right Sidebar: Active Lab PCs -->

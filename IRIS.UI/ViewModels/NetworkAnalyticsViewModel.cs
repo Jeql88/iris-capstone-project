@@ -76,6 +76,18 @@ namespace IRIS.UI.ViewModels
             set { _chartModel = value; OnPropertyChanged(); }
         }
 
+        public PlotController DetailController { get; } = CreateDetailController();
+
+        private static PlotController CreateDetailController()
+        {
+            var controller = new PlotController();
+            controller.UnbindMouseDown(OxyMouseButton.Left);
+            controller.UnbindMouseDown(OxyMouseButton.Right);
+            controller.BindMouseEnter(PlotCommands.HoverSnapTrack);
+            controller.BindMouseDown(OxyMouseButton.Left, PlotCommands.PanAt);
+            return controller;
+        }
+
         public ObservableCollection<NetworkStatRow> PagedData { get; } = new();
         public int[] PageSizeOptions { get; } = { 10, 25, 50 };
 
@@ -142,21 +154,21 @@ namespace IRIS.UI.ViewModels
                 {
                     case "Latency":
                         var latency = await monSvc.GetLatencyHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
-                        ChartModel = BuildDetailedPlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F0} ms");
+                        ChartModel = BuildDetailedPlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F0} ms", "{0}\nTime: {2:yyyy-MM-dd HH:mm:ss}\nValue: {4:F0} ms");
                         foreach (var p in latency.OrderByDescending(x => x.Timestamp))
                             _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Latency", Value = $"{p.Value:F0} ms", NumericValue = p.Value });
                         break;
 
                     case "Bandwidth":
                         var bw = await monSvc.GetBandwidthHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
-                        ChartModel = BuildDetailedPlot("Bandwidth (Mbps)", bw.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps");
+                        ChartModel = BuildDetailedPlot("Bandwidth (Mbps)", bw.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps", "{0}\nTime: {2:yyyy-MM-dd HH:mm:ss}\nValue: {4:F1} Mbps");
                         foreach (var p in bw.OrderByDescending(x => x.Timestamp))
                             _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Bandwidth", Value = $"{p.Value:F1} Mbps", NumericValue = p.Value });
                         break;
 
                     case "PacketLoss":
                         var pl = await monSvc.GetPacketLossHistoryAsync(param.StartUtc, param.EndUtc, param.RoomId);
-                        ChartModel = BuildDetailedPlot("Packet Loss (%)", pl.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1}%");
+                        ChartModel = BuildDetailedPlot("Packet Loss (%)", pl.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1}%", "{0}\nTime: {2:yyyy-MM-dd HH:mm:ss}\nValue: {4:F1}%");
                         foreach (var p in pl.OrderByDescending(x => x.Timestamp))
                             _allRows.Add(new NetworkStatRow { Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(p.Timestamp), Metric = "Packet Loss", Value = $"{p.Value:F1}%", NumericValue = p.Value });
                         break;
@@ -192,7 +204,7 @@ namespace IRIS.UI.ViewModels
             (LastPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
-        private static PlotModel BuildDetailedPlot(string title, IEnumerable<(DateTime Timestamp, double Value)> points, string timeFormat, Func<double, string> valueFormatter)
+        private static PlotModel BuildDetailedPlot(string title, IEnumerable<(DateTime Timestamp, double Value)> points, string timeFormat, Func<double, string> valueFormatter, string trackerFormat)
         {
             var model = new PlotModel
             {
@@ -241,8 +253,8 @@ namespace IRIS.UI.ViewModels
                 MarkerStroke = OxyColor.FromRgb(180, 40, 40),
                 MarkerFill = OxyColors.White,
                 LineJoin = LineJoin.Round,
-                CanTrackerInterpolatePoints = false,
-                TrackerFormatString = "{0}\nTime: {2:yyyy-MM-dd HH:mm:ss}\nValue: {4:0.###}"
+                CanTrackerInterpolatePoints = true,
+                TrackerFormatString = trackerFormat
             };
 
             foreach (var p in localPoints)

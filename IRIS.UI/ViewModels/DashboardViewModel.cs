@@ -210,6 +210,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ExportNetworkAnalyticsCommand { get; }
         public ICommand ExportHardwareAnalyticsCommand { get; }
         public ICommand ExportSelectedCommand { get; }
+        public PlotController HoverController { get; } = CreateHoverController();
 
         public string[] ExportOptions { get; } = { "Network Analytics", "Hardware Analytics" };
 
@@ -251,6 +252,8 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
+                IsLoading = true;
+
                 // Force refresh from DB instead of using stale cache
                 _cache.CurrentRoomFilter = _selectedRoomId;
                 await _cache.RefreshDashboardSummaryAsync();
@@ -271,21 +274,22 @@ namespace IRIS.UI.ViewModels
                     LatencyData.Clear();
                     foreach (var point in latency)
                         LatencyData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
-                    LatencyPlot = BuildLinePlot("Latency (ms)", latency.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F0} ms");
+                    var latencyPoints = latency.Select(p => (p.Timestamp, p.Value));
+                    LatencyPlot = BuildLinePlot("Latency (ms)", latencyPoints, timeFormat, v => $"{v:F0} ms", "{0}\nTime: {2:MMM dd HH:mm}\nLatency: {4:F0} ms");
                     OnPropertyChanged(nameof(LatencyPlot));
 
                     var bandwidth = await monitoringService.GetBandwidthHistoryAsync(startUtc, endUtc, _selectedRoomId);
                     BandwidthData.Clear();
                     foreach (var point in bandwidth)
                         BandwidthData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
-                    BandwidthPlot = BuildLinePlot("Bandwidth (Mbps)", bandwidth.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps");
+                    BandwidthPlot = BuildLinePlot("Bandwidth (Mbps)", bandwidth.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1} Mbps", "{0}\nTime: {2:MMM dd HH:mm}\nBandwidth: {4:F1} Mbps");
                     OnPropertyChanged(nameof(BandwidthPlot));
 
                     var packetLoss = await monitoringService.GetPacketLossHistoryAsync(startUtc, endUtc, _selectedRoomId);
                     PacketLossData.Clear();
                     foreach (var point in packetLoss)
                         PacketLossData.Add(new DataPoint { Time = point.Timestamp, Value = point.Value });
-                    PacketLossPlot = BuildLinePlot("Packet Loss (%)", packetLoss.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1}%");
+                    PacketLossPlot = BuildLinePlot("Packet Loss (%)", packetLoss.Select(p => (p.Timestamp, p.Value)), timeFormat, v => $"{v:F1}%", "{0}\nTime: {2:MMM dd HH:mm}\nPacket Loss: {4:F1}%");
                     OnPropertyChanged(nameof(PacketLossPlot));
                 }
                 catch { /* chart load non-critical */ }
@@ -472,7 +476,7 @@ namespace IRIS.UI.ViewModels
             return (startUtc, endUtcConverted);
         }
 
-        private PlotModel BuildLinePlot(string title, IEnumerable<(DateTime Timestamp, double Value)> points, string timeFormat, Func<double, string> valueFormatter)
+        private PlotModel BuildLinePlot(string title, IEnumerable<(DateTime Timestamp, double Value)> points, string timeFormat, Func<double, string> valueFormatter, string trackerFormat)
         {
             var model = new PlotModel { Title = title, TitleFontSize = 14, TitlePadding = 4 };
 
@@ -483,8 +487,8 @@ namespace IRIS.UI.ViewModels
                 IntervalType = DateTimeIntervalType.Hours,
                 MinorIntervalType = DateTimeIntervalType.Minutes,
                 FontSize = 11,
-                IsZoomEnabled = false,
-                IsPanEnabled = false
+                IsZoomEnabled = true,
+                IsPanEnabled = true
             };
 
             var valueAxis = new LinearAxis
@@ -492,8 +496,8 @@ namespace IRIS.UI.ViewModels
                 Position = AxisPosition.Left,
                 LabelFormatter = valueFormatter,
                 FontSize = 11,
-                IsZoomEnabled = false,
-                IsPanEnabled = false,
+                IsZoomEnabled = true,
+                IsPanEnabled = true,
                 MinimumPadding = 0.1,
                 MaximumPadding = 0.1
             };
@@ -510,7 +514,8 @@ namespace IRIS.UI.ViewModels
                 StrokeThickness = 2,
                 MarkerType = MarkerType.None,
                 LineJoin = LineJoin.Round,
-                CanTrackerInterpolatePoints = false
+                CanTrackerInterpolatePoints = true,
+                TrackerFormatString = trackerFormat
             };
 
             foreach (var p in localPoints)
@@ -520,6 +525,14 @@ namespace IRIS.UI.ViewModels
 
             model.Series.Add(series);
             return model;
+        }
+
+        private static PlotController CreateHoverController()
+        {
+            var controller = new PlotController();
+            controller.UnbindMouseDown(OxyMouseButton.Left);
+            controller.BindMouseEnter(PlotCommands.HoverSnapTrack);
+            return controller;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

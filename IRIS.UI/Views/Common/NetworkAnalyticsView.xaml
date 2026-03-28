@@ -41,7 +41,7 @@
         <!-- Chart - large interactive -->
         <ui:Card Grid.Row="1" Padding="16" Margin="0,0,0,16">
             <Border Height="350" Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="8" Padding="8">
-                <oxy:PlotView Model="{Binding ChartModel}"/>
+                <oxy:PlotView Model="{Binding ChartModel}" Controller="{Binding DetailController}"/>
             </Border>
         </ui:Card>
 
