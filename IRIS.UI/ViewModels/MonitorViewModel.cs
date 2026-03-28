@@ -254,8 +254,11 @@ namespace IRIS.UI.ViewModels
             _appliedSearchText = SearchText?.Trim() ?? string.Empty;
             _appliedPcStatus = SelectedPcStatus;
 
-            ApplyFilter();
-            await Task.CompletedTask;
+            // Apply room filter to cache and reload data
+            var selectedRoomId = _appliedRoom != null && _appliedRoom.Id > 0 ? _appliedRoom.Id : (int?)null;
+            _cache.CurrentRoomFilter = selectedRoomId;
+            
+            await LoadPCDataAsync();
         }
 
         private async Task ResetFiltersAsync()

@@ -434,9 +434,49 @@ namespace IRIS.Agent.Logic
                 (bytes[0] == 192 && bytes[1] == 168));
         }
 
+        [SupportedOSPlatform("windows")]
         private static string GetOperatingSystem()
         {
-            return $"{Environment.OSVersion.Platform} {Environment.OSVersion.Version}";
+            try
+            {
+                // Try to get friendly OS name from WMI
+                using var searcher = new System.Management.ManagementObjectSearcher("SELECT Caption FROM Win32_OperatingSystem");
+                foreach (var obj in searcher.Get())
+                {
+                    var caption = obj["Caption"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(caption))
+                    {
+                        // Clean up the caption (e.g., "Microsoft Windows 11 Pro" -> "Windows 11 Pro")
+                        return caption.Replace("Microsoft ", "").Trim();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to get OS name from WMI, falling back to Environment.OSVersion");
+            }
+
+            // Fallback to version-based detection
+            var version = Environment.OSVersion.Version;
+            if (version.Major == 10)
+            {
+                // Windows 10 or 11 (both report as 10.0)
+                // Build 22000+ is Windows 11
+                if (version.Build >= 22000)
+                {
+                    return $"Windows 11 (Build {version.Build})";
+                }
+                return $"Windows 10 (Build {version.Build})";
+            }
+            else if (version.Major == 6)
+            {
+                if (version.Minor == 3) return "Windows 8.1";
+                if (version.Minor == 2) return "Windows 8";
+                if (version.Minor == 1) return "Windows 7";
+            }
+
+            // Final fallback
+            return $"{Environment.OSVersion.Platform} {version}";
         }
     }
 }

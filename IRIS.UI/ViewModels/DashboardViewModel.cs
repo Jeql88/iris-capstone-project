@@ -59,10 +59,8 @@ namespace IRIS.UI.ViewModels
             {
                 _selectedRoom = value;
                 _selectedRoomId = value != null && value.Id > 0 ? value.Id : null;
-                _cache.CurrentRoomFilter = _selectedRoomId;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ActiveRoomDescription));
-                _ = LoadDataAsync();
             }
         }
 
@@ -312,7 +310,10 @@ namespace IRIS.UI.ViewModels
             OnPropertyChanged(nameof(SelectedRangePreset));
             OnPropertyChanged(nameof(IsCustomRange));
             OnPropertyChanged(nameof(ActiveRangeDescription));
+            
+            // Apply room filter
             _cache.CurrentRoomFilter = _selectedRoomId;
+            
             await LoadDataAsync();
         }
 

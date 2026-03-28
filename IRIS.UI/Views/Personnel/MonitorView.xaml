@@ -353,26 +353,17 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="4"/>
-                                                    <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- View Screen button -->
-                                                <ui:Button Grid.Column="1" Padding="6,3" Appearance="Secondary" ToolTip="View Screen"
-                                                           Command="{Binding DataContext.ViewScreenForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding}">
-                                                    <ui:SymbolIcon Symbol="Eye24" FontSize="12"/>
-                                                </ui:Button>
-
                                                 <!-- More actions button with popup menu -->
-                                                <ui:Button Grid.Column="3" Padding="6,3" Appearance="Secondary" ToolTip="More actions"
+                                                <ui:Button Grid.Column="1" Padding="6,3" Appearance="Secondary" ToolTip="More actions"
                                                            Click="MenuButton_Click">
                                                     <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="12"/>
                                                 </ui:Button>
 
                                                 <!-- Popup menu -->
-                                                <Popup x:Name="ContextMenuPopup" Grid.Column="3"
+                                                <Popup x:Name="ContextMenuPopup" Grid.Column="1"
                                                        StaysOpen="False" AllowsTransparency="True"
                                                        Placement="Top" VerticalOffset="-4"
                                                        PopupAnimation="Fade">
@@ -384,14 +375,6 @@
                                                             <DropShadowEffect BlurRadius="12" Opacity="0.2" ShadowDepth="4"/>
                                                         </Border.Effect>
                                                         <StackPanel>
-                                                            <ui:Button Padding="10,6" Appearance="Secondary"
-                                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-                                                                       Click="HealthTimeline_Click">
-                                                                <StackPanel Orientation="Horizontal">
-                                                                    <ui:SymbolIcon Symbol="HeartPulse24" FontSize="14" Margin="0,0,8,0"/>
-                                                                    <TextBlock Text="Health Timeline" FontSize="12" VerticalAlignment="Center"/>
-                                                                </StackPanel>
-                                                            </ui:Button>
                                                             <ui:Button Padding="10,6" Appearance="Secondary"
                                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                                        Click="RemoteDesktop_Click">
