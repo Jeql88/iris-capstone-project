@@ -15,6 +15,8 @@ namespace IRIS.Agent.Logic
         private readonly string _macAddress;
         private readonly string _wallpaperCachePath;
         private readonly string _wallpaperApiToken;
+        private readonly string _wallpaperServerBaseUrl;
+        private readonly string _wallpaperRoutePrefix;
         private static readonly HttpClient _httpClient = new()
         {
             Timeout = TimeSpan.FromSeconds(15)
@@ -33,6 +35,25 @@ namespace IRIS.Agent.Logic
             _context = context;
             _macAddress = macAddress;
             _wallpaperApiToken = (configuration?["AgentSettings:WallpaperApiToken"] ?? string.Empty).Trim();
+
+            var commandServerHost = (configuration?["AgentSettings:CommandServerHost"] ?? "localhost").Trim();
+            if (string.IsNullOrWhiteSpace(commandServerHost))
+            {
+                commandServerHost = "localhost";
+            }
+
+            _wallpaperServerBaseUrl = (configuration?["AgentSettings:WallpaperServerBaseUrl"] ?? $"http://{commandServerHost}:5092")
+                .Trim()
+                .TrimEnd('/');
+
+            _wallpaperRoutePrefix = (configuration?["AgentSettings:WallpaperRoutePrefix"] ?? "/api/wallpapers")
+                .Trim();
+            if (!_wallpaperRoutePrefix.StartsWith('/'))
+            {
+                _wallpaperRoutePrefix = "/" + _wallpaperRoutePrefix;
+            }
+            _wallpaperRoutePrefix = _wallpaperRoutePrefix.TrimEnd('/');
+
             _wallpaperCachePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "IRIS", "Assets", "Wallpapers"
@@ -79,13 +100,20 @@ namespace IRIS.Agent.Logic
         {
             try
             {
+                var resolvedWallpaperSource = ResolveWallpaperSource(wallpaperPath);
+                if (string.IsNullOrWhiteSpace(resolvedWallpaperSource))
+                {
+                    Log.Warning("Unable to resolve wallpaper source from policy path: {WallpaperPath}", wallpaperPath);
+                    return false;
+                }
+
                 var cachedWallpaperPath = Path.Combine(_wallpaperCachePath, "active_wallpaper.jpg");
-                var isHttpSource = IsHttpUrl(wallpaperPath);
+                var isHttpSource = IsHttpUrl(resolvedWallpaperSource);
 
                 if (isHttpSource)
                 {
                     // Download wallpaper from HTTP source
-                    using var request = new HttpRequestMessage(HttpMethod.Get, wallpaperPath);
+                    using var request = new HttpRequestMessage(HttpMethod.Get, resolvedWallpaperSource);
                     if (!string.IsNullOrWhiteSpace(_wallpaperApiToken))
                     {
                         request.Headers.Add("X-IRIS-Wallpaper-Token", _wallpaperApiToken);
@@ -94,14 +122,14 @@ namespace IRIS.Agent.Logic
                     using var response = await _httpClient.SendAsync(request);
                     if (!response.IsSuccessStatusCode)
                     {
-                        Log.Warning("Failed to download wallpaper from {WallpaperPath}. Status: {StatusCode}", wallpaperPath, response.StatusCode);
+                        Log.Warning("Failed to download wallpaper from {WallpaperPath}. Status: {StatusCode}", resolvedWallpaperSource, response.StatusCode);
                         return false;
                     }
 
                     var contentBytes = await response.Content.ReadAsByteArrayAsync();
                     if (contentBytes.Length == 0)
                     {
-                        Log.Warning("Downloaded wallpaper from {WallpaperPath} is empty", wallpaperPath);
+                        Log.Warning("Downloaded wallpaper from {WallpaperPath} is empty", resolvedWallpaperSource);
                         return false;
                     }
 
@@ -123,14 +151,14 @@ namespace IRIS.Agent.Logic
                 else
                 {
                     // Check if wallpaper file exists on server
-                    if (!File.Exists(wallpaperPath))
+                    if (!File.Exists(resolvedWallpaperSource))
                     {
-                        Log.Warning("Wallpaper file not found: {WallpaperPath}", wallpaperPath);
+                        Log.Warning("Wallpaper file not found: {WallpaperPath}", resolvedWallpaperSource);
                         return false;
                     }
 
                     // Calculate hash of server wallpaper
-                    var serverHash = await CalculateFileHashAsync(wallpaperPath);
+                    var serverHash = await CalculateFileHashAsync(resolvedWallpaperSource);
 
                     // Check if we need to update cached wallpaper
                     var needsUpdate = true;
@@ -143,7 +171,7 @@ namespace IRIS.Agent.Logic
                     // Copy wallpaper to cache if needed
                     if (needsUpdate)
                     {
-                        File.Copy(wallpaperPath, cachedWallpaperPath, true);
+                        File.Copy(resolvedWallpaperSource, cachedWallpaperPath, true);
                         Log.Information("Wallpaper updated in cache for PC {MacAddress}", _macAddress);
                     }
                 }
@@ -180,6 +208,38 @@ namespace IRIS.Agent.Logic
             var uri = new Uri(path);
             return uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase)
                 || uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ResolveWallpaperSource(string wallpaperPath)
+        {
+            if (string.IsNullOrWhiteSpace(wallpaperPath))
+            {
+                return string.Empty;
+            }
+
+            if (IsHttpUrl(wallpaperPath) || File.Exists(wallpaperPath))
+            {
+                return wallpaperPath;
+            }
+
+            var fileName = Path.GetFileName(wallpaperPath);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return wallpaperPath;
+            }
+
+            var normalizedUrl = BuildWallpaperUrl(fileName);
+            Log.Information(
+                "Wallpaper policy path is not directly accessible on this PC. Falling back to wallpaper server URL: {ResolvedWallpaperSource}",
+                normalizedUrl);
+
+            return normalizedUrl;
+        }
+
+        private string BuildWallpaperUrl(string fileName)
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            return $"{_wallpaperServerBaseUrl}{_wallpaperRoutePrefix}/{encodedFileName}";
         }
 
         private async Task<string> CalculateFileHashAsync(string filePath)
