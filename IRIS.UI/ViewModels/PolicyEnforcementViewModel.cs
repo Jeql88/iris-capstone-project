@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -774,7 +775,37 @@ namespace IRIS.UI.ViewModels
 
             if (openFileDialog.ShowDialog() == true)
             {
-                SelectedWallpaperPath = openFileDialog.FileName;
+                var sourcePath = openFileDialog.FileName;
+
+                if (!File.Exists(sourcePath))
+                {
+                    StatusMessage = "Selected file does not exist.";
+                    StatusMessageColor = "#EF4444";
+                    StartMessageTimer();
+                    return;
+                }
+
+                try
+                {
+                    var wallpaperDir = @"C:\ProgramData\IRIS\Wallpapers";
+                    Directory.CreateDirectory(wallpaperDir);
+
+                    var fileName = Path.GetFileName(sourcePath);
+                    var destinationPath = Path.Combine(wallpaperDir, fileName);
+
+                    File.Copy(sourcePath, destinationPath, true);
+
+                    SelectedWallpaperPath = destinationPath;
+                    StatusMessage = $"Wallpaper copied to {wallpaperDir}";
+                    StatusMessageColor = "#10B981";
+                    StartMessageTimer();
+                }
+                catch (Exception ex)
+                {
+                    StatusMessage = $"Failed to copy wallpaper: {ex.Message}";
+                    StatusMessageColor = "#EF4444";
+                    StartMessageTimer();
+                }
             }
         }
 
