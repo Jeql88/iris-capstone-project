@@ -610,6 +610,7 @@ namespace IRIS.Core.Services
 
         public async Task<List<PersistedAlertItem>> GetAlertFeedAsync(int? roomId = null, int maxItems = 200, bool includeResolved = false)
         {
+            // First, sync live alerts to database
             var liveAlerts = await GetLiveAlertsAsync(roomId, 500);
             await SyncLiveAlertsAsync(liveAlerts, roomId);
 
@@ -632,8 +633,8 @@ namespace IRIS.Core.Services
 
             // Get alerts with database-side ordering and limiting
             var alerts = await query
-                .OrderByDescending(a => a.Severity)
-                .ThenByDescending(a => a.CreatedAt)
+                .OrderByDescending(a => a.CreatedAt)
+                .ThenByDescending(a => a.Severity)
                 .Take(maxItems)
                 .ToListAsync();
 
@@ -1198,12 +1199,19 @@ namespace IRIS.Core.Services
                 });
             }
 
+            // Only auto-resolve alerts that have been open for at least 2 minutes
+            // This prevents alerts from disappearing immediately when condition clears
+            var autoResolveGracePeriod = TimeSpan.FromMinutes(2);
             foreach (var openAlert in existingOpenAlerts)
             {
                 if (!liveKeys.Contains(openAlert.AlertKey))
                 {
-                    openAlert.IsResolved = true;
-                    openAlert.ResolvedAt = nowUtc;
+                    var alertAge = nowUtc - openAlert.CreatedAt;
+                    if (alertAge >= autoResolveGracePeriod)
+                    {
+                        openAlert.IsResolved = true;
+                        openAlert.ResolvedAt = nowUtc;
+                    }
                 }
             }
 

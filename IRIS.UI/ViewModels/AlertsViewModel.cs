@@ -27,12 +27,12 @@ namespace IRIS.UI.ViewModels
         private RoomDto? _selectedRoom;
         private string _severityFilter = "All";
         private string _typeFilter = "All";
-        private string _stateFilter = "Open";
+        private string _stateFilter = "New";
         private string _searchText = string.Empty;
         private RoomDto? _appliedRoom;
         private string _appliedSeverityFilter = "All";
         private string _appliedTypeFilter = "All";
-        private string _appliedStateFilter = "Open";
+        private string _appliedStateFilter = "New";
         private string _appliedSearchText = string.Empty;
         private bool _isLoading;
         private DateTime _lastUpdatedUtc = DateTime.MinValue;
@@ -60,7 +60,7 @@ namespace IRIS.UI.ViewModels
             FirstPageCommand = new RelayCommand(() => GoToPage(1), () => _currentPage > 1);
             LastPageCommand = new RelayCommand(() => GoToPage(_totalPages), () => _currentPage < _totalPages);
 
-            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
             _refreshTimer.Tick += async (_, _) => await HandleAutoRefreshTickAsync();
 
             _ = InitializeAsync();
@@ -70,9 +70,9 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<AlertRow> Alerts { get; } = new();
         public ObservableCollection<AlertRow> FilteredAlerts { get; } = new();
         public ObservableCollection<AlertRow> PagedAlerts { get; } = new();
-        public string[] SeverityOptions { get; } = { "All", "Critical", "High", "Medium", "Low" };
+        public string[] SeverityOptions { get; } = { "All", "Critical", "High" };
         public string[] TypeOptions { get; } = { "All", "Hardware", "Network", "Thermal", "System" };
-        public string[] StateOptions { get; } = { "Open", "Resolved", "All" };
+        public string[] StateOptions { get; } = { "New", "Acknowledged", "Resolved", "All" };
         public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 
         public RoomDto? SelectedRoom
@@ -237,7 +237,7 @@ namespace IRIS.UI.ViewModels
             SelectedRoom = Rooms.FirstOrDefault();
             SeverityFilter = "All";
             TypeFilter = "All";
-            StateFilter = "Open";
+            StateFilter = "New";
             SearchText = string.Empty;
 
             _appliedRoom = SelectedRoom;
@@ -359,9 +359,13 @@ namespace IRIS.UI.ViewModels
                 filtered = filtered.Where(a => a.Type.Equals(_appliedTypeFilter, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (string.Equals(_appliedStateFilter, "Open", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_appliedStateFilter, "New", StringComparison.OrdinalIgnoreCase))
             {
-                filtered = filtered.Where(a => !a.IsResolved);
+                filtered = filtered.Where(a => !a.IsAcknowledged && !a.IsResolved);
+            }
+            else if (string.Equals(_appliedStateFilter, "Acknowledged", StringComparison.OrdinalIgnoreCase))
+            {
+                filtered = filtered.Where(a => a.IsAcknowledged && !a.IsResolved);
             }
             else if (string.Equals(_appliedStateFilter, "Resolved", StringComparison.OrdinalIgnoreCase))
             {
@@ -632,15 +636,22 @@ namespace IRIS.UI.ViewModels
             _refreshTimer.Stop();
         }
 
-        public void OnNavigatedTo()
+        public async void OnNavigatedTo()
         {
             _isActive = true;
+            
+            // Force wait for semaphore to ensure fresh data loads on navigation
+            await _loadSemaphore.WaitAsync();
+            _loadSemaphore.Release();
+            
+            // Fetch fresh alerts from DB on navigation
+            await LoadAlertsAsync(preserveCurrentPage: false);
+            
+            // Start slower refresh timer
             if (!_refreshTimer.IsEnabled)
             {
                 _refreshTimer.Start();
             }
-
-            _ = LoadAlertsAsync(preserveCurrentPage: true);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

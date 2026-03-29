@@ -268,33 +268,36 @@
                                                          Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
                                                          Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}" StrokeThickness="2"/>
 
-                                                <!-- Alert badge -->
-                                                <ui:Badge HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0">
-                                                    <ui:Badge.Style>
-                                                        <Style TargetType="ui:Badge">
+                                                <!-- Alert badge - top left -->
+                                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,0,0"
+                                                        CornerRadius="4" Padding="4,2">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding TopAlertSeverity}" Value="High">
                                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Setter Property="Appearance" Value="Caution"/>
+                                                                    <Setter Property="Background" Value="#CCF59E0B"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding TopAlertSeverity}" Value="Critical">
                                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Setter Property="Appearance" Value="Danger"/>
+                                                                    <Setter Property="Background" Value="#CCEF4444"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </ui:Badge.Style>
-                                                    <TextBlock Text="!" FontWeight="Bold" FontSize="9"/>
-                                                </ui:Badge>
+                                                    </Border.Style>
+                                                    <ui:SymbolIcon Symbol="Warning24" FontSize="9"/>
+                                                </Border>
 
-                                                <!-- Alert count button -->
-                                                <ui:Button HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                                           Margin="0,0,2,2" Padding="4,1"
-                                                           Command="{Binding DataContext.OpenPcAlertsForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding}" Appearance="Secondary">
-                                                    <ui:Button.Style>
-                                                        <Style TargetType="ui:Button">
+                                                <!-- Alert count button - bottom right -->
+                                                <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4"
+                                                        CornerRadius="6" Padding="5,2"
+                                                        Background="#CC1C1C1E"
+                                                        MouseLeftButtonDown="AlertCountBadge_Click"
+                                                        Tag="{Binding}"
+                                                        Cursor="Hand">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding AlertCount}" Value="0">
@@ -302,9 +305,14 @@
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </ui:Button.Style>
-                                                    <TextBlock Text="{Binding AlertCount, StringFormat={}⚠ {0}}" FontSize="10" FontWeight="SemiBold"/>
-                                                </ui:Button>
+                                                    </Border.Style>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <ui:SymbolIcon Symbol="AlertUrgent24" FontSize="10" Foreground="#F59E0B"/>
+                                                        <TextBlock Text="{Binding AlertCount}" FontSize="10" FontWeight="SemiBold"
+                                                                   Foreground="White" Margin="3,0,0,0"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
                                             </Grid>
 
                                             <!-- PC name -->
@@ -472,70 +480,193 @@
         <!-- ===== Alerts Popup Overlay ===== -->
         <Border Visibility="{Binding IsPcAlertsPanelOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
                 Background="#66000000">
-            <Border Width="520" MaxHeight="500"
+            <Border Width="500" MaxHeight="520"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                    CornerRadius="12" Padding="20"
+                    CornerRadius="12"
                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" Opacity="0.25" ShadowDepth="8"/>
+                </Border.Effect>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="0,0,0,14">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Symbol="Alert24" FontSize="18" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,8,0"/>
-                        <TextBlock Grid.Column="1" Text="{Binding SelectedPcAlertsTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary"
-                                   Command="{Binding ClosePcAlertsPanelCommand}" Padding="4"/>
-                    </Grid>
+                    <!-- Header -->
+                    <Border Grid.Row="0" Padding="18,16,18,14"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                    <ScrollViewer Grid.Row="1" MaxHeight="380" VerticalScrollBarVisibility="Auto">
+                            <!-- Bell icon -->
+                            <Border Width="40" Height="40" CornerRadius="10" Margin="0,0,12,0">
+                                <Border.Background>
+                                    <SolidColorBrush Color="#1FF59E0B"/>
+                                </Border.Background>
+                                <ui:SymbolIcon Symbol="Alert24" FontSize="18" Foreground="#D97706"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Title -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedPcAlertsTitle}" FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Active alerts for this machine" FontSize="11"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/>
+                            </StackPanel>
+
+                            <!-- Active count chip -->
+                            <Border Grid.Column="2" CornerRadius="20" Padding="10,3" Margin="8,0,8,0"
+                                    VerticalAlignment="Center">
+                                <Border.Background>
+                                    <SolidColorBrush Color="#1FEF4444"/>
+                                </Border.Background>
+                                <TextBlock Text="{Binding SelectedPcAlerts.Count, StringFormat={}{0} active}"
+                                           FontSize="11" FontWeight="SemiBold" Foreground="#DC2626"/>
+                            </Border>
+
+                            <!-- Close -->
+                            <ui:Button Grid.Column="3" Padding="6" Width="28" Height="28"
+                                       Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary"
+                                       Command="{Binding ClosePcAlertsPanelCommand}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Alert list -->
+                    <ScrollViewer Grid.Row="1" Padding="14,12" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SelectedPcAlerts}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border CornerRadius="8" Margin="0,0,0,8" Padding="12"
+                                    <Border CornerRadius="8" Margin="0,0,0,8"
                                             Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            ClipToBounds="True">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="4"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                                <ui:Badge Margin="0,0,10,0" VerticalAlignment="Top">
-                                                    <ui:Badge.Style>
-                                                        <Style TargetType="ui:Badge">
-                                                            <Setter Property="Appearance" Value="Caution"/>
+
+                                            <!-- Severity color strip -->
+                                            <Rectangle Grid.Column="0">
+                                                <Rectangle.Style>
+                                                    <Style TargetType="Rectangle">
+                                                        <Setter Property="Fill" Value="#D97706"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                <Setter Property="Fill" Value="#DC2626"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Severity}" Value="High">
+                                                                <Setter Property="Fill" Value="#D97706"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Rectangle.Style>
+                                            </Rectangle>
+
+                                            <!-- Content -->
+                                            <Grid Grid.Column="1" Margin="14,12,14,12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Icon -->
+                                                <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,12,0" VerticalAlignment="Top">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#1FF59E0B"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Severity}" Value="Critical">
-                                                                    <Setter Property="Appearance" Value="Danger"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Severity}" Value="High">
-                                                                    <Setter Property="Appearance" Value="Caution"/>
+                                                                    <Setter Property="Background" Value="#1FEF4444"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </ui:Badge.Style>
-                                                    <TextBlock Text="{Binding Severity}" FontSize="10"/>
-                                                </ui:Badge>
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="12"/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                    <TextBlock Text="{Binding Type}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,12,0"/>
-                                                    <TextBlock Text="{Binding Timestamp, StringFormat={}{0:MMM dd HH:mm:ss}}" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </Border.Style>
+                                                    <ui:SymbolIcon Symbol="Warning24" FontSize="14"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <ui:SymbolIcon.Style>
+                                                            <Style TargetType="ui:SymbolIcon">
+                                                                <Setter Property="Foreground" Value="#D97706"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                        <Setter Property="Foreground" Value="#DC2626"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ui:SymbolIcon.Style>
+                                                    </ui:SymbolIcon>
+                                                </Border>
+
+                                                <!-- Text -->
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                                                               FontWeight="SemiBold" FontSize="13"
+                                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                        <!-- Severity pill -->
+                                                        <Border CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#1FF59E0B"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                            <Setter Property="Background" Value="#1FEF4444"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding Severity}" FontSize="10" FontWeight="SemiBold">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="#92400E"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                                                <Setter Property="Foreground" Value="#B91C1C"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+                                                        <!-- Type pill -->
+                                                        <Border CornerRadius="4" Padding="6,2" Margin="0,0,8,0"
+                                                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                            <TextBlock Text="{Binding Type}" FontSize="10"
+                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </Border>
+                                                        <!-- Timestamp -->
+                                                        <TextBlock Text="{Binding Timestamp, StringFormat={}{0:MMM dd HH:mm:ss}}"
+                                                                   FontSize="11" VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </StackPanel>
                                                 </StackPanel>
-                                            </StackPanel>
+                                            </Grid>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Padding="14,10"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button Content="Dismiss All" Appearance="Secondary"
+                                       Command="{Binding DismissAllAlertsCommand}"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Border>

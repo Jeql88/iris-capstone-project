@@ -31,7 +31,7 @@ namespace IRIS.UI.Services
         Task RefreshDashboardSummaryAsync();
 
         /// <summary>Refresh live alerts. Creates its own scope.</summary>
-        Task RefreshLiveAlertsAsync();
+        Task RefreshLiveAlertsAsync(bool forceWait = false);
 
         /// <summary>Refresh rooms list. Creates its own scope.</summary>
         Task RefreshRoomsAsync();

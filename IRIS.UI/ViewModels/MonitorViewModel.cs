@@ -328,10 +328,10 @@ namespace IRIS.UI.ViewModels
                 // Always apply filter first so PCs are visible even if alerts/snapshots fail
                 ApplyFilter();
 
-                // Force alert refresh every time
+                // Fetch alerts fresh from DB on navigation
                 try
                 {
-                    await LoadLiveAlertsAsync();
+                    await LoadLiveAlertsAsync(forceRefresh: true);
                 }
                 catch { /* Alert loading failure must not block PC display */ }
 
@@ -371,6 +371,7 @@ namespace IRIS.UI.ViewModels
         public void OnNavigatedTo()
         {
             _isActive = true;
+            IsLoading = true;
             _ = LoadPCDataAsync();
             _refreshTimer.Start();
         }
@@ -589,9 +590,10 @@ namespace IRIS.UI.ViewModels
             HasNoPCs = FilteredPCs.Count == 0;
         }
 
-        private async Task LoadLiveAlertsAsync()
+        private async Task LoadLiveAlertsAsync(bool forceRefresh = false)
         {
-            await _cache.RefreshLiveAlertsAsync();
+            // Force wait for semaphore to ensure fresh data on navigation
+            await _cache.RefreshLiveAlertsAsync(forceRefresh);
             var alerts = _cache.CachedLiveAlerts;
             ActiveAlerts.Clear();
 
@@ -756,7 +758,7 @@ namespace IRIS.UI.ViewModels
             pc.IsFlipped = !pc.IsFlipped;
         }
 
-        private void OpenAlertsForPC(PCDisplayModel? pc)
+        private async void OpenAlertsForPC(PCDisplayModel? pc)
         {
             if (pc == null)
             {
@@ -764,9 +766,11 @@ namespace IRIS.UI.ViewModels
             }
 
             SelectedPC = pc;
-            PopulateSelectedPcAlerts(pc.Id);
             SelectedPcAlertsTitle = $"Alerts • {pc.PCName}";
             IsPcAlertsPanelOpen = true;
+            
+            // Just populate from already-loaded alerts, no fetch
+            PopulateSelectedPcAlerts(pc.Id);
         }
 
         private void OpenTimelineForPC(PCDisplayModel? pc)

@@ -57,6 +57,14 @@ namespace IRIS.UI.Views.Personnel
             // Room selection logic - if needed
         }
 
+        private void AlertCountBadge_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.Tag is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.OpenPcAlertsForPCCommand.Execute(pc);
+            }
+        }
+
         private void MenuButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button) return;

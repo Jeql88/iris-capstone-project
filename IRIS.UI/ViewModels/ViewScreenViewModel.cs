@@ -86,7 +86,7 @@ namespace IRIS.UI.ViewModels
             ExpandScreenCommand = new RelayCommand(() => ExpandScreen(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
 
-            _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _screenRefreshTimer.Tick += async (_, _) => await RefreshScreenAsync();
         }
 

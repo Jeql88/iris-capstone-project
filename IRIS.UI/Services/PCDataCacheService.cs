@@ -99,10 +99,16 @@ namespace IRIS.UI.Services
             }
         }
 
-        public async Task RefreshLiveAlertsAsync()
+        public async Task RefreshLiveAlertsAsync(bool forceWait = false)
         {
-            if (!await _alertRefreshSemaphore.WaitAsync(0))
+            if (forceWait)
+            {
+                await _alertRefreshSemaphore.WaitAsync();
+            }
+            else if (!await _alertRefreshSemaphore.WaitAsync(0))
+            {
                 return;
+            }
 
             try
             {
