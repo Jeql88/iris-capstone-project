@@ -28,6 +28,7 @@ namespace IRIS.UI
         private IServiceProvider? _serviceProvider;
         private IPowerCommandPollingServer? _powerCommandPollingServer;
         private DataRetentionBackgroundService? _dataRetentionService;
+        private MonitoringBackgroundService? _monitoringService;
         private CancellationTokenSource? _appCts;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -49,10 +50,13 @@ namespace IRIS.UI
             _powerCommandPollingServer = _serviceProvider.GetRequiredService<IPowerCommandPollingServer>();
             _powerCommandPollingServer.Start();
 
-            // Start the data retention background cleanup service
+            // Start background services
             _appCts = new CancellationTokenSource();
             _dataRetentionService = _serviceProvider.GetRequiredService<DataRetentionBackgroundService>();
             _ = _dataRetentionService.StartAsync(_appCts.Token);
+
+            _monitoringService = _serviceProvider.GetRequiredService<MonitoringBackgroundService>();
+            _ = _monitoringService.StartAsync(_appCts.Token);
 
             // Show login window only
             var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
@@ -64,9 +68,10 @@ namespace IRIS.UI
             try
             {
                 _appCts?.Cancel();
+                _monitoringService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
                 _dataRetentionService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
-            catch { /* Ignore shutdown errors from data retention service */ }
+            catch { /* Ignore shutdown errors from background services */ }
 
             try
             {
@@ -142,6 +147,7 @@ namespace IRIS.UI
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
             services.AddSingleton<DataRetentionBackgroundService>();
+            services.AddSingleton<MonitoringBackgroundService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();

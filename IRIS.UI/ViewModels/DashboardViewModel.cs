@@ -40,6 +40,7 @@ namespace IRIS.UI.ViewModels
         {
             _cache = cache;
             _scopeFactory = scopeFactory;
+            _cache.DataChanged += OnCacheDataChanged;
             ApplyDateFilterCommand = new RelayCommand(async () => await ApplyDateFilterAsync(), () => true);
             ExportNetworkAnalyticsCommand = new RelayCommand(async () => await ExportNetworkAnalyticsAsync(), () => true);
             ExportHardwareAnalyticsCommand = new RelayCommand(async () => await ExportHardwareAnalyticsAsync(), () => true);
@@ -231,6 +232,14 @@ namespace IRIS.UI.ViewModels
             await ApplyPresetAsync();
             await LoadDataAsync();
             _refreshTimer.Start();
+        }
+
+        private void OnCacheDataChanged()
+        {
+            if (_isActive)
+            {
+                ApplyCachedSummary();
+            }
         }
 
         private async Task LoadDataAsync()

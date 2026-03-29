@@ -86,6 +86,7 @@ namespace IRIS.UI.ViewModels
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
+            _cache.DataChanged += OnCacheDataChanged;
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
@@ -314,33 +315,15 @@ namespace IRIS.UI.ViewModels
                 var previousSelectionId = SelectedPC?.Id;
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
 
-                // Force refresh from DB - always get latest data
-                _cache.CurrentRoomFilter = null;
-                await _cache.RefreshPCDataAsync();
-
-                var pcs = _cache.CachedPCs;
-                var counts = _cache.CachedStatusCounts;
-
-                await RequestImmediateAgentRefreshAsync(pcs);
-
+                // Use cached data from background service
                 ApplyCachedPCData();
-
-                // Always apply filter first so PCs are visible even if alerts/snapshots fail
                 ApplyFilter();
 
-                // Fetch alerts fresh from DB on navigation
-                try
-                {
-                    await LoadLiveAlertsAsync(forceRefresh: true);
-                }
-                catch { /* Alert loading failure must not block PC display */ }
+                // Load alerts from cache (background service keeps them fresh)
+                LoadLiveAlertsFromCache();
 
-                // Screenshots only load on Monitor page (not from cache) — reduces overhead
-                try
-                {
-                    await LoadSnapshotsAsync();
-                }
-                catch { /* Snapshot loading failure must not block PC display */ }
+                // Screenshots load in background without blocking
+                _ = LoadSnapshotsAsync();
 
                 if (previousSelectionId.HasValue)
                 {
@@ -368,11 +351,20 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private void OnCacheDataChanged()
+        {
+            if (_isActive)
+            {
+                _ = LoadPCDataAsync();
+            }
+        }
+
         public void OnNavigatedTo()
         {
             _isActive = true;
-            IsLoading = true;
-            _ = LoadPCDataAsync();
+            ApplyCachedPCData();
+            ApplyFilter();
+            LoadLiveAlertsFromCache();
             _refreshTimer.Start();
         }
 
@@ -588,6 +580,64 @@ namespace IRIS.UI.ViewModels
             }
 
             HasNoPCs = FilteredPCs.Count == 0;
+        }
+
+        private void LoadLiveAlertsFromCache()
+        {
+            var alerts = _cache.CachedLiveAlerts;
+            ActiveAlerts.Clear();
+
+            foreach (var alert in alerts)
+            {
+                ActiveAlerts.Add(new LiveAlertDisplayModel
+                {
+                    PCId = alert.PCId,
+                    PCName = alert.PCName,
+                    RoomName = alert.RoomName,
+                    Severity = alert.Severity,
+                    Type = alert.Type,
+                    Message = alert.Message,
+                    Timestamp = DateTimeDisplayHelper.ToManilaFromUtc(alert.Timestamp)
+                });
+            }
+
+            CriticalAlertCount = alerts.Count(a => a.Severity == "Critical");
+            HighAlertCount = alerts.Count(a => a.Severity == "High");
+            TopAlertMessage = alerts.FirstOrDefault()?.Message ?? "No active alerts";
+            AlertHeaderText = CriticalAlertCount == 0 && HighAlertCount == 0
+                ? "All clear"
+                : $"Critical {CriticalAlertCount} • High {HighAlertCount}";
+
+            var topByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(a => a.SeverityRank).ThenByDescending(a => a.Timestamp).First());
+
+            var countByPc = alerts
+                .GroupBy(a => a.PCId)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var pc in PCs)
+            {
+                if (topByPc.TryGetValue(pc.Id, out var topAlert))
+                {
+                    pc.TopAlertSeverity = topAlert.Severity;
+                    pc.TopAlertMessage = topAlert.Message;
+                    pc.AlertCount = countByPc.TryGetValue(pc.Id, out var alertCount) ? alertCount : 0;
+                }
+                else
+                {
+                    pc.TopAlertSeverity = "None";
+                    pc.TopAlertMessage = "No active alerts";
+                    pc.AlertCount = 0;
+                }
+            }
+
+            if (IsPcAlertsPanelOpen && SelectedPC != null)
+            {
+                PopulateSelectedPcAlerts(SelectedPC.Id);
+            }
         }
 
         private async Task LoadLiveAlertsAsync(bool forceRefresh = false)
