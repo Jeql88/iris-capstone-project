@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
@@ -12,6 +14,11 @@ namespace IRIS.Agent.Logic
         private readonly IRISDbContext _context;
         private readonly string _macAddress;
         private readonly string _wallpaperCachePath;
+        private readonly string _wallpaperApiToken;
+        private static readonly HttpClient _httpClient = new()
+        {
+            Timeout = TimeSpan.FromSeconds(15)
+        };
 
         // Windows API constants
         private const int SPI_SETDESKWALLPAPER = 20;
@@ -21,10 +28,11 @@ namespace IRIS.Agent.Logic
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
 
-        public WallpaperPolicyEnforcer(IRISDbContext context, string macAddress)
+        public WallpaperPolicyEnforcer(IRISDbContext context, string macAddress, IConfiguration? configuration = null)
         {
             _context = context;
             _macAddress = macAddress;
+            _wallpaperApiToken = (configuration?["AgentSettings:WallpaperApiToken"] ?? string.Empty).Trim();
             _wallpaperCachePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "IRIS", "Assets", "Wallpapers"
@@ -71,30 +79,73 @@ namespace IRIS.Agent.Logic
         {
             try
             {
-                // Check if wallpaper file exists on server
-                if (!File.Exists(wallpaperPath))
-                {
-                    Log.Warning("Wallpaper file not found: {WallpaperPath}", wallpaperPath);
-                    return false;
-                }
-
-                // Calculate hash of server wallpaper
-                var serverHash = await CalculateFileHashAsync(wallpaperPath);
                 var cachedWallpaperPath = Path.Combine(_wallpaperCachePath, "active_wallpaper.jpg");
+                var isHttpSource = IsHttpUrl(wallpaperPath);
 
-                // Check if we need to update cached wallpaper
-                bool needsUpdate = true;
-                if (File.Exists(cachedWallpaperPath))
+                if (isHttpSource)
                 {
-                    var cachedHash = await CalculateFileHashAsync(cachedWallpaperPath);
-                    needsUpdate = serverHash != cachedHash;
+                    // Download wallpaper from HTTP source
+                    using var request = new HttpRequestMessage(HttpMethod.Get, wallpaperPath);
+                    if (!string.IsNullOrWhiteSpace(_wallpaperApiToken))
+                    {
+                        request.Headers.Add("X-IRIS-Wallpaper-Token", _wallpaperApiToken);
+                    }
+
+                    using var response = await _httpClient.SendAsync(request);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Log.Warning("Failed to download wallpaper from {WallpaperPath}. Status: {StatusCode}", wallpaperPath, response.StatusCode);
+                        return false;
+                    }
+
+                    var contentBytes = await response.Content.ReadAsByteArrayAsync();
+                    if (contentBytes.Length == 0)
+                    {
+                        Log.Warning("Downloaded wallpaper from {WallpaperPath} is empty", wallpaperPath);
+                        return false;
+                    }
+
+                    var serverHash = Convert.ToHexString(SHA256.HashData(contentBytes));
+
+                    var needsUpdate = true;
+                    if (File.Exists(cachedWallpaperPath))
+                    {
+                        var cachedHash = await CalculateFileHashAsync(cachedWallpaperPath);
+                        needsUpdate = serverHash != cachedHash;
+                    }
+
+                    if (needsUpdate)
+                    {
+                        await File.WriteAllBytesAsync(cachedWallpaperPath, contentBytes);
+                        Log.Information("Wallpaper downloaded and cached for PC {MacAddress}", _macAddress);
+                    }
                 }
-
-                // Copy wallpaper to cache if needed
-                if (needsUpdate)
+                else
                 {
-                    File.Copy(wallpaperPath, cachedWallpaperPath, true);
-                    Log.Information("Wallpaper updated in cache for PC {MacAddress}", _macAddress);
+                    // Check if wallpaper file exists on server
+                    if (!File.Exists(wallpaperPath))
+                    {
+                        Log.Warning("Wallpaper file not found: {WallpaperPath}", wallpaperPath);
+                        return false;
+                    }
+
+                    // Calculate hash of server wallpaper
+                    var serverHash = await CalculateFileHashAsync(wallpaperPath);
+
+                    // Check if we need to update cached wallpaper
+                    var needsUpdate = true;
+                    if (File.Exists(cachedWallpaperPath))
+                    {
+                        var cachedHash = await CalculateFileHashAsync(cachedWallpaperPath);
+                        needsUpdate = serverHash != cachedHash;
+                    }
+
+                    // Copy wallpaper to cache if needed
+                    if (needsUpdate)
+                    {
+                        File.Copy(wallpaperPath, cachedWallpaperPath, true);
+                        Log.Information("Wallpaper updated in cache for PC {MacAddress}", _macAddress);
+                    }
                 }
 
                 // Apply wallpaper using Windows API
@@ -117,6 +168,18 @@ namespace IRIS.Agent.Logic
                 Log.Error(ex, "Failed to apply wallpaper for PC {MacAddress}", _macAddress);
                 return false;
             }
+        }
+
+        private static bool IsHttpUrl(string path)
+        {
+            if (!Uri.IsWellFormedUriString(path, UriKind.Absolute))
+            {
+                return false;
+            }
+
+            var uri = new Uri(path);
+            return uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase)
+                || uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<string> CalculateFileHashAsync(string filePath)
