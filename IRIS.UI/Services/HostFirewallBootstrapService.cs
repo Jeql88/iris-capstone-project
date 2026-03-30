@@ -21,6 +21,30 @@ namespace IRIS.UI.Services
 
         public async Task EnsurePowerCommandRuleAsync(CancellationToken cancellationToken = default)
         {
+            await EnsureRuleAsync(
+                "PowerCommandServer:EnsureFirewallRuleOnStartup",
+                "PowerCommandServer:Port",
+                "PowerCommandServer:FirewallRuleName",
+                5091,
+                "IRIS UI Power Command TCP",
+                cancellationToken);
+        }
+
+        public async Task EnsureWallpaperFileRuleAsync(CancellationToken cancellationToken = default)
+        {
+            await EnsureRuleAsync(
+                "WallpaperServer:EnsureFirewallRuleOnStartup",
+                "WallpaperServer:Port",
+                "WallpaperServer:FirewallRuleName",
+                5092,
+                "IRIS UI Wallpaper HTTP",
+                cancellationToken);
+
+            await EnsureWallpaperUrlAclAsync(cancellationToken);
+        }
+
+        private async Task EnsureWallpaperUrlAclAsync(CancellationToken cancellationToken)
+        {
             await Task.CompletedTask;
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -29,23 +53,89 @@ namespace IRIS.UI.Services
                 return;
             }
 
-            var ensureRule = bool.TryParse(_configuration["PowerCommandServer:EnsureFirewallRuleOnStartup"], out var enabled)
+            var ensureUrlAcl = bool.TryParse(_configuration["WallpaperServer:EnsureUrlAclOnStartup"], out var enabled)
+                ? enabled
+                : true;
+
+            if (!ensureUrlAcl)
+            {
+                _logger.LogInformation("Wallpaper URL ACL bootstrap disabled by WallpaperServer:EnsureUrlAclOnStartup.");
+                return;
+            }
+
+            var port = int.TryParse(_configuration["WallpaperServer:Port"], out var configuredPort)
+                ? configuredPort
+                : 5092;
+
+            if (!IsRunningAsAdministrator())
+            {
+                _logger.LogWarning(
+                    "Cannot ensure wallpaper URL ACL for TCP {Port}: IRIS.UI is not running as Administrator.",
+                    port);
+                return;
+            }
+
+            var url = $"http://+:{port}/";
+
+            if (UrlAclExists(url))
+            {
+                _logger.LogInformation("Wallpaper URL ACL already present for {Url}", url);
+                return;
+            }
+
+            var aclUser = (_configuration["WallpaperServer:UrlAclUser"] ?? "Everyone").Trim();
+            if (string.IsNullOrWhiteSpace(aclUser))
+            {
+                aclUser = "Everyone";
+            }
+
+            var addAclResult = RunCommand("netsh", $"http add urlacl url={url} user=\"{aclUser}\"");
+            if (addAclResult.ExitCode == 0)
+            {
+                _logger.LogInformation("Wallpaper URL ACL ensured for {Url} and user {User}", url, aclUser);
+                return;
+            }
+
+            _logger.LogWarning(
+                "Failed to add wallpaper URL ACL for {Url}. Output: {Output}",
+                url,
+                addAclResult.Output.Trim());
+        }
+
+        private async Task EnsureRuleAsync(
+            string enableKey,
+            string portKey,
+            string ruleNameKey,
+            int defaultPort,
+            string defaultRuleNamePrefix,
+            CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            var ensureRule = bool.TryParse(_configuration[enableKey], out var enabled)
                 ? enabled
                 : true;
 
             if (!ensureRule)
             {
-                _logger.LogInformation("Power command host firewall bootstrap disabled by PowerCommandServer:EnsureFirewallRuleOnStartup.");
+                _logger.LogInformation("Host firewall bootstrap disabled by {EnableKey}.", enableKey);
                 return;
             }
 
-            var port = int.TryParse(_configuration["PowerCommandServer:Port"], out var configuredPort)
+            var port = int.TryParse(_configuration[portKey], out var configuredPort)
                 ? configuredPort
-                : 5091;
-            var ruleName = (_configuration["PowerCommandServer:FirewallRuleName"] ?? string.Empty).Trim();
+                : defaultPort;
+
+            var ruleName = (_configuration[ruleNameKey] ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(ruleName))
             {
-                ruleName = $"IRIS UI Power Command TCP {port}";
+                ruleName = $"{defaultRuleNamePrefix} {port}";
             }
 
             if (!IsRunningAsAdministrator())
@@ -104,6 +194,13 @@ namespace IRIS.UI.Services
             var result = RunCommand("netsh", $"advfirewall firewall show rule name=\"{ruleName}\"");
             return result.ExitCode == 0 &&
                    !result.Output.Contains("No rules match", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool UrlAclExists(string url)
+        {
+            var result = RunCommand("netsh", $"http show urlacl url={url}");
+            return result.ExitCode == 0 &&
+                   result.Output.Contains(url, StringComparison.OrdinalIgnoreCase);
         }
 
         private static CommandResult RunCommand(string fileName, string arguments)
