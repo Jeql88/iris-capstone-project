@@ -280,10 +280,11 @@ namespace IRIS.Agent.Logic
                 Log.Warning("Failed to set RDP port to {RdpPort}. Output: {Output}", rdpPort, portResult.Output.Trim());
             }
 
+            // Try enabling the built-in Remote Desktop firewall group (may fail on non-English Windows)
             var firewallGroupResult = RunCommand("netsh", "advfirewall firewall set rule group=\"remote desktop\" new enable=Yes");
             if (firewallGroupResult.ExitCode != 0)
             {
-                Log.Warning("Failed to enable built-in Remote Desktop firewall group. Output: {Output}", firewallGroupResult.Output.Trim());
+                Log.Debug("Built-in Remote Desktop firewall group not found (may be localized). Custom firewall rule for port {RdpPort} was added separately.", rdpPort);
             }
 
             var serviceAutoStartResult = RunCommand("sc", "config TermService start= auto");
@@ -293,11 +294,17 @@ namespace IRIS.Agent.Logic
             }
 
             // Restart TermService so the new port takes effect
-            RunCommand("sc", "stop TermService");
-            System.Threading.Thread.Sleep(2000);
+            var stopResult = RunCommand("sc", "stop TermService");
+            if (stopResult.ExitCode == 0)
+            {
+                // Wait for service to fully stop before restarting
+                System.Threading.Thread.Sleep(3000);
+            }
+
             var startServiceResult = RunCommand("sc", "start TermService");
             if (startServiceResult.ExitCode != 0 &&
-                !startServiceResult.Output.Contains("already been started", StringComparison.OrdinalIgnoreCase))
+                !startServiceResult.Output.Contains("already been started", StringComparison.OrdinalIgnoreCase) &&
+                !startServiceResult.Output.Contains("1056", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Warning("Failed to start TermService. Output: {Output}", startServiceResult.Output.Trim());
             }
