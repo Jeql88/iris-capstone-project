@@ -151,7 +151,7 @@
 
                         <!-- Control Buttons -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}" 
+                            <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}"
                                        ToolTip="Refresh"
                                        Command="{Binding RefreshScreenCommand}"
                                        Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="42"/>
@@ -161,8 +161,15 @@
                                        Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"
                                        Visibility="{Binding ShowRemoteDesktop, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                            <!-- More Actions Button with Popup -->
-                            <Grid>
+                            <!-- Standalone Freeze button for faculty (shown when More is hidden) -->
+                            <ui:Button Icon="{ui:SymbolIcon LockClosed24}"
+                                       Content="{Binding FreezeButtonText}"
+                                       Command="{Binding ToggleFreezeCommand}"
+                                       Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="90"
+                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                            <!-- More Actions Button with Popup (hidden for faculty) -->
+                            <Grid Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <ui:Button x:Name="MoreActionsButton"
                                            Icon="{ui:SymbolIcon MoreHorizontal24}"
                                            Content="More"
@@ -184,8 +191,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding ShutdownPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click"
-                                                       Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                       Click="MoreActionsMenuItem_Click">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="Power24" FontSize="16" Margin="0,0,10,0"
                                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}"/>
@@ -195,8 +201,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding RestartPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click"
-                                                       Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                       Click="MoreActionsMenuItem_Click">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="Restart" FontSize="13" VerticalAlignment="Center"/>
