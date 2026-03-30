@@ -26,6 +26,7 @@ namespace IRIS.UI.ViewModels
         private static readonly HttpClient _pingClient = new() { Timeout = TimeSpan.FromSeconds(3) };
 
         private readonly int _agentFileApiPort;
+        private readonly int _remoteDesktopPort;
         private readonly string _agentApiToken;
 
         // PC selection
@@ -66,6 +67,7 @@ namespace IRIS.UI.ViewModels
             _configuration = configuration;
 
             _agentFileApiPort = int.TryParse(_configuration["AgentSettings:FileApiPort"], out var port) ? port : 5065;
+            _remoteDesktopPort = int.TryParse(_configuration["AgentSettings:RemoteDesktopPort"], out var rdpPort) ? rdpPort : 3389;
             _agentApiToken = _configuration["AgentSettings:FileApiToken"] ?? string.Empty;
 
             // PC commands
@@ -1370,7 +1372,7 @@ namespace IRIS.UI.ViewModels
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "mstsc",
-                    Arguments = $"/v:{_selectedPC.IPAddress}",
+                    Arguments = $"/v:{_selectedPC.IPAddress}:{_remoteDesktopPort}",
                     UseShellExecute = true
                 });
             }

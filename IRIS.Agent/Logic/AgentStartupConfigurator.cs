@@ -39,6 +39,7 @@ namespace IRIS.Agent.Logic
             var enableRemoteDesktop = bool.TryParse(_configuration["AgentSettings:EnableRemoteDesktopSetup"], out var ers)
                 ? ers
                 : true;
+            var remoteDesktopPort = int.TryParse(_configuration["AgentSettings:RemoteDesktopPort"], out var rdp) ? rdp : 3389;
             var autoApprove = bool.TryParse(_configuration["AgentSettings:AutoApproveInitialConfiguration"], out var aac)
                 ? aac
                 : false;
@@ -48,6 +49,11 @@ namespace IRIS.Agent.Logic
                 new($"IRIS Agent Snapshot TCP {screenPort}", screenPort),
                 new($"IRIS Agent File API TCP {fileApiPort}", fileApiPort)
             };
+
+            if (enableRemoteDesktop && remoteDesktopPort != 3389)
+            {
+                requiredFirewallRules.Add(new($"IRIS Agent RDP TCP {remoteDesktopPort}", remoteDesktopPort));
+            }
 
             var missingFirewallRules = requiredFirewallRules
                 .Where(rule => !FirewallRuleExists(rule.Name))
@@ -67,7 +73,7 @@ namespace IRIS.Agent.Logic
                 missingUrlAcls.Add(fileApiUrlAcl);
             }
 
-            var needsRemoteDesktopSetup = enableRemoteDesktop && !IsRemoteDesktopReady();
+            var needsRemoteDesktopSetup = enableRemoteDesktop && !IsRemoteDesktopReady(remoteDesktopPort);
 
             if (!missingFirewallRules.Any() && !missingUrlAcls.Any() && !needsRemoteDesktopSetup)
             {
@@ -101,7 +107,7 @@ namespace IRIS.Agent.Logic
 
             if (needsRemoteDesktopSetup)
             {
-                EnsureRemoteDesktopEnabled();
+                EnsureRemoteDesktopEnabled(remoteDesktopPort);
             }
 
             Log.Information("Startup configuration completed.");
@@ -233,23 +239,45 @@ namespace IRIS.Agent.Logic
             Log.Warning("Failed to add URL ACL for {Url}. Output: {Output}", url, result.Output.Trim());
         }
 
-        private static bool IsRemoteDesktopReady()
+        private static bool IsRemoteDesktopReady(int desiredPort)
         {
             var checkResult = RunCommand("reg", "query \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\" /v fDenyTSConnections");
-            if (checkResult.ExitCode != 0)
+            if (checkResult.ExitCode != 0 || !checkResult.Output.Contains("0x0", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
 
-            return checkResult.Output.Contains("0x0", StringComparison.OrdinalIgnoreCase);
+            // Check if RDP port matches the desired port
+            var portResult = RunCommand("reg", "query \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v PortNumber");
+            if (portResult.ExitCode == 0)
+            {
+                var hexPort = $"0x{desiredPort:x}";
+                if (!portResult.Output.Contains(hexPort, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        private static void EnsureRemoteDesktopEnabled()
+        private static void EnsureRemoteDesktopEnabled(int rdpPort)
         {
             var regResult = RunCommand("reg", "add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\" /v fDenyTSConnections /t REG_DWORD /d 0 /f");
             if (regResult.ExitCode != 0)
             {
                 Log.Warning("Failed to enable Remote Desktop registry setting. Output: {Output}", regResult.Output.Trim());
+            }
+
+            // Set custom RDP listening port
+            var portResult = RunCommand("reg", $"add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v PortNumber /t REG_DWORD /d {rdpPort} /f");
+            if (portResult.ExitCode == 0)
+            {
+                Log.Information("RDP listening port set to {RdpPort}", rdpPort);
+            }
+            else
+            {
+                Log.Warning("Failed to set RDP port to {RdpPort}. Output: {Output}", rdpPort, portResult.Output.Trim());
             }
 
             var firewallGroupResult = RunCommand("netsh", "advfirewall firewall set rule group=\"remote desktop\" new enable=Yes");
@@ -264,6 +292,9 @@ namespace IRIS.Agent.Logic
                 Log.Warning("Failed to set TermService startup mode. Output: {Output}", serviceAutoStartResult.Output.Trim());
             }
 
+            // Restart TermService so the new port takes effect
+            RunCommand("sc", "stop TermService");
+            System.Threading.Thread.Sleep(2000);
             var startServiceResult = RunCommand("sc", "start TermService");
             if (startServiceResult.ExitCode != 0 &&
                 !startServiceResult.Output.Contains("already been started", StringComparison.OrdinalIgnoreCase))
@@ -271,7 +302,7 @@ namespace IRIS.Agent.Logic
                 Log.Warning("Failed to start TermService. Output: {Output}", startServiceResult.Output.Trim());
             }
 
-            Log.Information("Remote Desktop setup completed (or already enabled).");
+            Log.Information("Remote Desktop setup completed on port {RdpPort}.", rdpPort);
         }
 
         private static CommandResult RunCommand(string fileName, string arguments)

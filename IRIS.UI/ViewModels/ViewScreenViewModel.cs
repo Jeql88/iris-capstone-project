@@ -25,6 +25,7 @@ namespace IRIS.UI.ViewModels
         private readonly IMonitoringService _monitoringService;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
+        private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _screenRefreshTimer;
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
@@ -73,6 +74,7 @@ namespace IRIS.UI.ViewModels
             _monitoringService = monitoringService;
             _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
+            _remoteDesktopPort = int.TryParse(configuration["AgentSettings:RemoteDesktopPort"], out var rdpPort) ? rdpPort : 3389;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
             ToggleDetailsCommand = new RelayCommand(async () => await ToggleDetailsAsync(), () => true);
             LockScreenCommand = new RelayCommand(async () => await LockScreenAsync(), () => true);
@@ -445,7 +447,7 @@ namespace IRIS.UI.ViewModels
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "mstsc",
-                    Arguments = $"/v:{IP}",
+                    Arguments = $"/v:{IP}:{_remoteDesktopPort}",
                     UseShellExecute = true
                 });
             }
