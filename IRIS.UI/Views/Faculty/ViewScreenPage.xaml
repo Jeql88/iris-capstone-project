@@ -155,10 +155,11 @@
                                        ToolTip="Refresh"
                                        Command="{Binding RefreshScreenCommand}"
                                        Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="42"/>
-                            <ui:Button Icon="{ui:SymbolIcon Desktop24}" 
+                            <ui:Button Icon="{ui:SymbolIcon Desktop24}"
                                        Content="Remote Desktop"
                                        Command="{Binding RemoteDesktopCommand}"
-                                       Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"/>
+                                       Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"
+                                       Visibility="{Binding ShowRemoteDesktop, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                             <!-- More Actions Button with Popup -->
                             <Grid>
@@ -183,7 +184,8 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding ShutdownPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click"
+                                                       Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="Power24" FontSize="16" Margin="0,0,10,0"
                                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}"/>
@@ -193,7 +195,8 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding RestartPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click"
+                                                       Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="Restart" FontSize="13" VerticalAlignment="Center"/>

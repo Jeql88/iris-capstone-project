@@ -98,7 +98,8 @@
             <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Desktop24}"
                        Content="Remote Desktop"
                        Command="{Binding RemoteDesktopCommand}"
-                       Appearance="Primary" Height="34" MinWidth="90"/>
+                       Appearance="Primary" Height="34" MinWidth="90"
+                       Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}"/>
         </StackPanel>
 
         <!-- ═══ DUAL PANE ═══ -->
@@ -222,8 +223,9 @@
 
                     <TextBlock Grid.Row="0" Text="🌐 Remote Files" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
 
-                    <!-- Navigation bar -->
-                    <Grid Grid.Row="1" Margin="0,0,0,4">
+                    <!-- Navigation bar (hidden for faculty) -->
+                    <Grid Grid.Row="1" Margin="0,0,0,4"
+                          Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
@@ -273,14 +275,16 @@
                                           Command="{Binding DownloadRemoteFileCommand}">
                                     <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowDownload24" FontSize="14"/></MenuItem.Icon>
                                 </MenuItem>
-                                <Separator/>
+                                <Separator Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}"/>
                                 <MenuItem Header="Rename"
                                           Command="{Binding RenameRemoteFileCommand}"
-                                          CommandParameter="{Binding SelectedRemoteFile}">
+                                          CommandParameter="{Binding SelectedRemoteFile}"
+                                          Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}">
                                     <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24" FontSize="14"/></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Delete"
-                                          Command="{Binding DeleteRemoteFileCommand}">
+                                          Command="{Binding DeleteRemoteFileCommand}"
+                                          Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}">
                                     <MenuItem.Icon><ui:SymbolIcon Symbol="Delete24" FontSize="14"/></MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>

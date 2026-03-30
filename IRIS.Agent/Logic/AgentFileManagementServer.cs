@@ -367,6 +367,12 @@ namespace IRIS.Agent.Logic
                 return;
             }
 
+            if (IsProtectedPath(fullPath))
+            {
+                await WriteJsonAsync(context.Response, 403, new { error = "Cannot modify protected system path" });
+                return;
+            }
+
             if (Directory.Exists(fullPath))
             {
                 Directory.Delete(fullPath, true);
@@ -695,6 +701,12 @@ namespace IRIS.Agent.Logic
                 return;
             }
 
+            if (IsProtectedPath(fullPath))
+            {
+                await WriteJsonAsync(context.Response, 403, new { error = "Cannot modify protected system path" });
+                return;
+            }
+
             var parentDir = Path.GetDirectoryName(fullPath);
             if (parentDir == null)
             {
@@ -719,6 +731,46 @@ namespace IRIS.Agent.Logic
             }
 
             await WriteJsonAsync(context.Response, 200, new { message = "Renamed", newPath });
+        }
+
+        private static readonly string[] ProtectedPaths = new[]
+        {
+            @"C:\Windows",
+            @"C:\Program Files",
+            @"C:\Program Files (x86)",
+            @"C:\ProgramData",
+            @"C:\Recovery",
+            @"C:\$Recycle.Bin",
+            @"C:\System Volume Information",
+            @"C:\Boot",
+            @"C:\EFI",
+        };
+
+        private static readonly string[] ProtectedFiles = new[]
+        {
+            "bootmgr", "bootmgr.efi", "pagefile.sys", "swapfile.sys",
+            "hiberfil.sys", "BOOTNXT", "BOOTSECT.BAK", "ntldr", "NTDETECT.COM",
+        };
+
+        private static bool IsProtectedPath(string fullPath)
+        {
+            var normalized = Path.GetFullPath(fullPath).TrimEnd(Path.DirectorySeparatorChar);
+
+            foreach (var protectedDir in ProtectedPaths)
+            {
+                if (normalized.Equals(protectedDir, StringComparison.OrdinalIgnoreCase) ||
+                    normalized.StartsWith(protectedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            var fileName = Path.GetFileName(normalized);
+            foreach (var protectedFile in ProtectedFiles)
+            {
+                if (fileName.Equals(protectedFile, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private string MakeRelative(string fullPath)

@@ -13,6 +13,7 @@ using IRIS.UI.Helpers;
 using IRIS.UI.Services;
 using IRIS.UI.Views.Dialogs;
 using IRIS.UI.Views.Faculty;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using Microsoft.Extensions.Configuration;
 
@@ -24,6 +25,7 @@ namespace IRIS.UI.ViewModels
         private readonly IPCDataCacheService _cache;
         private readonly IMonitoringService _monitoringService;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
+        private readonly IAuthenticationService _authenticationService;
         private readonly int _screenStreamPort;
         private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
@@ -67,12 +69,14 @@ namespace IRIS.UI.ViewModels
             IPCDataCacheService cache,
             IMonitoringService monitoringService,
             IPowerCommandQueueService powerCommandQueueService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuthenticationService authenticationService)
         {
             _navigationService = navigationService;
             _cache = cache;
             _monitoringService = monitoringService;
             _powerCommandQueueService = powerCommandQueueService;
+            _authenticationService = authenticationService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _remoteDesktopPort = int.TryParse(configuration["AgentSettings:RemoteDesktopPort"], out var rdpPort) ? rdpPort : 3389;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
@@ -106,6 +110,10 @@ namespace IRIS.UI.ViewModels
 
         public Visibility DetailsVisibility => IsDetailsExpanded ? Visibility.Visible : Visibility.Collapsed;
         public string ExpandIcon => IsDetailsExpanded ? "▲" : "▼";
+
+        public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
+        public bool ShowRemoteDesktop => !IsFaculty;
+        public bool ShowPowerControls => !IsFaculty;
 
         public string PCName { get => _pcName; set { _pcName = value; OnPropertyChanged(); } }
         public string PCNumber { get => _pcNumber; set { _pcNumber = value; OnPropertyChanged(); } }

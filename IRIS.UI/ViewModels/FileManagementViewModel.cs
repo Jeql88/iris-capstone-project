@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using IRIS.Core.DTOs;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.Helpers;
 using IRIS.UI.Models;
@@ -22,6 +23,7 @@ namespace IRIS.UI.ViewModels
         private readonly IDeploymentDataService _deploymentDataService;
         private readonly IRoomService _roomService;
         private readonly IConfiguration _configuration;
+        private readonly IAuthenticationService _authenticationService;
         private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
         private static readonly HttpClient _pingClient = new() { Timeout = TimeSpan.FromSeconds(3) };
 
@@ -60,11 +62,13 @@ namespace IRIS.UI.ViewModels
         public FileManagementViewModel(
             IDeploymentDataService deploymentDataService,
             IRoomService roomService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuthenticationService authenticationService)
         {
             _deploymentDataService = deploymentDataService;
             _roomService = roomService;
             _configuration = configuration;
+            _authenticationService = authenticationService;
 
             _agentFileApiPort = int.TryParse(_configuration["AgentSettings:FileApiPort"], out var port) ? port : 5065;
             _remoteDesktopPort = int.TryParse(_configuration["AgentSettings:RemoteDesktopPort"], out var rdpPort) ? rdpPort : 3389;
@@ -144,7 +148,12 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(HasSelectedPC));
                 RaiseAllRemoteCanExecuteChanged();
                 if (_selectedPC != null)
-                    _ = LoadRemoteDrivesAsync();
+                {
+                    if (IsFaculty)
+                        _ = BrowseRemotePathAsync("%ACTIVE_DESKTOP%");
+                    else
+                        _ = LoadRemoteDrivesAsync();
+                }
                 else
                 {
                     RemoteFiles.Clear();
@@ -214,6 +223,8 @@ namespace IRIS.UI.ViewModels
         }
 
         public bool HasSelectedPC => SelectedPC != null;
+        public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
+        public bool CanModifyRemoteFiles => !IsFaculty;
 
         public string LocalSearchText
         {
@@ -340,9 +351,6 @@ namespace IRIS.UI.ViewModels
                         RoomNumber = pc.RoomNumber
                     });
                 }
-
-                if (_selectedPC == null)
-                    SelectedPC = PCs.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A");
 
                 StatusMessage = $"Loaded {PCs.Count} PCs.";
             }
@@ -532,6 +540,12 @@ namespace IRIS.UI.ViewModels
         {
             if (items.Count == 0) return;
 
+            if (items.Any(i => IsProtectedPath(i.FullPath)))
+            {
+                ShowProtectedPathWarning();
+                return;
+            }
+
             var msg = items.Count == 1
                 ? $"Delete '{items[0].Name}'?"
                 : $"Delete {items.Count} selected items?";
@@ -585,6 +599,12 @@ namespace IRIS.UI.ViewModels
         private async Task RenameLocalItemAsync(FileItemModel? item)
         {
             if (item == null) return;
+
+            if (IsProtectedPath(item.FullPath))
+            {
+                ShowProtectedPathWarning();
+                return;
+            }
 
             var newName = PromptForNewName(item.Name);
             if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
@@ -781,6 +801,8 @@ namespace IRIS.UI.ViewModels
 
         private async Task NavigateUpRemoteAsync()
         {
+            if (IsFaculty) return;
+
             if (string.IsNullOrWhiteSpace(_remoteParentPath))
             {
                 await LoadRemoteDrivesAsync();
@@ -792,7 +814,13 @@ namespace IRIS.UI.ViewModels
 
         private async Task DeleteRemoteItemsAsync(List<FileItemModel> items)
         {
-            if (items.Count == 0 || _selectedPC == null) return;
+            if (IsFaculty || items.Count == 0 || _selectedPC == null) return;
+
+            if (items.Any(i => IsProtectedPath(i.FullPath)))
+            {
+                ShowProtectedPathWarning();
+                return;
+            }
 
             var msg = items.Count == 1
                 ? $"Delete '{items[0].Name}' on {_selectedPC.Hostname}?"
@@ -836,7 +864,13 @@ namespace IRIS.UI.ViewModels
 
         private async Task RenameRemoteItemAsync(FileItemModel? item)
         {
-            if (item == null || _selectedPC == null) return;
+            if (IsFaculty || item == null || _selectedPC == null) return;
+
+            if (IsProtectedPath(item.FullPath))
+            {
+                ShowProtectedPathWarning();
+                return;
+            }
 
             var newName = PromptForNewName(item.Name);
             if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
@@ -1411,6 +1445,57 @@ namespace IRIS.UI.ViewModels
         // ═══════════════════════════════════════
         // HELPERS
         // ═══════════════════════════════════════
+
+        private static readonly string[] ProtectedPaths = new[]
+        {
+            @"C:\Windows",
+            @"C:\Program Files",
+            @"C:\Program Files (x86)",
+            @"C:\ProgramData",
+            @"C:\Recovery",
+            @"C:\$Recycle.Bin",
+            @"C:\System Volume Information",
+            @"C:\Boot",
+            @"C:\EFI",
+        };
+
+        private static readonly string[] ProtectedFileNames = new[]
+        {
+            "bootmgr", "bootmgr.efi", "pagefile.sys", "swapfile.sys",
+            "hiberfil.sys", "BOOTNXT", "BOOTSECT.BAK", "ntldr", "NTDETECT.COM",
+        };
+
+        private static bool IsProtectedPath(string fullPath)
+        {
+            var normalized = Path.GetFullPath(fullPath).TrimEnd(Path.DirectorySeparatorChar);
+
+            foreach (var protectedDir in ProtectedPaths)
+            {
+                if (normalized.Equals(protectedDir, StringComparison.OrdinalIgnoreCase) ||
+                    normalized.StartsWith(protectedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            var fileName = Path.GetFileName(normalized);
+            foreach (var protectedFile in ProtectedFileNames)
+            {
+                if (fileName.Equals(protectedFile, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool ShowProtectedPathWarning()
+        {
+            var dialog = new ConfirmationDialog(
+                "Protected Path",
+                "This is a protected system path and cannot be modified.",
+                "ShieldError24", "OK", "Cancel", false);
+            dialog.Owner = Application.Current.MainWindow;
+            dialog.ShowDialog();
+            return false;
+        }
 
         private static string? PromptForNewName(string currentName)
         {

@@ -10,8 +10,11 @@ namespace IRIS.UI.Views.Dialogs
         {
             InitializeComponent();
             NameTextBox.Text = currentName;
-            NameTextBox.SelectAll();
-            Loaded += (_, _) => NameTextBox.Focus();
+            Loaded += (_, _) =>
+            {
+                NameTextBox.Focus();
+                NameTextBox.SelectAll();
+            };
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
