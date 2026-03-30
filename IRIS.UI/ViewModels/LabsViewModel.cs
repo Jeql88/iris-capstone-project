@@ -498,7 +498,7 @@ namespace IRIS.UI.ViewModels
                 }
 
                 var pcs = (await _pcAdminService.GetUnassignedPCsAsync())
-                    .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(pc => pc.Hostname ?? string.Empty, Helpers.NaturalSortComparer.Instance)
                     .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 DetachSelectionHandlers(UnassignedPCs);
@@ -578,7 +578,7 @@ namespace IRIS.UI.ViewModels
             if (SelectedRoom == null) return;
 
             var pcs = (await _pcAdminService.GetPCsByRoomAsync(SelectedRoom.Id))
-                .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(pc => pc.Hostname ?? string.Empty, Helpers.NaturalSortComparer.Instance)
                 .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ToList();
             DetachSelectionHandlers(AssignedPCs);
@@ -613,7 +613,7 @@ namespace IRIS.UI.ViewModels
                 ModalRoomNumber = room.RoomNumber;
 
             var pcs = (await _pcAdminService.GetPCsByRoomAsync(roomId))
-                .OrderBy(pc => pc.Hostname ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(pc => pc.Hostname ?? string.Empty, Helpers.NaturalSortComparer.Instance)
                 .ThenBy(pc => pc.MacAddress ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ToList();
             DetachSelectionHandlers(AssignedPCs);

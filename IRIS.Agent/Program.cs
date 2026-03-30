@@ -34,6 +34,11 @@ namespace IRIS.Agent
 
             Log.Information("IRIS Agent starting...");
 
+            // Prevent Windows from entering sleep mode while the agent is running
+            NativeMethods.SetThreadExecutionState(
+                NativeMethods.ES_CONTINUOUS | NativeMethods.ES_SYSTEM_REQUIRED);
+            Log.Information("Sleep prevention enabled — PC will not sleep while agent is running.");
+
             var startupConfigurator = new AgentStartupConfigurator(configuration);
             await startupConfigurator.EnsureInitialConfigurationAsync();
 
@@ -211,6 +216,7 @@ namespace IRIS.Agent
             AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
             {
                 Log.Information("Shutdown detected. Handling final update...");
+                NativeMethods.SetThreadExecutionState(NativeMethods.ES_CONTINUOUS);
                 policyTimer?.Dispose();
                 if (websiteUsageLogic != null)
                 {
@@ -233,6 +239,7 @@ namespace IRIS.Agent
             {
                 e.Cancel = true; // Prevent immediate exit
                 Log.Information("Ctrl+C detected. Handling shutdown...");
+                NativeMethods.SetThreadExecutionState(NativeMethods.ES_CONTINUOUS);
                 policyTimer?.Dispose();
                 await monitoringController.StopMonitoringAsync();
                 await snapshotServer.StopAsync();

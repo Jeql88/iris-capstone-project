@@ -30,6 +30,7 @@ namespace IRIS.UI.ViewModels
         private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _screenRefreshTimer;
+        private readonly DispatcherTimer _systemInfoRefreshTimer;
         private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
         private int _pcId;
         private bool _isActive;
@@ -87,13 +88,16 @@ namespace IRIS.UI.ViewModels
             RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
             ToggleFreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
-            RefreshScreenCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
+            RefreshScreenCommand = new RelayCommand(async () => { await RefreshScreenAsync(); RefreshSystemInfoFromCache(); }, () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
             ExpandScreenCommand = new RelayCommand(() => ExpandScreen(), () => true);
             BackCommand = new RelayCommand(async () => await BackAsync(), () => _navigationService.CanGoBack);
 
             _screenRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _screenRefreshTimer.Tick += async (_, _) => await RefreshScreenAsync();
+
+            _systemInfoRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _systemInfoRefreshTimer.Tick += (_, _) => RefreshSystemInfoFromCache();
         }
 
         public bool IsDetailsExpanded
@@ -187,6 +191,7 @@ namespace IRIS.UI.ViewModels
             await LoadHardwareConfigAsync();
             await RefreshScreenAsync();
             _screenRefreshTimer.Start();
+            _systemInfoRefreshTimer.Start();
         }
 
         private async Task RefreshScreenAsync()
@@ -275,6 +280,29 @@ namespace IRIS.UI.ViewModels
                 }
             }
             catch { }
+        }
+
+        private void RefreshSystemInfoFromCache()
+        {
+            if (_pcId <= 0) return;
+
+            var pc = _cache.CachedPCs.FirstOrDefault(p => p.Id == _pcId);
+            if (pc == null) return;
+
+            CpuUsage = pc.CpuUsage;
+            RamUsage = pc.RamUsage;
+            DiskUsage = pc.DiskUsage;
+            CPU = $"{pc.CpuUsage:F0}%";
+            RAM = $"{pc.RamUsage:F0}%";
+            CPUTemp = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A";
+            GPUTemp = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A";
+            Network = $"{pc.NetworkDownloadMbps:F1} Mbps / {pc.NetworkUploadMbps:F1} Mbps";
+            IP = pc.IpAddress;
+
+            var isOnline = pc.Status == "Online";
+            ConnectionStatus = isOnline ? "Connected" : "Disconnected";
+            IsConnected = isOnline;
+            IsDisconnected = !isOnline;
         }
 
         private string FormatBytes(long bytes)
@@ -533,6 +561,7 @@ namespace IRIS.UI.ViewModels
         {
             _isActive = false;
             _screenRefreshTimer.Stop();
+            _systemInfoRefreshTimer.Stop();
         }
 
         public void OnNavigatedTo()

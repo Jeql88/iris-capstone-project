@@ -78,6 +78,7 @@ namespace IRIS.Agent.Logic
             if (!missingFirewallRules.Any() && !missingUrlAcls.Any() && !needsRemoteDesktopSetup)
             {
                 Log.Information("Startup configuration check: already configured.");
+                EnsureScheduledTask();
                 return;
             }
 
@@ -111,6 +112,46 @@ namespace IRIS.Agent.Logic
             }
 
             Log.Information("Startup configuration completed.");
+
+            EnsureScheduledTask();
+        }
+
+        private static void EnsureScheduledTask()
+        {
+            const string taskName = "IRISAgent";
+
+            try
+            {
+                var queryResult = RunCommand("schtasks", $"/Query /TN \"{taskName}\"");
+                if (queryResult.ExitCode == 0)
+                {
+                    Log.Information("Scheduled task '{TaskName}' already exists.", taskName);
+                    return;
+                }
+
+                var exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(exePath))
+                {
+                    Log.Warning("Could not determine agent executable path. Skipping scheduled task creation.");
+                    return;
+                }
+
+                var createResult = RunCommand("schtasks",
+                    $"/Create /TN \"{taskName}\" /TR \"\\\"{exePath}\\\"\" /SC ONSTART /RU SYSTEM /RL HIGHEST /F");
+
+                if (createResult.ExitCode == 0)
+                {
+                    Log.Information("Scheduled task '{TaskName}' created to run agent on startup.", taskName);
+                }
+                else
+                {
+                    Log.Warning("Failed to create scheduled task '{TaskName}'. Output: {Output}", taskName, createResult.Output.Trim());
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Error ensuring scheduled task: {Message}", ex.Message);
+            }
         }
 
         private static string BuildSummary(

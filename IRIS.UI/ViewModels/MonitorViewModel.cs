@@ -555,7 +555,7 @@ namespace IRIS.UI.ViewModels
             }
 
             desired = desired
-                .OrderBy(pc => pc.PCName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(pc => pc.PCName, Helpers.NaturalSortComparer.Instance)
                 .ThenBy(pc => pc.Id)
                 .ToList();
 

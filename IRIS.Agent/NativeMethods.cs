@@ -55,6 +55,14 @@ namespace IRIS.Agent
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
 
+        // --- Sleep prevention (used by Program) ---
+
+        [DllImport("kernel32.dll")]
+        public static extern uint SetThreadExecutionState(uint esFlags);
+
+        public const uint ES_CONTINUOUS = 0x80000000;
+        public const uint ES_SYSTEM_REQUIRED = 0x00000001;
+
         // --- Idle detection (used by Program) ---
 
         [DllImport("user32.dll")]

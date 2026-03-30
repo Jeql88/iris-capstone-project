@@ -82,7 +82,8 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
             <TextBlock Text="PC:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Width="240" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedPC}">
+            <ComboBox Width="240" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedPC}"
+                      IsEditable="True" IsReadOnly="True" Text="Select a PC">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
