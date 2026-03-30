@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
@@ -21,14 +20,6 @@ namespace IRIS.Agent.Logic
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
-
-        // Windows API constants
-        private const int SPI_SETDESKWALLPAPER = 20;
-        private const int SPIF_UPDATEINIFILE = 0x01;
-        private const int SPIF_SENDCHANGE = 0x02;
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
 
         public WallpaperPolicyEnforcer(IRISDbContext context, string macAddress, IConfiguration? configuration = null)
         {
@@ -177,8 +168,8 @@ namespace IRIS.Agent.Logic
                 }
 
                 // Apply wallpaper using Windows API
-                var result = SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, cachedWallpaperPath, 
-                    SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+                var result = NativeMethods.SystemParametersInfo(NativeMethods.SPI_SETDESKWALLPAPER, 0, cachedWallpaperPath,
+                    NativeMethods.SPIF_UPDATEINIFILE | NativeMethods.SPIF_SENDCHANGE);
 
                 if (result != 0)
                 {

@@ -605,7 +605,7 @@ namespace IRIS.Agent.Logic
                 {
                     StartInfo = new ProcessStartInfo
                     {
-                        FileName = "quser",
+                        FileName = Path.Combine(Environment.SystemDirectory, "quser.exe"),
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,

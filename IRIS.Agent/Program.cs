@@ -261,16 +261,6 @@ namespace IRIS.Agent
             await Task.Delay(Timeout.Infinite);
         }
 
-        [DllImport("user32.dll")]
-        static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct LASTINPUTINFO
-        {
-            public uint cbSize;
-            public uint dwTime;
-        }
-
         private static async Task CheckPoliciesAsync(IRISDbContext context, string macAddress)
         {
             try
@@ -327,17 +317,24 @@ namespace IRIS.Agent
 
                 if (!wasCancelled)
                 {
-                    Process.Start("shutdown", "/s /t 0");
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = Path.Combine(Environment.SystemDirectory, "shutdown.exe"),
+                        Arguments = "/s /t 0",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    Process.Start(psi);
                 }
             }
         }
 
         private static TimeSpan GetIdleTime()
         {
-            var lastInputInfo = new LASTINPUTINFO();
+            var lastInputInfo = new NativeMethods.LASTINPUTINFO();
             lastInputInfo.cbSize = (uint)Marshal.SizeOf(lastInputInfo);
 
-            if (GetLastInputInfo(ref lastInputInfo))
+            if (NativeMethods.GetLastInputInfo(ref lastInputInfo))
             {
                 var idleTime = Environment.TickCount - lastInputInfo.dwTime;
                 return TimeSpan.FromMilliseconds(idleTime);

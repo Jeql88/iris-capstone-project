@@ -13,42 +13,6 @@ namespace IRIS.Agent.Logic
 {
     public sealed class ScreenSnapshotServer : IDisposable
     {
-        [DllImport("user32.dll")]
-        private static extern bool GetCursorInfo(out CURSORINFO pci);
-
-        [DllImport("user32.dll")]
-        private static extern bool DrawIcon(IntPtr hDC, int X, int Y, IntPtr hIcon);
-
-        [DllImport("user32.dll")]
-        private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct CURSORINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hCursor;
-            public POINT ptScreenPos;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT
-        {
-            public int x;
-            public int y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct ICONINFO
-        {
-            public bool fIcon;
-            public int xHotspot;
-            public int yHotspot;
-            public IntPtr hbmMask;
-            public IntPtr hbmColor;
-        }
-
-        private const int CURSOR_SHOWING = 0x00000001;
 
         private readonly int _port;
         private readonly int _maxWidth;
@@ -450,17 +414,17 @@ namespace IRIS.Agent.Logic
                     // Draw cursor
                     try
                     {
-                        var cursorInfo = new CURSORINFO { cbSize = Marshal.SizeOf(typeof(CURSORINFO)) };
-                        if (GetCursorInfo(out cursorInfo) && cursorInfo.flags == CURSOR_SHOWING)
+                        var cursorInfo = new NativeMethods.CURSORINFO { cbSize = Marshal.SizeOf(typeof(NativeMethods.CURSORINFO)) };
+                        if (NativeMethods.GetCursorInfo(out cursorInfo) && cursorInfo.flags == NativeMethods.CURSOR_SHOWING)
                         {
                             var hdc = graphics.GetHdc();
                             try
                             {
-                                if (GetIconInfo(cursorInfo.hCursor, out var iconInfo))
+                                if (NativeMethods.GetIconInfo(cursorInfo.hCursor, out var iconInfo))
                                 {
                                     var x = cursorInfo.ptScreenPos.x - iconInfo.xHotspot - bounds.Left;
                                     var y = cursorInfo.ptScreenPos.y - iconInfo.yHotspot - bounds.Top;
-                                    DrawIcon(hdc, x, y, cursorInfo.hCursor);
+                                    NativeMethods.DrawIcon(hdc, x, y, cursorInfo.hCursor);
                                 }
                             }
                             finally

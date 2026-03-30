@@ -1,12 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using LibreHardwareMonitor.Hardware;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using IRIS.Core.Data;
@@ -32,7 +32,6 @@ namespace IRIS.Agent.Logic
         private long _lastBytesSent = -1;
         private long _lastBytesReceived = -1;
         private DateTime _lastNetworkSample = DateTime.MinValue;
-        private readonly Computer? _hardwareComputer;
 
         public MonitoringLogic(
             IRISDbContext context,
@@ -51,20 +50,6 @@ namespace IRIS.Agent.Logic
             _commandServerPort = commandServerPort;
             _freezeAutoUnfreezeMinutes = Math.Clamp(freezeAutoUnfreezeMinutes, 1, 120);
             _machineName = Environment.MachineName;
-
-            try
-            {
-                _hardwareComputer = new Computer
-                {
-                    IsCpuEnabled = true,
-                    IsGpuEnabled = true
-                };
-                _hardwareComputer.Open();
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Hardware sensors are not available; temperatures and GPU usage may be missing");
-            }
         }
 
         public async Task SendHeartbeatAsync()
@@ -305,7 +290,7 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        Process.Start("shutdown", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
+                        StartSystemProcess("shutdown.exe", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
                     }
 
                     return;
@@ -321,7 +306,7 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        Process.Start("shutdown", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                        StartSystemProcess("shutdown.exe", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
                     }
 
                     return;
@@ -548,123 +533,55 @@ namespace IRIS.Agent.Logic
 
         private (double? cpuTemperature, double? gpuTemperature, double? gpuUsage) GetTemperatureAndGpuMetrics()
         {
-            if (_hardwareComputer == null)
-            {
-                var wmiTemp = TryGetWmiCpuTemperature();
-                return (wmiTemp, null, null);
-            }
+            var cpuTemperature = TryGetWmiCpuTemperature();
+            var (gpuTemperature, gpuUsage) = TryGetNvidiaSmiGpuMetrics();
+            return (cpuTemperature, gpuTemperature, gpuUsage);
+        }
 
+        private static (double? gpuTemperature, double? gpuUsage) TryGetNvidiaSmiGpuMetrics()
+        {
             try
             {
-                double? cpuTemperature = null;
-                double? gpuTemperature = null;
-                double? gpuUsage = null;
-
-                foreach (var hardware in _hardwareComputer.Hardware)
+                var nvidiaSmiPath = Path.Combine(Environment.SystemDirectory, "nvidia-smi.exe");
+                if (!File.Exists(nvidiaSmiPath))
                 {
-                    UpdateHardwareRecursive(hardware);
-
-                    if (hardware.HardwareType == HardwareType.Cpu)
-                    {
-                        var temp = GetCpuTemperatureFromHardware(hardware);
-                        if (temp.HasValue)
-                        {
-                            cpuTemperature = temp;
-                        }
-                        continue;
-                    }
-
-                    if (hardware.HardwareType == HardwareType.GpuAmd ||
-                        hardware.HardwareType == HardwareType.GpuNvidia ||
-                        hardware.HardwareType == HardwareType.GpuIntel)
-                    {
-                        gpuTemperature = GetSensorValue(hardware, SensorType.Temperature, "Core")
-                            ?? GetFirstSensorValue(hardware, SensorType.Temperature)
-                            ?? gpuTemperature;
-
-                        gpuUsage = GetSensorValue(hardware, SensorType.Load, "Core")
-                            ?? GetSensorValue(hardware, SensorType.Load, "D3D")
-                            ?? GetFirstSensorValue(hardware, SensorType.Load)
-                            ?? gpuUsage;
-                    }
+                    Log.Debug("nvidia-smi.exe not found at {Path}; GPU metrics unavailable", nvidiaSmiPath);
+                    return (null, null);
                 }
 
-                if (!cpuTemperature.HasValue)
+                var psi = new ProcessStartInfo
                 {
-                    cpuTemperature = TryGetWmiCpuTemperature();
-                }
+                    FileName = nvidiaSmiPath,
+                    Arguments = "--query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader,nounits",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
 
-                return (cpuTemperature, gpuTemperature, gpuUsage);
+                using var process = Process.Start(psi);
+                if (process == null) return (null, null);
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+
+                if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+                    return (null, null);
+
+                // Output format: "65, 42" (temp, utilization)
+                var parts = output.Trim().Split(',', StringSplitOptions.TrimEntries);
+                if (parts.Length < 2) return (null, null);
+
+                double? gpuTemp = double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var t) && t >= 0 && t <= 150 ? t : null;
+                double? gpuUsage = double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var u) && u >= 0 && u <= 100 ? u : null;
+
+                return (gpuTemp, gpuUsage);
             }
-            catch
+            catch (Exception ex)
             {
-                var wmiTemp = TryGetWmiCpuTemperature();
-                return (wmiTemp, null, null);
+                Log.Debug(ex, "Failed to get GPU metrics from nvidia-smi");
+                return (null, null);
             }
-        }
-
-        private static void UpdateHardwareRecursive(IHardware hardware)
-        {
-            hardware.Update();
-            foreach (var subHardware in hardware.SubHardware)
-            {
-                UpdateHardwareRecursive(subHardware);
-            }
-        }
-
-        private static double? GetCpuTemperatureFromHardware(IHardware hardware)
-        {
-            var temperatures = CollectSensorValues(hardware, SensorType.Temperature)
-                .Where(v => v >= 10 && v <= 120)
-                .ToList();
-
-            if (!temperatures.Any())
-            {
-                return null;
-            }
-
-            return temperatures.Max();
-        }
-
-        private static double? GetSensorValue(IHardware hardware, SensorType sensorType, string nameContains)
-        {
-            var sensor = CollectSensors(hardware)
-                .FirstOrDefault(s => s.SensorType == sensorType &&
-                                     s.Value.HasValue &&
-                                     s.Name.Contains(nameContains, StringComparison.OrdinalIgnoreCase));
-
-            return sensor?.Value;
-        }
-
-        private static double? GetFirstSensorValue(IHardware hardware, SensorType sensorType)
-        {
-            var sensor = CollectSensors(hardware)
-                .FirstOrDefault(s => s.SensorType == sensorType && s.Value.HasValue);
-
-            return sensor?.Value;
-        }
-
-        private static IEnumerable<ISensor> CollectSensors(IHardware hardware)
-        {
-            foreach (var sensor in hardware.Sensors)
-            {
-                yield return sensor;
-            }
-
-            foreach (var subHardware in hardware.SubHardware)
-            {
-                foreach (var sensor in CollectSensors(subHardware))
-                {
-                    yield return sensor;
-                }
-            }
-        }
-
-        private static IEnumerable<double> CollectSensorValues(IHardware hardware, SensorType sensorType)
-        {
-            return CollectSensors(hardware)
-                .Where(s => s.SensorType == sensorType && s.Value.HasValue)
-                .Select(s => (double)s.Value!.Value);
         }
 
         private static double? TryGetWmiCpuTemperature()
@@ -686,6 +603,18 @@ namespace IRIS.Agent.Logic
             {
                 return null;
             }
+        }
+
+        private static void StartSystemProcess(string executableName, string arguments)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.SystemDirectory, executableName),
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Process.Start(psi);
         }
 
     }

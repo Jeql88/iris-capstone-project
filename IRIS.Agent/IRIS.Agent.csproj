@@ -6,10 +6,25 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+
+    <!-- Publish settings: avoid single-file to prevent AV false positives -->
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <!-- Assembly metadata for AV trust scoring -->
+    <AssemblyName>IRIS.Agent</AssemblyName>
+    <Product>IRIS - Integrated Remote Infrastructure System</Product>
+    <Company>University of San Carlos - SAFAD Architecture Computer Center</Company>
+    <Description>LAN management agent for USC SAFAD-ACC computer laboratories</Description>
+    <Copyright>Copyright (c) 2025-2026 University of San Carlos SAFAD-ACC</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
