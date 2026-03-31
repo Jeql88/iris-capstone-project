@@ -6,7 +6,7 @@ namespace IRIS.Agent.Logic
 {
     internal static class ShutdownWarningDialog
     {
-        public static Task<bool> ShowCancelOnlyWarningAsync(string title, string message, int timeoutMs)
+        public static Task<bool> ShowCancelOnlyWarningAsync(string title, string baseMessage, int timeoutMs)
         {
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -14,7 +14,7 @@ namespace IRIS.Agent.Logic
             {
                 try
                 {
-                    ShowDialogOnThread(tcs, title, message, timeoutMs);
+                    ShowDialogOnThread(tcs, title, baseMessage, timeoutMs);
                 }
                 catch (Exception ex)
                 {
@@ -32,9 +32,11 @@ namespace IRIS.Agent.Logic
             return tcs.Task;
         }
 
-        private static void ShowDialogOnThread(TaskCompletionSource<bool> tcs, string title, string message, int timeoutMs)
+        private static void ShowDialogOnThread(TaskCompletionSource<bool> tcs, string title, string baseMessage, int timeoutMs)
         {
             var wasCancelled = false;
+            var secondsRemaining = timeoutMs / 1000;
+            var messageTemplate = ExtractMessageTemplate(baseMessage);
 
             using var form = new Form
             {
@@ -51,7 +53,7 @@ namespace IRIS.Agent.Logic
 
             var messageLabel = new Label
             {
-                Text = message,
+                Text = FormatMessage(messageTemplate, secondsRemaining),
                 Left = 16,
                 Top = 16,
                 Width = 412,
@@ -71,15 +73,35 @@ namespace IRIS.Agent.Logic
                 DialogResult = DialogResult.Cancel
             };
 
+            using var countdownTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 1000
+            };
+
             using var closeTimer = new System.Windows.Forms.Timer
             {
-                Interval = Math.Max(1000, timeoutMs)
+                Interval = timeoutMs,
+                Enabled = false
             };
 
             cancelButton.Click += (_, _) =>
             {
                 wasCancelled = true;
                 form.Close();
+            };
+
+            countdownTimer.Tick += (_, _) =>
+            {
+                secondsRemaining--;
+                if (secondsRemaining > 0)
+                {
+                    messageLabel.Text = FormatMessage(messageTemplate, secondsRemaining);
+                }
+                else
+                {
+                    countdownTimer.Stop();
+                    form.Close();
+                }
             };
 
             closeTimer.Tick += (_, _) =>
@@ -90,6 +112,7 @@ namespace IRIS.Agent.Logic
 
             form.FormClosed += (_, _) =>
             {
+                countdownTimer.Stop();
                 closeTimer.Stop();
                 tcs.TrySetResult(wasCancelled);
                 Application.ExitThread();
@@ -98,8 +121,32 @@ namespace IRIS.Agent.Logic
             form.Controls.Add(messageLabel);
             form.Controls.Add(cancelButton);
 
+            countdownTimer.Start();
             closeTimer.Start();
             Application.Run(form);
+        }
+
+        private static string ExtractMessageTemplate(string message)
+        {
+            // Determine the action and reason from the original message
+            var isRestart = message.Contains("restart", StringComparison.OrdinalIgnoreCase);
+            var isIdlePolicy = message.Contains("idle time policy", StringComparison.OrdinalIgnoreCase);
+            
+            if (isRestart)
+                return isIdlePolicy ? "restart_idle" : "restart_remote";
+            return isIdlePolicy ? "shutdown_idle" : "shutdown_remote";
+        }
+
+        private static string FormatMessage(string template, int seconds)
+        {
+            return template switch
+            {
+                "shutdown_idle" => $"This PC will shut down due to idle time policy in {seconds} seconds.\n\nClick Cancel to prevent shutdown.",
+                "shutdown_remote" => $"This PC will shut down due to a remote command in {seconds} seconds.\n\nClick Cancel to prevent shutdown.",
+                "restart_idle" => $"This PC will restart due to idle time policy in {seconds} seconds.\n\nClick Cancel to prevent restart.",
+                "restart_remote" => $"This PC will restart due to a remote command in {seconds} seconds.\n\nClick Cancel to prevent restart.",
+                _ => $"This PC will shut down in {seconds} seconds.\n\nClick Cancel to prevent shutdown."
+            };
         }
     }
 }
