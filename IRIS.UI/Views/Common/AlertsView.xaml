@@ -228,6 +228,7 @@
                           SelectedItem="{Binding SelectedAlert}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
                           CanUserAddRows="False"
@@ -249,13 +250,13 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="180"/>
-                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="140"/>
-                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="140"/>
-                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="140"/>
-                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="190"/>
-                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="120"/>
-                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/>
+                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="1.4*"/>
+                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="0.9*"/>
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="0.9*"/>
+                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="1*"/>
+                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="1.3*"/>
+                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="1*"/>
+                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="2*"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

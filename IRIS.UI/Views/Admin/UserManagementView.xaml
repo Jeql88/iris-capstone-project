@@ -99,22 +99,23 @@
                             <ui:DataGrid ItemsSource="{Binding Users}" 
                                          AutoGenerateColumns="False"
                                          IsReadOnly="True"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          SelectionChanged="UsersDataGrid_SelectionChanged">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="1.5*"/>
-                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.5*"/>
-                                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.5*"/>
-                                    <DataGridTemplateColumn Header="Actions" Width="1*">
+                                    <DataGridTextColumn Header="Full Name" Binding="{Binding FullName}" Width="2.4*"/>
+                                    <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="1.4*"/>
+                                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="1.2*"/>
+                                    <DataGridTemplateColumn Header="Actions" Width="220">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Margin="5">
+                                                <StackPanel Orientation="Horizontal" Margin="5,0" HorizontalAlignment="Center">
                                                     <ui:Button Content="Edit" 
                                                                Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Edit24}"
                                                                Appearance="Secondary"
                                                                Padding="8,4"
-                                                               Margin="8,0,12,0"/>
+                                                               Margin="0,0,8,0"/>
                                                     <ui:Button Content="Delete" 
                                                                Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"

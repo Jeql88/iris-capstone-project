@@ -48,11 +48,13 @@
         </Style>
     </UserControl.Resources>
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" MinHeight="240"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -114,7 +116,8 @@
             <!-- ─── LEFT PANE: Local Files ─── -->
             <Border Grid.Column="0" CornerRadius="6" BorderThickness="1"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                    Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8">
+                    Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8"
+                    MinHeight="600">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -162,6 +165,7 @@
                               SelectedItem="{Binding SelectedLocalFile}"
                               AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                               CanUserSortColumns="True"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="LocalFilesGrid_MouseDoubleClick"
                               PreviewMouseLeftButtonDown="LocalFilesGrid_PreviewMouseLeftButtonDown"
                               PreviewMouseMove="LocalFilesGrid_PreviewMouseMove"
@@ -212,6 +216,7 @@
             <Border Grid.Column="2" CornerRadius="6" BorderThickness="1"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8"
+                    MinHeight="600"
                     AllowDrop="True" Drop="RemotePane_Drop" DragOver="RemotePane_DragOver">
                 <Grid>
                 <Grid>
@@ -262,6 +267,7 @@
                               SelectedItem="{Binding SelectedRemoteFile}"
                               AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                               CanUserSortColumns="True"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="RemoteFilesGrid_MouseDoubleClick"
                               PreviewMouseRightButtonDown="RemoteFilesGrid_PreviewMouseRightButtonDown"
                               SelectionChanged="RemoteFilesGrid_SelectionChanged"
@@ -470,4 +476,5 @@
         <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Margin="0,8,0,0"
                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
     </Grid>
+    </ScrollViewer>
 </UserControl>
