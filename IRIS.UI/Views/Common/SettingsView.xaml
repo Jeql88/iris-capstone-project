@@ -143,7 +143,20 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <ui:PasswordBox x:Name="ConfirmPasswordBox"
                                     PlaceholderText="Confirm new password"
-                                    Margin="0,0,0,18"/>
+                                    Margin="0,0,0,8"/>
+
+                    <TextBlock Text="{Binding ChangePasswordStatusMessage}" FontSize="12" Margin="0,0,0,10" Foreground="#B00020" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ChangePasswordStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <ui:Button Content="Change Password"
                                Icon="{ui:SymbolIcon Checkmark24}"
@@ -193,7 +206,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="HardwareRetentionBox" Grid.Column="0" Value="{Binding HardwareRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="HardwareRetentionBox" Grid.Column="0" Value="{Binding HardwareRetentionDays, Mode=OneWay}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -209,7 +222,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="NetworkRetentionBox" Grid.Column="0" Value="{Binding NetworkRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="NetworkRetentionBox" Grid.Column="0" Value="{Binding NetworkRetentionDays, Mode=OneWay}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -225,7 +238,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="AlertRetentionBox" Grid.Column="0" Value="{Binding AlertRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="730"
+                                <ui:NumberBox x:Name="AlertRetentionBox" Grid.Column="0" Value="{Binding AlertRetentionDays, Mode=OneWay}" Minimum="1" Maximum="730"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -241,7 +254,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="WebsiteRetentionBox" Grid.Column="0" Value="{Binding WebsiteUsageRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="WebsiteRetentionBox" Grid.Column="0" Value="{Binding WebsiteUsageRetentionDays, Mode=OneWay}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -257,7 +270,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="SoftwareRetentionBox" Grid.Column="0" Value="{Binding SoftwareUsageRetentionDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="365"
+                                <ui:NumberBox x:Name="SoftwareRetentionBox" Grid.Column="0" Value="{Binding SoftwareUsageRetentionDays, Mode=OneWay}" Minimum="1" Maximum="365"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text="days" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -273,7 +286,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ui:NumberBox x:Name="CleanupHourBox" Grid.Column="0" Value="{Binding CleanupHourUtc, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" Maximum="23"
+                                <ui:NumberBox x:Name="CleanupHourBox" Grid.Column="0" Value="{Binding CleanupHourUtc, Mode=OneWay}" Minimum="0" Maximum="23"
                                               SpinButtonPlacementMode="Compact"/>
                                 <TextBlock Grid.Column="1" Text=":00" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
@@ -281,8 +294,26 @@
                         </StackPanel>
                     </Grid>
 
+                    <TextBlock Text="{Binding RetentionStatusMessage}" FontSize="12"
+                               Margin="0,10,0,0" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RetentionStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRetentionStatusError}" Value="True">
+                                        <Setter Property="Foreground" Value="#B00020"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
                     <!-- Status + Actions -->
-                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                         <ui:Button Content="Save Settings"
                                    Icon="{ui:SymbolIcon Save24}"
                                    Appearance="Primary"
@@ -293,21 +324,6 @@
                                Margin="10,0,0,0"
                                Click="RunCleanupNow_Click"/>
                     </StackPanel>
-
-                    <TextBlock Text="{Binding RetentionStatusMessage}" FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                               Margin="0,10,0,0" TextWrapping="Wrap">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RetentionStatusMessage}" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
                 </StackPanel>
             </Border>
 

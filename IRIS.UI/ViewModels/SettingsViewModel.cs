@@ -26,6 +26,8 @@ namespace IRIS.UI.ViewModels
         private double _cleanupHourUtc = 2;
         private bool _isRetentionLoading;
         private string _retentionStatusMessage = string.Empty;
+        private bool _isRetentionStatusError;
+        private string _changePasswordStatusMessage = string.Empty;
 
         public SettingsViewModel(IAuthenticationService authService, IServiceScopeFactory scopeFactory)
         {
@@ -121,6 +123,18 @@ namespace IRIS.UI.ViewModels
             set { _retentionStatusMessage = value; OnPropertyChanged(); }
         }
 
+        public bool IsRetentionStatusError
+        {
+            get => _isRetentionStatusError;
+            set { _isRetentionStatusError = value; OnPropertyChanged(); }
+        }
+
+        public string ChangePasswordStatusMessage
+        {
+            get => _changePasswordStatusMessage;
+            set { _changePasswordStatusMessage = value; OnPropertyChanged(); }
+        }
+
         private readonly RelayCommand _saveRetentionCommand;
         private readonly RelayCommand _runCleanupNowCommand;
         public ICommand SaveRetentionCommand => _saveRetentionCommand;
@@ -201,7 +215,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private async Task SaveRetentionSettingsAsync()
+        public async Task<bool> SaveRetentionSettingsAsync()
         {
             var hwDays = (int)HardwareRetentionDays;
             var netDays = (int)NetworkRetentionDays;
@@ -212,20 +226,20 @@ namespace IRIS.UI.ViewModels
 
             if (hwDays < 1 || netDays < 1 || alertDays < 1)
             {
-                MessageBox.Show("Retention days must be at least 1.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                SetRetentionStatus("Retention days must be at least 1.", true);
+                return false;
             }
 
             if (cleanupHour < 0 || cleanupHour > 23)
             {
-                MessageBox.Show("Cleanup hour must be between 0 and 23.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                SetRetentionStatus("Cleanup hour must be between 0 and 23.", true);
+                return false;
             }
 
             try
             {
                 IsRetentionLoading = true;
-                RetentionStatusMessage = "Saving...";
+                SetRetentionStatus("Saving...", false);
 
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
@@ -237,11 +251,13 @@ namespace IRIS.UI.ViewModels
                 await service.UpdateSettingAsync(SettingsKeys.SoftwareUsageRetentionDays, swDays);
                 await service.UpdateSettingAsync(SettingsKeys.CleanupHourUtc, cleanupHour);
 
-                RetentionStatusMessage = "Settings saved successfully.";
+                SetRetentionStatus(string.Empty, false);
+                return true;
             }
             catch (Exception ex)
             {
-                RetentionStatusMessage = $"Error: {ex.Message}";
+                SetRetentionStatus($"Error: {ex.Message}", true);
+                return false;
             }
             finally
             {
@@ -251,18 +267,10 @@ namespace IRIS.UI.ViewModels
 
         private async Task RunCleanupNowAsync()
         {
-            var confirm = MessageBox.Show(
-                "This will permanently delete all monitoring data older than the configured retention periods.\n\nAre you sure you want to proceed?",
-                "Confirm Cleanup",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (confirm != MessageBoxResult.Yes) return;
-
             try
             {
                 IsRetentionLoading = true;
-                RetentionStatusMessage = "Running cleanup...";
+                SetRetentionStatus("Running cleanup...", false);
 
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IDataRetentionService>();
@@ -271,7 +279,7 @@ namespace IRIS.UI.ViewModels
 
                 if (result.TotalDeleted == 0)
                 {
-                    RetentionStatusMessage = "Cleanup completed — no stale data found.";
+                    SetRetentionStatus("Cleanup completed - no stale data found.", false);
                 }
                 else
                 {
@@ -281,17 +289,23 @@ namespace IRIS.UI.ViewModels
                     if (result.AlertsDeleted > 0) parts.Add($"{result.AlertsDeleted} alert");
                     if (result.WebsiteUsageDeleted > 0) parts.Add($"{result.WebsiteUsageDeleted} website usage");
                     if (result.SoftwareUsageDeleted > 0) parts.Add($"{result.SoftwareUsageDeleted} app usage");
-                    RetentionStatusMessage = $"Cleanup completed — deleted {string.Join(", ", parts)} records.";
+                    SetRetentionStatus($"Cleanup completed - deleted {string.Join(", ", parts)} records.", false);
                 }
             }
             catch (Exception ex)
             {
-                RetentionStatusMessage = $"Cleanup failed: {ex.Message}";
+                SetRetentionStatus($"Cleanup failed: {ex.Message}", true);
             }
             finally
             {
                 IsRetentionLoading = false;
             }
+        }
+
+        public void SetRetentionStatus(string message, bool isError)
+        {
+            RetentionStatusMessage = message;
+            IsRetentionStatusError = isError;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

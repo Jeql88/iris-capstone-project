@@ -31,38 +31,49 @@ namespace IRIS.UI.Views.Common
 
         private async void ChangePassword_Click(object sender, RoutedEventArgs e)
         {
+            _viewModel.ChangePasswordStatusMessage = string.Empty;
+
             var currentPassword = CurrentPasswordBox.Password;
             var newPassword = NewPasswordBox.Password;
             var confirmPassword = ConfirmPasswordBox.Password;
 
-            if (string.IsNullOrWhiteSpace(currentPassword))
+            if (string.IsNullOrWhiteSpace(currentPassword) ||
+                string.IsNullOrWhiteSpace(newPassword) ||
+                string.IsNullOrWhiteSpace(confirmPassword))
             {
-                MessageBox.Show("Current password is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(newPassword))
-            {
-                MessageBox.Show("New password is required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _viewModel.ChangePasswordStatusMessage = "Please fill in all fields.";
                 return;
             }
 
             if (newPassword.Length < 8)
             {
-                MessageBox.Show("New password must be at least 8 characters long.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _viewModel.ChangePasswordStatusMessage = "New password must be at least 8 characters long.";
                 return;
             }
 
             if (newPassword != confirmPassword)
             {
-                MessageBox.Show("New password and confirmation do not match.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _viewModel.ChangePasswordStatusMessage = "New password and confirmation do not match.";
                 return;
             }
 
             var currentUser = _authService.GetCurrentUser();
             if (currentUser == null)
             {
-                MessageBox.Show("No user is currently logged in.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _viewModel.ChangePasswordStatusMessage = "No user is currently logged in.";
+                return;
+            }
+
+            var confirmDialog = new ConfirmationDialog(
+                "Confirm Password Change",
+                "Are you sure you want to change your password?",
+                "Warning24",
+                "Yes",
+                "No");
+            confirmDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmDialog.ShowDialog() != true)
+            {
                 return;
             }
 
@@ -70,14 +81,22 @@ namespace IRIS.UI.Views.Common
 
             if (success)
             {
-                MessageBox.Show("Password changed successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                CurrentPasswordBox.Clear();
-                NewPasswordBox.Clear();
-                ConfirmPasswordBox.Clear();
+                var successDialog = new ConfirmationDialog(
+                    "Success",
+                    "Password changed successfully!",
+                    "Checkmark24",
+                    "Close",
+                    "Cancel",
+                    false);
+                successDialog.Owner = Application.Current.MainWindow;
+                successDialog.ShowDialog();
+
+                _viewModel.ChangePasswordStatusMessage = string.Empty;
+                ClearPasswordInputs();
             }
             else
             {
-                MessageBox.Show("Failed to change password. Please check your current password.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _viewModel.ChangePasswordStatusMessage = "Failed to change password. Please check your current password.";
             }
         }
 
@@ -104,8 +123,32 @@ namespace IRIS.UI.Views.Common
             }
         }
 
-        private void SaveSettings_Click(object sender, RoutedEventArgs e)
+        private async void SaveSettings_Click(object sender, RoutedEventArgs e)
         {
+            if (HardwareRetentionBox.Value == null ||
+                NetworkRetentionBox.Value == null ||
+                AlertRetentionBox.Value == null ||
+                WebsiteRetentionBox.Value == null ||
+                SoftwareRetentionBox.Value == null ||
+                CleanupHourBox.Value == null)
+            {
+                _viewModel.SetRetentionStatus("Please fill in all fields.", true);
+                return;
+            }
+
+            var confirmationDialog = new ConfirmationDialog(
+                "Confirm Save Settings",
+                "Do you want to save the updated data retention settings?",
+                "Warning24",
+                "Yes",
+                "No");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             // Read values directly from NumberBox controls to bypass any binding issues
             _viewModel.HardwareRetentionDays = HardwareRetentionBox.Value ?? _viewModel.HardwareRetentionDays;
             _viewModel.NetworkRetentionDays = NetworkRetentionBox.Value ?? _viewModel.NetworkRetentionDays;
@@ -114,8 +157,21 @@ namespace IRIS.UI.Views.Common
             _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
             _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
 
-            if (_viewModel.SaveRetentionCommand.CanExecute(null))
-                _viewModel.SaveRetentionCommand.Execute(null);
+            var success = await _viewModel.SaveRetentionSettingsAsync();
+            if (!success)
+            {
+                return;
+            }
+
+            var successDialog = new ConfirmationDialog(
+                "Success",
+                "Settings saved successfully!",
+                "Checkmark24",
+                "Close",
+                "Cancel",
+                false);
+            successDialog.Owner = Application.Current.MainWindow;
+            successDialog.ShowDialog();
         }
 
         private void RunCleanupNow_Click(object sender, RoutedEventArgs e)
@@ -128,8 +184,28 @@ namespace IRIS.UI.Views.Common
             _viewModel.SoftwareUsageRetentionDays = SoftwareRetentionBox.Value ?? _viewModel.SoftwareUsageRetentionDays;
             _viewModel.CleanupHourUtc = CleanupHourBox.Value ?? _viewModel.CleanupHourUtc;
 
+            var confirmationDialog = new ConfirmationDialog(
+                "Confirm Cleanup",
+                "This will permanently delete monitoring data older than the configured retention periods.\n\nDo you want to continue?",
+                "Warning24",
+                "Yes",
+                "No");
+            confirmationDialog.Owner = Application.Current.MainWindow;
+
+            if (confirmationDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
             if (_viewModel.RunCleanupNowCommand.CanExecute(null))
                 _viewModel.RunCleanupNowCommand.Execute(null);
+        }
+
+        private void ClearPasswordInputs()
+        {
+            CurrentPasswordBox.Clear();
+            NewPasswordBox.Clear();
+            ConfirmPasswordBox.Clear();
         }
     }
 }
