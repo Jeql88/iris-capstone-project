@@ -24,7 +24,9 @@ namespace IRIS.UI.Services
         private List<RoomDto> _cachedRooms = new();
         private List<LiveAlertItem> _cachedLiveAlerts = new();
         private readonly Dictionary<int, bool> _freezeStatesByPcId = new();
+        private readonly Dictionary<int, string> _snapshotsByPcId = new();
         private readonly object _freezeStateLock = new();
+        private readonly object _snapshotCacheLock = new();
 
         public PCDataCacheService(IServiceScopeFactory scopeFactory)
         {
@@ -45,10 +47,16 @@ namespace IRIS.UI.Services
 
         public event Action? DataChanged;
 
-        public async Task RefreshPCDataAsync()
+        public async Task RefreshPCDataAsync(bool forceWait = false)
         {
-            if (!await _pcRefreshSemaphore.WaitAsync(0))
+            if (forceWait)
+            {
+                await _pcRefreshSemaphore.WaitAsync();
+            }
+            else if (!await _pcRefreshSemaphore.WaitAsync(0))
+            {
                 return;
+            }
 
             try
             {
@@ -168,6 +176,29 @@ namespace IRIS.UI.Services
             }
 
             DataChanged?.Invoke();
+        }
+
+        public string? GetCachedSnapshot(int pcId)
+        {
+            lock (_snapshotCacheLock)
+            {
+                return _snapshotsByPcId.TryGetValue(pcId, out var snapshot)
+                    ? snapshot
+                    : null;
+            }
+        }
+
+        public void SetCachedSnapshot(int pcId, string snapshotBase64)
+        {
+            if (string.IsNullOrWhiteSpace(snapshotBase64))
+            {
+                return;
+            }
+
+            lock (_snapshotCacheLock)
+            {
+                _snapshotsByPcId[pcId] = snapshotBase64;
+            }
         }
     }
 }

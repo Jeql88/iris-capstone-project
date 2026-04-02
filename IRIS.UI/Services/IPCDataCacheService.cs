@@ -25,7 +25,7 @@ namespace IRIS.UI.Services
         int? CurrentRoomFilter { get; set; }
 
         /// <summary>Refresh PC list + status counts. Creates its own scope.</summary>
-        Task RefreshPCDataAsync();
+        Task RefreshPCDataAsync(bool forceWait = false);
 
         /// <summary>Refresh dashboard summary (KPIs, labs, heavy apps). Creates its own scope.</summary>
         Task RefreshDashboardSummaryAsync();
@@ -41,6 +41,12 @@ namespace IRIS.UI.Services
 
         /// <summary>Sets cached freeze state for a PC so UI pages stay in sync.</summary>
         void SetFreezeState(int pcId, bool isFrozen);
+
+        /// <summary>Gets cached snapshot image data for a PC, if available.</summary>
+        string? GetCachedSnapshot(int pcId);
+
+        /// <summary>Stores snapshot image data for a PC for instant navigation re-renders.</summary>
+        void SetCachedSnapshot(int pcId, string snapshotBase64);
 
         /// <summary>Fired on the calling thread after any data changes.</summary>
         event Action? DataChanged;

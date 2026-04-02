@@ -82,7 +82,7 @@ namespace IRIS.UI.ViewModels
             FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
             RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
-            RefreshCommand = new RelayCommand(async () => { IsLoading = true; await LoadPCDataAsync(); }, () => true);
+            RefreshCommand = new RelayCommand(async () => { IsLoading = true; await LoadPCDataAsync(ensureFreshData: true); }, () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
@@ -91,9 +91,7 @@ namespace IRIS.UI.ViewModels
             _cache.DataChanged += OnCacheDataChanged;
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-            _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync();
-
-            _ = InitializeAsync();
+            _refreshTimer.Tick += async (s, e) => await LoadPCDataAsync(ensureFreshData: true);
         }
 
         public ObservableCollection<PCDisplayModel> PCs { get; } = new();
@@ -269,7 +267,7 @@ namespace IRIS.UI.ViewModels
             var selectedRoomId = _appliedRoom != null && _appliedRoom.Id > 0 ? _appliedRoom.Id : (int?)null;
             _cache.CurrentRoomFilter = selectedRoomId;
             
-            await LoadPCDataAsync();
+            await LoadPCDataAsync(ensureFreshData: true);
         }
 
         private async Task ResetFiltersAsync()
@@ -283,27 +281,39 @@ namespace IRIS.UI.ViewModels
         private async Task InitializeAsync()
         {
             if (_isInitialized) return;
-            await LoadRoomsAsync();
             _isInitialized = true;
+
+            // Render whatever is already in cache immediately, then refresh.
+            ApplyCachedPCData();
+            ApplyFilter();
+            LoadLiveAlertsFromCache();
+            _ = LoadSnapshotsAsync(quickPass: true);
+
+            await LoadRoomsAsync();
 
             _appliedRoom = SelectedRoom;
             _appliedSearchText = SearchText?.Trim() ?? string.Empty;
             _appliedPcStatus = SelectedPcStatus;
 
             IsLoading = true;
-            await LoadPCDataAsync();
+            await LoadPCDataAsync(ensureFreshData: true);
             _refreshTimer.Start();
         }
 
-        private async Task LoadPCDataAsync()
+        private async Task LoadPCDataAsync(bool ensureFreshData = false)
         {
             if (!_isActive)
             {
                 return;
             }
 
-            if (!await _loadPcDataSemaphore.WaitAsync(0))
+            if (ensureFreshData)
             {
+                await _loadPcDataSemaphore.WaitAsync();
+            }
+            else if (!await _loadPcDataSemaphore.WaitAsync(0))
+            {
+                IsLoading = false;
                 return;
             }
 
@@ -316,6 +326,12 @@ namespace IRIS.UI.ViewModels
 
                 var previousSelectionId = SelectedPC?.Id;
                 var previousFlipState = SelectedPC?.IsFlipped ?? false;
+
+                if (ensureFreshData)
+                {
+                    await _cache.RefreshPCDataAsync(forceWait: true);
+                    await _cache.RefreshLiveAlertsAsync(forceWait: true);
+                }
 
                 // Use cached data from background service
                 ApplyCachedPCData();
@@ -355,7 +371,7 @@ namespace IRIS.UI.ViewModels
 
         private void OnCacheDataChanged()
         {
-            if (_isActive)
+            if (_isActive && _isInitialized)
             {
                 _ = LoadPCDataAsync();
             }
@@ -364,9 +380,21 @@ namespace IRIS.UI.ViewModels
         public void OnNavigatedTo()
         {
             _isActive = true;
+
+            if (!_isInitialized)
+            {
+                _ = InitializeAsync();
+                return;
+            }
+
+            // Instant UI from cache on navigation.
             ApplyCachedPCData();
             ApplyFilter();
             LoadLiveAlertsFromCache();
+            _ = LoadSnapshotsAsync(quickPass: true);
+
+            IsLoading = true;
+            _ = LoadPCDataAsync(ensureFreshData: true);
             _refreshTimer.Start();
         }
 
@@ -403,6 +431,12 @@ namespace IRIS.UI.ViewModels
                     {
                         existing.IsFreezeActive = cachedFreezeState.Value;
                     }
+
+                    var cachedSnapshot = _cache.GetCachedSnapshot(pc.Id);
+                    if (!string.IsNullOrWhiteSpace(cachedSnapshot))
+                    {
+                        existing.SnapshotImageBase64 = cachedSnapshot;
+                    }
                 }
                 else
                 {
@@ -413,6 +447,12 @@ namespace IRIS.UI.ViewModels
                     if (cachedFreezeState.HasValue)
                     {
                         display.IsFreezeActive = cachedFreezeState.Value;
+                    }
+
+                    var cachedSnapshot = _cache.GetCachedSnapshot(pc.Id);
+                    if (!string.IsNullOrWhiteSpace(cachedSnapshot))
+                    {
+                        display.SnapshotImageBase64 = cachedSnapshot;
                     }
 
                     PCs.Add(display);
@@ -704,22 +744,46 @@ namespace IRIS.UI.ViewModels
             _lastAlertRefreshUtc = DateTime.UtcNow;
         }
 
-        private async Task LoadSnapshotsAsync()
+        private async Task LoadSnapshotsAsync(bool quickPass = false)
         {
             var reachablePcs = PCs
                 .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .OrderByDescending(p => string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(p => p.PCName, Helpers.NaturalSortComparer.Instance)
                 .ToList();
 
-            var semaphore = new SemaphoreSlim(4);
-            var tasks = reachablePcs.Select(async pc =>
+            if (reachablePcs.Count == 0)
+            {
+                return;
+            }
+
+            var targets = quickPass
+                ? reachablePcs
+                    .Where(p => string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    .Take(12)
+                    .DefaultIfEmpty()
+                    .Where(p => p != null)
+                    .Cast<PCDisplayModel>()
+                    .ToList()
+                : reachablePcs;
+
+            if (quickPass && targets.Count == 0)
+            {
+                targets = reachablePcs.Take(12).ToList();
+            }
+
+            var semaphore = new SemaphoreSlim(quickPass ? 8 : 4);
+            var tasks = targets.Select(async pc =>
             {
                 await semaphore.WaitAsync();
                 try
                 {
-                    var base64 = await GetSnapshotBase64Async(pc.IPAddress);
+                    TimeSpan? timeout = quickPass ? TimeSpan.FromMilliseconds(800) : null;
+                    var base64 = await GetSnapshotBase64Async(pc.IPAddress, timeout);
                     if (!string.IsNullOrWhiteSpace(base64))
                     {
                         pc.SnapshotImageBase64 = base64;
+                        _cache.SetCachedSnapshot(pc.Id, base64);
                     }
                 }
                 finally
@@ -753,7 +817,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private async Task<string?> GetSnapshotBase64Async(string ipAddress)
+        private async Task<string?> GetSnapshotBase64Async(string ipAddress, TimeSpan? timeoutOverride = null)
         {
             try
             {
@@ -764,7 +828,10 @@ namespace IRIS.UI.ViewModels
                     request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
                 }
 
-                using var response = await SnapshotHttpClient.SendAsync(request);
+                using var cts = timeoutOverride.HasValue ? new CancellationTokenSource(timeoutOverride.Value) : null;
+                var cancellationToken = cts?.Token ?? CancellationToken.None;
+
+                using var response = await SnapshotHttpClient.SendAsync(request, cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
