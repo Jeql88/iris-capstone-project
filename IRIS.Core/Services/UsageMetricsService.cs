@@ -100,10 +100,9 @@ public class UsageMetricsService : IUsageMetricsService
 
     public async Task<List<string>> GetApplicationUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)
     {
-        return await _context.SoftwareUsageHistory
-            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate && s.PC.Room != null)
-            .Select(s => s.PC.Room.RoomNumber)
-            .Distinct()
+        return await _context.Rooms
+            .Where(r => r.IsActive && !string.Equals(r.RoomNumber, "DEFAULT"))
+            .Select(r => r.RoomNumber)
             .OrderBy(room => room)
             .ToListAsync();
     }
@@ -210,10 +209,9 @@ public class UsageMetricsService : IUsageMetricsService
 
     public async Task<List<string>> GetWebsiteUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)
     {
-        return await _context.WebsiteUsageHistory
-            .Where(w => w.VisitedAt >= startDate && w.VisitedAt <= endDate && w.PC.Room != null)
-            .Select(w => w.PC.Room.RoomNumber)
-            .Distinct()
+        return await _context.Rooms
+            .Where(r => r.IsActive && !string.Equals(r.RoomNumber, "DEFAULT"))
+            .Select(r => r.RoomNumber)
             .OrderBy(room => room)
             .ToListAsync();
     }
