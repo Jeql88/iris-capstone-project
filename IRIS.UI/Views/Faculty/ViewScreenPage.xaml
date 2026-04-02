@@ -168,6 +168,12 @@
                                        Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="90"
                                        Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
+                            <ui:Button Icon="{ui:SymbolIcon Chat24}"
+                                       Content="Message"
+                                       Command="{Binding SendMessageCommand}"
+                                       Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"
+                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
                             <!-- More Actions Button with Popup (hidden for faculty) -->
                             <Grid Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <ui:Button x:Name="MoreActionsButton"
@@ -214,6 +220,15 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="LockClosed24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="{Binding FreezeButtonText}" FontSize="13" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </ui:Button>
+                                            <ui:Button Padding="10,7" Appearance="Secondary"
+                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                       Command="{Binding SendMessageCommand}"
+                                                       Click="MoreActionsMenuItem_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="Chat24" FontSize="16" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="Message" FontSize="13" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </ui:Button>
                                         </StackPanel>

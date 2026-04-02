@@ -333,6 +333,17 @@ namespace IRIS.Agent.Logic
                 {
                     Log.Information("Executing freeze-off command for PC {MacAddress}", _macAddress);
                     _freezeOverlayController.Unfreeze();
+                    return;
+                }
+
+                if (response.StartsWith("Message::", StringComparison.OrdinalIgnoreCase))
+                {
+                    var decodedMessage = ExtractMessagePayload(response);
+                    if (!string.IsNullOrWhiteSpace(decodedMessage))
+                    {
+                        Log.Information("Displaying remote message dialog for PC {MacAddress}", _macAddress);
+                        await RemoteMessageDialog.ShowInfoAsync("Message from IRIS", decodedMessage);
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -350,6 +361,32 @@ namespace IRIS.Agent.Logic
         }
 
         private static string? ExtractFreezeMessage(string command)
+        {
+            var delimiterIndex = command.IndexOf("::", StringComparison.Ordinal);
+            if (delimiterIndex < 0 || delimiterIndex + 2 >= command.Length)
+            {
+                return null;
+            }
+
+            var payload = command[(delimiterIndex + 2)..];
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                return null;
+            }
+
+            try
+            {
+                var bytes = Convert.FromBase64String(payload);
+                var decoded = System.Text.Encoding.UTF8.GetString(bytes);
+                return string.IsNullOrWhiteSpace(decoded) ? null : decoded.Trim();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string? ExtractMessagePayload(string command)
         {
             var delimiterIndex = command.IndexOf("::", StringComparison.Ordinal);
             if (delimiterIndex < 0 || delimiterIndex + 2 >= command.Length)

@@ -19,12 +19,14 @@ namespace IRIS.Core.Services
 
             var normalizedCommand = commandType.Trim();
             var isFreezeOnWithPayload = normalizedCommand.StartsWith("FreezeOn::", StringComparison.OrdinalIgnoreCase);
+            var isMessageWithPayload = normalizedCommand.StartsWith("Message::", StringComparison.OrdinalIgnoreCase);
             if (!normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase) &&
                 !normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase) &&
                 !isFreezeOnWithPayload &&
-                !normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase))
+                !normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase) &&
+                !isMessageWithPayload)
             {
                 return Task.FromResult(false);
             }
@@ -47,7 +49,9 @@ namespace IRIS.Core.Services
                             ? normalizedCommand
                         : normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase)
                             ? "FreezeOn"
-                            : "FreezeOff";
+                            : isMessageWithPayload
+                                ? normalizedCommand
+                                : "FreezeOff";
 
             _pendingCommands[normalizedMacAddress] = new PendingCommandEntry(
                 finalCommand,

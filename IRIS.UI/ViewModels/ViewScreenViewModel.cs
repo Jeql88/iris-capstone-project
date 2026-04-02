@@ -87,6 +87,7 @@ namespace IRIS.UI.ViewModels
             ShutdownPCCommand = new RelayCommand(async () => await ShutDownAsync(), () => true);
             RestartPCCommand = new RelayCommand(async () => await RestartPCAsync(), () => true);
             ToggleFreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => true);
+            SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => true);
             RefreshScreenCommand = new RelayCommand(async () => { await RefreshScreenAsync(); RefreshSystemInfoFromCache(); }, () => true);
             RetryConnectionCommand = new RelayCommand(async () => await RefreshScreenAsync(), () => true);
@@ -157,6 +158,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ShutdownPCCommand { get; }
         public ICommand RestartPCCommand { get; }
         public ICommand ToggleFreezeCommand { get; }
+        public ICommand SendMessageCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RefreshScreenCommand { get; }
         public ICommand RetryConnectionCommand { get; }
@@ -449,6 +451,46 @@ namespace IRIS.UI.ViewModels
 
             IsFreezeActive = !IsFreezeActive;
             _cache.SetFreezeState(_pcId, IsFreezeActive);
+        }
+
+        private async Task SendMessageAsync()
+        {
+            if (!IsConnected || IsDisconnected)
+            {
+                ShowOfflineActionDialog("send a message");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(MacAddress))
+            {
+                ShowActionErrorDialog("Command Error", "Cannot send message: missing PC MAC address.");
+                return;
+            }
+
+            var messageDialog = new FreezeMessageDialog(
+                "Send Message",
+                $"Enter the message to show on {PCName}:",
+                "Please check the latest instruction from your instructor.");
+            messageDialog.Owner = Application.Current.MainWindow;
+
+            if (messageDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var currentUser = _authenticationService.GetCurrentUser();
+            var senderName = !string.IsNullOrWhiteSpace(currentUser?.FullName)
+                ? currentUser!.FullName!
+                : currentUser?.Username ?? "IRIS User";
+
+            var outboundMessage = $"Message from {senderName}\n\n{messageDialog.FreezeMessage}";
+            var encodedMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(outboundMessage));
+            var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, $"Message::{encodedMessage}");
+
+            if (!queued)
+            {
+                ShowActionErrorDialog("Command Error", "Failed to queue message command.");
+            }
         }
 
         private async Task RemoteDesktopAsync()
