@@ -76,7 +76,7 @@
                     <ui:Button x:Name="LabsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="LabsBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="Building24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
-                            <TextBlock Text="Labs" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                            <TextBlock Text="Laboratories" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
                     

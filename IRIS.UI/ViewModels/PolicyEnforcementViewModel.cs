@@ -321,7 +321,9 @@ namespace IRIS.UI.ViewModels
                 var rooms = await _dbContext.Rooms
                     .Include(r => r.PCs)
                     .Include(r => r.Policies)
-                    .Where(r => r.IsActive && r.RoomNumber != null && r.RoomNumber.ToUpper() != "DEFAULT")
+                    .Where(r => r.RoomNumber != null && (r.IsActive || r.RoomNumber == "DEFAULT"))
+                    .OrderBy(r => r.RoomNumber == "DEFAULT" ? 0 : 1)
+                    .ThenBy(r => r.RoomNumber)
                     .ToListAsync();
 
                 var roomsWithCounts = await _monitoringService.GetActiveLabPCsAsync();
@@ -332,7 +334,14 @@ namespace IRIS.UI.ViewModels
                 Rooms.Clear();
                 foreach (var room in rooms)
                 {
-                    var onlineCount = roomsWithCounts.ContainsKey(room.RoomNumber) ? roomsWithCounts[room.RoomNumber] : 0;
+                    var displayRoomNumber = string.Equals(room.RoomNumber, "DEFAULT", StringComparison.OrdinalIgnoreCase)
+                        ? "Unassigned"
+                        : room.RoomNumber;
+
+                    var onlineCount = roomsWithCounts.TryGetValue(displayRoomNumber, out var displayCount)
+                        ? displayCount
+                        : (roomsWithCounts.TryGetValue(room.RoomNumber, out var rawCount) ? rawCount : 0);
+
                     var totalCount = room.PCs.Count();
 
                     var activePolicies = new List<string>();
@@ -350,8 +359,10 @@ namespace IRIS.UI.ViewModels
                     Rooms.Add(new RoomItem
                     {
                         Id = room.Id,
-                        RoomNumber = room.RoomNumber,
-                        Description = room.Description ?? "Computer Laboratory",
+                        RoomNumber = displayRoomNumber,
+                        Description = string.Equals(room.RoomNumber, "DEFAULT", StringComparison.OrdinalIgnoreCase)
+                            ? "PCs not assigned to a laboratory"
+                            : (room.Description ?? "Computer Laboratory"),
                         OnlineCount = onlineCount,
                         TotalCount = totalCount,
                         IsSelected = selectedRoomId.HasValue && room.Id == selectedRoomId.Value,

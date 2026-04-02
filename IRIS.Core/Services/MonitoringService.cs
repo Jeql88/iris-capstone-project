@@ -250,7 +250,7 @@ namespace IRIS.Core.Services
             {
                 csv.AppendLine(string.Join(",",
                     row.Timestamp.ToString("O"),
-                    EscapeCsv(row.PC?.Room?.RoomNumber ?? "Unassigned"),
+                    EscapeCsv(ToRoomDisplayName(row.PC?.Room?.RoomNumber)),
                     EscapeCsv(row.PC?.Hostname ?? "Unknown"),
                     EscapeCsv(row.PC?.MacAddress ?? string.Empty),
                     (row.UploadSpeed ?? 0).ToString("F3"),
@@ -286,7 +286,7 @@ namespace IRIS.Core.Services
             {
                 csv.AppendLine(string.Join(",",
                     row.Timestamp.ToString("O"),
-                    EscapeCsv(row.PC?.Room?.RoomNumber ?? "Unassigned"),
+                    EscapeCsv(ToRoomDisplayName(row.PC?.Room?.RoomNumber)),
                     EscapeCsv(row.PC?.Hostname ?? "Unknown"),
                     EscapeCsv(row.PC?.MacAddress ?? string.Empty),
                     (row.CpuUsage ?? 0).ToString("F2"),
@@ -333,13 +333,13 @@ namespace IRIS.Core.Services
             // Get online PCs grouped by room number
             var onlinePCsByRoom = allPCs
                 .Where(p => IsPcOnlineForMonitor(p, nowUtc))
-                .GroupBy(p => p.Room?.RoomNumber ?? "Unassigned")
+                .GroupBy(p => ToRoomDisplayName(p.Room?.RoomNumber))
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // Get all unique rooms from PCs in database
             var uniqueRoomNumbers = allPCs
                 .Where(p => p.Room != null)
-                .Select(p => p.Room!.RoomNumber)
+                .Select(p => ToRoomDisplayName(p.Room!.RoomNumber))
                 .Distinct()
                 .ToList();
 
@@ -363,11 +363,10 @@ namespace IRIS.Core.Services
         {
             return await _context.Rooms
                 .AsNoTracking()
-                .Where(r => r.RoomNumber != "DEFAULT")
                 .OrderBy(r => r.RoomNumber)
                 .Select(r => new RoomDto(
                     r.Id,
-                    r.RoomNumber,
+                    ToRoomDisplayName(r.RoomNumber),
                     r.Description,
                     r.Capacity,
                     r.IsActive,
@@ -439,7 +438,7 @@ namespace IRIS.Core.Services
                     Name = pc.Hostname ?? "Unknown",
                     IpAddress = pc.IpAddress ?? "N/A",
                     MacAddress = pc.MacAddress ?? "",
-                    RoomName = pc.Room?.RoomNumber ?? "Unassigned",
+                    RoomName = ToRoomDisplayName(pc.Room?.RoomNumber),
                     OperatingSystem = pc.OperatingSystem ?? "Unknown",
                     Status = isOnline ? Models.PCStatus.Online.ToString() : Models.PCStatus.Offline.ToString(),
                     CpuUsage = isOnline ? latestMetric?.CpuUsage ?? 0 : 0,
@@ -516,7 +515,7 @@ namespace IRIS.Core.Services
             foreach (var pc in pcs)
             {
                 var pcName = pc.Hostname ?? $"PC-{pc.Id}";
-                var roomName = pc.Room?.RoomNumber ?? "Unassigned";
+                var roomName = ToRoomDisplayName(pc.Room?.RoomNumber);
                 var isOnline = IsPcOnlineForMonitor(pc, nowUtc);
 
                 if (!isOnline)
@@ -644,7 +643,7 @@ namespace IRIS.Core.Services
                 AlertKey = a.AlertKey,
                 PCId = a.PCId,
                 PCName = a.PC?.Hostname ?? $"PC-{a.PCId}",
-                RoomName = a.PC?.Room?.RoomNumber ?? "Unassigned",
+                RoomName = ToRoomDisplayName(a.PC?.Room?.RoomNumber),
                 Severity = a.Severity.ToString() switch
                 {
                     "Low" => "Low",
@@ -1199,19 +1198,12 @@ namespace IRIS.Core.Services
                 });
             }
 
-            // Only auto-resolve alerts that have been open for at least 2 minutes
-            // This prevents alerts from disappearing immediately when condition clears
-            var autoResolveGracePeriod = TimeSpan.FromMinutes(2);
             foreach (var openAlert in existingOpenAlerts)
             {
                 if (!liveKeys.Contains(openAlert.AlertKey))
                 {
-                    var alertAge = nowUtc - openAlert.CreatedAt;
-                    if (alertAge >= autoResolveGracePeriod)
-                    {
-                        openAlert.IsResolved = true;
-                        openAlert.ResolvedAt = nowUtc;
-                    }
+                    openAlert.IsResolved = true;
+                    openAlert.ResolvedAt = nowUtc;
                 }
             }
 
@@ -1370,6 +1362,17 @@ namespace IRIS.Core.Services
             }
 
             return $"{Math.Max(0, (int)duration.TotalSeconds)}s";
+        }
+
+        private static string ToRoomDisplayName(string? roomNumber)
+        {
+            if (string.IsNullOrWhiteSpace(roomNumber) ||
+                string.Equals(roomNumber, "DEFAULT", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Unassigned";
+            }
+
+            return roomNumber;
         }
 
         private static string EscapeCsv(string value)

@@ -82,7 +82,6 @@ namespace IRIS.UI.ViewModels
             FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
             RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
-            RefreshCommand = new RelayCommand(async () => { IsLoading = true; await LoadPCDataAsync(ensureFreshData: true); }, () => true);
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
@@ -252,7 +251,6 @@ namespace IRIS.UI.ViewModels
         public ICommand FreezeCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RemoteDesktopForPCCommand { get; }
-        public ICommand RefreshCommand { get; }
         public ICommand RefreshSelectedPcTimelineCommand { get; }
         public ICommand ApplyFiltersCommand { get; }
         public ICommand ResetFiltersCommand { get; }
@@ -746,10 +744,21 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadSnapshotsAsync(bool quickPass = false)
         {
-            var reachablePcs = PCs
+            const int quickPassBatchSize = 16;
+
+            var visibleReachable = FilteredPCs
                 .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .ToList();
+
+            var visibleIds = new HashSet<int>(visibleReachable.Select(p => p.Id));
+            var nonVisibleReachable = PCs
+                .Where(p => !visibleIds.Contains(p.Id) && !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
                 .OrderByDescending(p => string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
                 .ThenBy(p => p.PCName, Helpers.NaturalSortComparer.Instance)
+                .ToList();
+
+            var reachablePcs = visibleReachable
+                .Concat(nonVisibleReachable)
                 .ToList();
 
             if (reachablePcs.Count == 0)
@@ -758,18 +767,12 @@ namespace IRIS.UI.ViewModels
             }
 
             var targets = quickPass
-                ? reachablePcs
-                    .Where(p => string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
-                    .Take(12)
-                    .DefaultIfEmpty()
-                    .Where(p => p != null)
-                    .Cast<PCDisplayModel>()
-                    .ToList()
+                ? reachablePcs.Take(quickPassBatchSize).ToList()
                 : reachablePcs;
 
             if (quickPass && targets.Count == 0)
             {
-                targets = reachablePcs.Take(12).ToList();
+                targets = reachablePcs.Take(quickPassBatchSize).ToList();
             }
 
             var semaphore = new SemaphoreSlim(quickPass ? 8 : 4);

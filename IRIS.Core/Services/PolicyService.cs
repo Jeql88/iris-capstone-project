@@ -47,6 +47,10 @@ namespace IRIS.Core.Services
                 .FirstOrDefaultAsync();
 
             var roomLabel = string.IsNullOrWhiteSpace(roomNumber) ? "Unknown lab" : roomNumber;
+            if (string.Equals(roomLabel, "DEFAULT", StringComparison.OrdinalIgnoreCase))
+            {
+                roomLabel = "Unassigned";
+            }
 
             if (existingPolicy != null)
             {

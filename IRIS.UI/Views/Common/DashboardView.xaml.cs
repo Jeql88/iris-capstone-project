@@ -116,6 +116,7 @@ namespace IRIS.UI.Views.Common
             SetActiveButton(DashboardBtn);
             ShowRightPanel();
             MainContent.Content = dashboardContent;
+            _viewModel.OnNavigatedTo();
         }
 
         private void MonitorBtn_Click(object sender, RoutedEventArgs e)
@@ -208,19 +209,37 @@ namespace IRIS.UI.Views.Common
             }
         }
 
+        private void LatencyChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+            => NavigateToAnalytics("Latency");
+
         private void LatencyChartBorder_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) NavigateToAnalytics("Latency");
+            if (e.ClickCount >= 2)
+            {
+                NavigateToAnalytics("Latency");
+            }
         }
+
+        private void BandwidthChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+            => NavigateToAnalytics("Bandwidth");
 
         private void BandwidthChartBorder_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) NavigateToAnalytics("Bandwidth");
+            if (e.ClickCount >= 2)
+            {
+                NavigateToAnalytics("Bandwidth");
+            }
         }
+
+        private void PacketLossChartBorder_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+            => NavigateToAnalytics("PacketLoss");
 
         private void PacketLossChartBorder_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) NavigateToAnalytics("PacketLoss");
+            if (e.ClickCount >= 2)
+            {
+                NavigateToAnalytics("PacketLoss");
+            }
         }
 
         private void NavigateToAnalytics(string chartType)

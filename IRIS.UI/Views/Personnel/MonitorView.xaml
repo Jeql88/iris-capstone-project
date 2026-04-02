@@ -25,7 +25,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -33,14 +32,6 @@
                     <TextBlock Text="PC Monitoring" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:Button Margin="8,0,0,0"
-                               Height="32"
-                               Icon="{ui:SymbolIcon ArrowClockwise24}"
-                               Command="{Binding RefreshCommand}"
-                               Appearance="Secondary"
-                               ToolTip="Refresh"/>
-                </StackPanel>
             </Grid>
 
             <!-- Stats cards -->
