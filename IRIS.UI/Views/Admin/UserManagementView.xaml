@@ -121,6 +121,7 @@
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Delete24}"
                                                                Appearance="Danger"
+                                                               Foreground="White"
                                                                Padding="8,4"/>
                                                 </StackPanel>
                                             </DataTemplate>

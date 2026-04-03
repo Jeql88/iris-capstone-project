@@ -152,6 +152,7 @@
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Delete24}"
                                                                Appearance="Danger"
+                                                               Foreground="White"
                                                                Padding="6,4"/>
                                                 </StackPanel>
                                             </DataTemplate>
@@ -533,7 +534,8 @@
                             <ui:Button Content="Unassign Selected" 
                                        Command="{Binding UnassignCommand}"
                                        Icon="{ui:SymbolIcon Delete24}"
-                                       Appearance="Secondary"
+                                       Appearance="Danger"
+                                       Foreground="White"
                                        Margin="0,0,10,0">
                                 <ui:Button.Style>
                                     <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
