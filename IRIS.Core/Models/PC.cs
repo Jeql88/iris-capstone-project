@@ -42,7 +42,6 @@ namespace IRIS.Core.Models
 
         public virtual ICollection<HardwareMetric> HardwareMetrics { get; set; } = new List<HardwareMetric>();
         public virtual ICollection<NetworkMetric> NetworkMetrics { get; set; } = new List<NetworkMetric>();
-        public virtual ICollection<SoftwareInstalled> SoftwareInstalled { get; set; } = new List<SoftwareInstalled>();
         public virtual ICollection<SoftwareUsageHistory> SoftwareUsageHistory { get; set; } = new List<SoftwareUsageHistory>();
         public virtual ICollection<WebsiteUsageHistory> WebsiteUsageHistory { get; set; } = new List<WebsiteUsageHistory>();
         public virtual ICollection<UserLog> UserLogs { get; set; } = new List<UserLog>();
