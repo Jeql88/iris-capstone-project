@@ -55,15 +55,22 @@ namespace IRIS.Agent
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
 
-        // --- Sleep prevention (used by Program) ---
+        // --- Console QuickEdit fix (used by Program) ---
 
-        [DllImport("kernel32.dll")]
-        public static extern uint SetThreadExecutionState(uint esFlags);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr GetStdHandle(int nStdHandle);
 
-        public const uint ES_CONTINUOUS = 0x80000000;
-        public const uint ES_SYSTEM_REQUIRED = 0x00000001;
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
 
-        // --- Idle detection (used by Program) ---
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+
+        public const int STD_INPUT_HANDLE = -10;
+        public const uint ENABLE_QUICK_EDIT_MODE = 0x0040;
+        public const uint ENABLE_EXTENDED_FLAGS = 0x0080;
+
+        // --- Idle detection (used by AgentWorker) ---
 
         [DllImport("user32.dll")]
         public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);

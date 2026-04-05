@@ -24,6 +24,7 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+artifacts/
 
 # Visual Studio directories
 .vs/
