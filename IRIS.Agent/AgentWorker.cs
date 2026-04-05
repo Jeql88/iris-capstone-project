@@ -46,11 +46,6 @@ namespace IRIS.Agent
         {
             Log.Information("IRIS Agent starting...");
 
-            // Prevent Windows from entering sleep mode while the agent is running
-            NativeMethods.SetThreadExecutionState(
-                NativeMethods.ES_CONTINUOUS | NativeMethods.ES_SYSTEM_REQUIRED);
-            Log.Information("Sleep prevention enabled — PC will not sleep while agent is running.");
-
             var startupConfigurator = new AgentStartupConfigurator(_configuration);
             await startupConfigurator.EnsureInitialConfigurationAsync();
 
@@ -232,7 +227,6 @@ namespace IRIS.Agent
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             Log.Information("Agent stopping...");
-            NativeMethods.SetThreadExecutionState(NativeMethods.ES_CONTINUOUS);
             _policyTimer?.Dispose();
 
             if (_monitoringController != null)

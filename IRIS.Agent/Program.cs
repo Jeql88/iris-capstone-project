@@ -29,6 +29,22 @@ namespace IRIS.Agent
                     options.ServiceName = "IRISAgent";
                 });
 
+                // Disable QuickEdit to prevent console-click freeze (only in interactive/console mode)
+                if (Environment.UserInteractive)
+                {
+                    try
+                    {
+                        var handle = NativeMethods.GetStdHandle(NativeMethods.STD_INPUT_HANDLE);
+                        if (handle != IntPtr.Zero && NativeMethods.GetConsoleMode(handle, out var mode))
+                        {
+                            mode &= ~NativeMethods.ENABLE_QUICK_EDIT_MODE;
+                            mode |= NativeMethods.ENABLE_EXTENDED_FLAGS;
+                            NativeMethods.SetConsoleMode(handle, mode);
+                        }
+                    }
+                    catch { /* Non-critical: ignore if no console handle (service mode) */ }
+                }
+
                 builder.Services.AddHostedService<AgentWorker>();
 
                 var host = builder.Build();

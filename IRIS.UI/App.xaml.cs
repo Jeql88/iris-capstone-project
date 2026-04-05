@@ -30,6 +30,7 @@ namespace IRIS.UI
         private IWallpaperFileServer? _wallpaperFileServer;
         private DataRetentionBackgroundService? _dataRetentionService;
         private MonitoringBackgroundService? _monitoringService;
+        private AutoShutdownEnforcementService? _autoShutdownService;
         private CancellationTokenSource? _appCts;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -63,6 +64,9 @@ namespace IRIS.UI
             _monitoringService = _serviceProvider.GetRequiredService<MonitoringBackgroundService>();
             _ = _monitoringService.StartAsync(_appCts.Token);
 
+            _autoShutdownService = _serviceProvider.GetRequiredService<AutoShutdownEnforcementService>();
+            _ = _autoShutdownService.StartAsync(_appCts.Token);
+
             // Show login window only
             var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
             loginWindow.Show();
@@ -74,6 +78,7 @@ namespace IRIS.UI
             {
                 _appCts?.Cancel();
                 _monitoringService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+                _autoShutdownService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
                 _dataRetentionService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
             catch { /* Ignore shutdown errors from background services */ }
@@ -163,6 +168,8 @@ namespace IRIS.UI
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
             services.AddSingleton<DataRetentionBackgroundService>();
             services.AddSingleton<MonitoringBackgroundService>();
+            services.AddSingleton<IWakeOnLanService, WakeOnLanService>();
+            services.AddSingleton<AutoShutdownEnforcementService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();

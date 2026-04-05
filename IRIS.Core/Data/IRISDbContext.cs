@@ -29,9 +29,6 @@ namespace IRIS.Core.Data
         public DbSet<Room> Rooms { get; set; }
         public DbSet<HardwareMetric> HardwareMetrics { get; set; }
         public DbSet<NetworkMetric> NetworkMetrics { get; set; }
-        public DbSet<Software> Software { get; set; }
-        public DbSet<SoftwareInstalled> SoftwareInstalled { get; set; }
-        public DbSet<SoftwareRequest> SoftwareRequests { get; set; }
         public DbSet<SoftwareUsageHistory> SoftwareUsageHistory { get; set; }
         public DbSet<WebsiteUsageHistory> WebsiteUsageHistory { get; set; }
         public DbSet<UserLog> UserLogs { get; set; }
@@ -51,9 +48,6 @@ namespace IRIS.Core.Data
             ConfigureRoom(modelBuilder);
             ConfigureHardwareMetric(modelBuilder);
             ConfigureNetworkMetric(modelBuilder);
-            ConfigureSoftware(modelBuilder);
-            ConfigureSoftwareInstalled(modelBuilder);
-            ConfigureSoftwareRequest(modelBuilder);
             ConfigureSoftwareUsageHistory(modelBuilder);
             ConfigureWebsiteUsageHistory(modelBuilder);
             ConfigureUserLog(modelBuilder);
@@ -195,57 +189,6 @@ namespace IRIS.Core.Data
 
             modelBuilder.Entity<NetworkMetric>()
                 .HasIndex(nm => new { nm.PCId, nm.Timestamp });
-        }
-
-        private void ConfigureSoftware(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<Software>()
-                .HasIndex(s => s.Name)
-                .IsUnique();
-        }
-
-        private void ConfigureSoftwareInstalled(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<SoftwareInstalled>()
-                .HasOne(si => si.PC)
-                .WithMany(p => p.SoftwareInstalled)
-                .HasForeignKey(si => si.PCId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<SoftwareInstalled>()
-                .HasOne(si => si.Software)
-                .WithMany(s => s.SoftwareInstalled)
-                .HasForeignKey(si => si.SoftwareId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<SoftwareInstalled>()
-                .HasIndex(si => new { si.PCId, si.SoftwareId })
-                .IsUnique();
-        }
-
-        private void ConfigureSoftwareRequest(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<SoftwareRequest>()
-                .HasOne(sr => sr.User)
-                .WithMany(u => u.SoftwareRequests)
-                .HasForeignKey(sr => sr.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<SoftwareRequest>()
-                .HasOne(sr => sr.Software)
-                .WithMany(s => s.SoftwareRequests)
-                .HasForeignKey(sr => sr.SoftwareId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<SoftwareRequest>()
-                .HasOne(sr => sr.ReviewedByUser)
-                .WithMany()
-                .HasForeignKey(sr => sr.ReviewedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<SoftwareRequest>()
-                .Property(sr => sr.Status)
-                .HasConversion<string>();
         }
 
         private void ConfigureSoftwareUsageHistory(ModelBuilder modelBuilder)

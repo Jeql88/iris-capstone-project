@@ -53,7 +53,7 @@ if (-not (Test-Path $exePath)) {
 Write-Host "Creating Windows Service '$ServiceName'..." -ForegroundColor Cyan
 sc.exe create $ServiceName `
     binPath= "`"$exePath`"" `
-    start= auto `
+    start= delayed-auto `
     DisplayName= "`"$DisplayName`""
 
 if ($LASTEXITCODE -ne 0) {
@@ -66,6 +66,18 @@ sc.exe description $ServiceName "`"$Description`""
 
 # Configure recovery: restart on first, second, and subsequent failures (delay 10s)
 sc.exe failure $ServiceName reset= 86400 actions= restart/10000/restart/10000/restart/10000
+
+# Validate appsettings.json
+$settingsPath = Join-Path $PublishDir "appsettings.json"
+if (Test-Path $settingsPath) {
+    $content = Get-Content $settingsPath -Raw
+    if ($content -match '"Host=localhost') {
+        Write-Host ""
+        Write-Host "WARNING: appsettings.json still has 'localhost' as the database host." -ForegroundColor Yellow
+        Write-Host "         Update the connection string to point to the IRIS server before starting." -ForegroundColor Yellow
+        Write-Host ""
+    }
+}
 
 # Start the service
 Write-Host "Starting service '$ServiceName'..." -ForegroundColor Cyan

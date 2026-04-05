@@ -33,7 +33,6 @@ namespace IRIS.Core.Models
         // Navigation properties
         public virtual ICollection<UserLog> UserLogs { get; set; } = new List<UserLog>();
         public virtual ICollection<Alert> Alerts { get; set; } = new List<Alert>();
-        public virtual ICollection<SoftwareRequest> SoftwareRequests { get; set; } = new List<SoftwareRequest>();
     }
 
     public enum UserRole
