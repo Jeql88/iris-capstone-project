@@ -71,38 +71,81 @@
         </StackPanel>
 
         <!-- ═══ PC SELECTOR ═══ -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Laboratory:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Width="200" Margin="0,0,12,0"
-                      IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True"
-                      TextSearch.TextPath="RoomNumber"
-                      ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding RoomNumber}"/>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Text="PC:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Width="240" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedPC}"
-                      IsEditable="True" IsReadOnly="True" Text="Select a PC">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Hostname}"/>
-                            <TextBlock Text=" (" Foreground="Gray"/>
-                            <TextBlock Text="{Binding IPAddress}" Foreground="Gray"/>
-                            <TextBlock Text=")" Foreground="Gray"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary"/>
-            <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Desktop24}"
-                       Content="Remote Desktop"
-                       Command="{Binding RemoteDesktopCommand}"
-                       Appearance="Primary" Height="34" MinWidth="90"
-                       Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}"/>
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Laboratory:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="200" Margin="0,0,12,0"
+                          IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True"
+                          TextSearch.TextPath="RoomNumber"
+                          ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding RoomNumber}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="PC:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="240" ItemsSource="{Binding PCs}" SelectedItem="{Binding SelectedPC}"
+                          IsEditable="True" IsReadOnly="True"
+                          Text="{Binding SelectedPcDisplayText, Mode=OneWay}">
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Id}" Value="0">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                    <Setter Property="Foreground" Value="Gray"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Hostname}"/>
+                                <TextBlock Text=" (" Foreground="Gray">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Id}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding IPAddress}" Foreground="Gray">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Id}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text=")" Foreground="Gray">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Id}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary"/>
+                <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Desktop24}"
+                           Content="Remote Desktop"
+                           Command="{Binding RemoteDesktopCommand}"
+                           Appearance="Primary" Height="34" MinWidth="90"
+                           Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- ═══ DUAL PANE ═══ -->
@@ -405,26 +448,33 @@
                 </Grid>
 
                 <!-- Row 4: PC checkboxes (visible when not uploading to all) -->
-                <ItemsControl Grid.Row="4" ItemsSource="{Binding BulkPCs}" Margin="0,0,0,4"
-                              Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,16,4">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Hostname}"/>
-                                    <TextBlock Text=" (" Foreground="Gray"/>
-                                    <TextBlock Text="{Binding IPAddress}" Foreground="Gray"/>
-                                    <TextBlock Text=")" Foreground="Gray"/>
-                                </StackPanel>
-                            </CheckBox>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <StackPanel Grid.Row="4" Margin="0,0,0,4"
+                            Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}">
+                    <ItemsControl ItemsSource="{Binding BulkPCs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,16,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Hostname}"/>
+                                        <TextBlock Text=" (" Foreground="Gray"/>
+                                        <TextBlock Text="{Binding IPAddress}" Foreground="Gray"/>
+                                        <TextBlock Text=")" Foreground="Gray"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Margin="0,4,0,0"
+                               Text="{Binding BulkPcSelectorEmptyMessage}"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding ShowBulkNoPcsMessage, Converter={StaticResource BoolToVisConverter}}"/>
+                </StackPanel>
 
                 <!-- Row 5: Pending files + progress -->
                 <StackPanel Grid.Row="5">

@@ -16,6 +16,7 @@ using IRIS.UI.Views.Dialogs;
 using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.Core.DTOs;
+using IRIS.Core.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,6 +26,7 @@ namespace IRIS.UI.ViewModels
     {
         private readonly INavigationService _navigationService;
         private readonly IPCDataCacheService _cache;
+        private readonly IAuthenticationService _authenticationService;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly int _screenStreamPort;
@@ -61,12 +63,14 @@ namespace IRIS.UI.ViewModels
         public MonitorViewModel(
             INavigationService navigationService,
             IPCDataCacheService cache,
+            IAuthenticationService authenticationService,
             IServiceScopeFactory scopeFactory,
             IPowerCommandQueueService powerCommandQueueService,
             IConfiguration configuration)
         {
             _navigationService = navigationService;
             _cache = cache;
+            _authenticationService = authenticationService;
             _scopeFactory = scopeFactory;
             _powerCommandQueueService = powerCommandQueueService;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
@@ -80,7 +84,8 @@ namespace IRIS.UI.ViewModels
             ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
             CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
             FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
-            RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null);
+            SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), () => SelectedPC != null);
+            RemoteDesktopCommand = new RelayCommand(() => RemoteDesktopConnect(), () => SelectedPC != null && !IsFaculty);
             RemoteDesktopForPCCommand = new RelayCommand<PCDisplayModel>(pc => RemoteDesktopForPC(pc));
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
@@ -215,6 +220,8 @@ namespace IRIS.UI.ViewModels
         }
 
         public bool HasSelectedPC => SelectedPC != null;
+        public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
+        public bool ShowRemoteDesktopQuickAction => !IsFaculty;
         public bool HasTimelineEvents => SelectedPcTimeline.Count > 0;
         public string TimelineEmptyMessage => HasSelectedPC
             ? "No timeline events for the selected period"
@@ -236,6 +243,7 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(TimelineEmptyMessage));
                 (ViewScreenCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (FreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SendMessageCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RemoteDesktopCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (RefreshSelectedPcTimelineCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
@@ -249,6 +257,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
         public ICommand FreezeCommand { get; }
+        public ICommand SendMessageCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
         public ICommand RemoteDesktopForPCCommand { get; }
         public ICommand RefreshSelectedPcTimelineCommand { get; }
@@ -264,7 +273,7 @@ namespace IRIS.UI.ViewModels
             // Apply room filter to cache and reload data
             var selectedRoomId = _appliedRoom != null && _appliedRoom.Id > 0 ? _appliedRoom.Id : (int?)null;
             _cache.CurrentRoomFilter = selectedRoomId;
-            
+
             await LoadPCDataAsync(ensureFreshData: true);
         }
 
@@ -890,7 +899,7 @@ namespace IRIS.UI.ViewModels
             SelectedPC = pc;
             SelectedPcAlertsTitle = $"Alerts • {pc.PCName}";
             IsPcAlertsPanelOpen = true;
-            
+
             // Just populate from already-loaded alerts, no fetch
             PopulateSelectedPcAlerts(pc.Id);
         }
@@ -1091,8 +1100,83 @@ namespace IRIS.UI.ViewModels
             _cache.SetFreezeState(SelectedPC.Id, SelectedPC.IsFreezeActive);
         }
 
+        private async Task SendMessageAsync()
+        {
+            if (SelectedPC == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(SelectedPC.Status, "Online", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowOfflineActionDialog("send a message");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedPC.MacAddress))
+            {
+                var missingMacDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Cannot send message: missing PC MAC address.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                missingMacDialog.Owner = Application.Current.MainWindow;
+                missingMacDialog.ShowDialog();
+                return;
+            }
+
+            var messageDialog = new FreezeMessageDialog(
+                "Send Message",
+                $"Enter the message to show on {SelectedPC.PCName}:",
+                "Please check the latest instruction from your instructor.");
+            messageDialog.Owner = Application.Current.MainWindow;
+
+            if (messageDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var currentUser = _authenticationService.GetCurrentUser();
+            var senderName = !string.IsNullOrWhiteSpace(currentUser?.FullName)
+                ? currentUser!.FullName!
+                : currentUser?.Username ?? "IRIS User";
+
+            var outboundMessage = $"Message from {senderName}\n\n{messageDialog.FreezeMessage}";
+            var encodedMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(outboundMessage));
+            var queued = await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress, $"Message::{encodedMessage}");
+
+            if (!queued)
+            {
+                var commandErrorDialog = new ConfirmationDialog(
+                    "Command Error",
+                    "Failed to queue message command.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                commandErrorDialog.Owner = Application.Current.MainWindow;
+                commandErrorDialog.ShowDialog();
+            }
+        }
+
         private void RemoteDesktopConnect()
         {
+            if (IsFaculty)
+            {
+                var accessDialog = new ConfirmationDialog(
+                    "Access Denied",
+                    "Remote Desktop is only available for System Administrator and IT Personnel.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    false);
+                accessDialog.Owner = Application.Current.MainWindow;
+                accessDialog.ShowDialog();
+                return;
+            }
+
             if (SelectedPC == null)
             {
                 return;
@@ -1167,6 +1251,11 @@ namespace IRIS.UI.ViewModels
 
         private void RemoteDesktopForPC(PCDisplayModel? pc)
         {
+            if (IsFaculty)
+            {
+                return;
+            }
+
             if (pc == null) return;
             SelectedPC = pc;
             RemoteDesktopConnect();

@@ -117,6 +117,26 @@ namespace IRIS.UI.Views.Personnel
             }
         }
 
+        private void Message_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            var border = FindParent<Border>(button);
+            if (border != null)
+            {
+                var popup = FindChild<Popup>(border, "ContextMenuPopup");
+                if (popup != null)
+                {
+                    popup.IsOpen = false;
+                }
+            }
+
+            if (button.DataContext is PCDisplayModel pc && DataContext is MonitorViewModel vm)
+            {
+                vm.SelectedPC = pc;
+                vm.SendMessageCommand.Execute(null);
+            }
+        }
+
         private void RemoteDesktop_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button) return;

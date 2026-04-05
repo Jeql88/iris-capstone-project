@@ -377,7 +377,8 @@
                                                         <StackPanel>
                                                             <ui:Button Padding="10,6" Appearance="Secondary"
                                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-                                                                       Click="RemoteDesktop_Click">
+                                                                       Click="RemoteDesktop_Click"
+                                                                       Visibility="{Binding DataContext.ShowRemoteDesktopQuickAction, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <ui:SymbolIcon Symbol="Desktop24" FontSize="14" Margin="0,0,8,0"/>
                                                                     <TextBlock Text="Remote Desktop" FontSize="12" VerticalAlignment="Center"/>
@@ -400,6 +401,14 @@
                                                                             </Style>
                                                                         </TextBlock.Style>
                                                                     </TextBlock>
+                                                                </StackPanel>
+                                                            </ui:Button>
+                                                            <ui:Button Padding="10,6" Appearance="Secondary"
+                                                                       HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                                                       Click="Message_Click">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <ui:SymbolIcon Symbol="Chat24" FontSize="14" Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="Message" FontSize="12" VerticalAlignment="Center"/>
                                                                 </StackPanel>
                                                             </ui:Button>
                                                         </StackPanel>

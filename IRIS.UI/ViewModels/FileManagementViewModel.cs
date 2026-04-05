@@ -58,6 +58,7 @@ namespace IRIS.UI.ViewModels
         private string _bulkStatusMessage = string.Empty;
         private double _bulkProgress;
         private bool _isBulkUploading;
+        private bool _hasAvailableLaboratories;
 
         public FileManagementViewModel(
             IDeploymentDataService deploymentDataService,
@@ -135,7 +136,15 @@ namespace IRIS.UI.ViewModels
         public RoomDto? SelectedRoom
         {
             get => _selectedRoom;
-            set { _selectedRoom = value; OnPropertyChanged(); _ = LoadPCsAsync(); }
+            set
+            {
+                _selectedRoom = value;
+                SelectedPC = null;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasPCsForSelectedRoom));
+                OnPropertyChanged(nameof(PcSelectorEmptyMessage));
+                _ = LoadPCsAsync();
+            }
         }
 
         public PCModel? SelectedPC
@@ -143,8 +152,14 @@ namespace IRIS.UI.ViewModels
             get => _selectedPC;
             set
             {
+                if (value != null && value.Id <= 0)
+                {
+                    value = null;
+                }
+
                 _selectedPC = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedPcDisplayText));
                 OnPropertyChanged(nameof(HasSelectedPC));
                 RaiseAllRemoteCanExecuteChanged();
                 if (_selectedPC != null)
@@ -225,6 +240,18 @@ namespace IRIS.UI.ViewModels
         public bool HasSelectedPC => SelectedPC != null;
         public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
         public bool CanModifyRemoteFiles => !IsFaculty;
+        public string SelectedPcDisplayText => SelectedPC?.Hostname ?? "Select a PC";
+        public bool HasAvailableLaboratories
+        {
+            get => _hasAvailableLaboratories;
+            private set { _hasAvailableLaboratories = value; OnPropertyChanged(); }
+        }
+
+        public bool HasPCsForSelectedRoom => PCs.Any(pc => pc.Id > 0);
+
+        public string PcSelectorEmptyMessage => SelectedRoom != null && SelectedRoom.Id > 0
+            ? $"No PCs assigned to {SelectedRoom.RoomNumber}."
+            : "No PCs available for the selected laboratory.";
 
         public string LocalSearchText
         {
@@ -241,7 +268,15 @@ namespace IRIS.UI.ViewModels
         public RoomDto? SelectedBulkRoom
         {
             get => _selectedBulkRoom;
-            set { _selectedBulkRoom = value; OnPropertyChanged(); _ = LoadBulkPCsAsync(); }
+            set
+            {
+                _selectedBulkRoom = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasBulkPCsForSelectedRoom));
+                OnPropertyChanged(nameof(BulkPcSelectorEmptyMessage));
+                OnPropertyChanged(nameof(ShowBulkNoPcsMessage));
+                _ = LoadBulkPCsAsync();
+            }
         }
 
         public string BulkFolderName
@@ -253,8 +288,21 @@ namespace IRIS.UI.ViewModels
         public bool BulkUploadToAll
         {
             get => _bulkUploadToAll;
-            set { _bulkUploadToAll = value; OnPropertyChanged(); }
+            set
+            {
+                _bulkUploadToAll = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowBulkNoPcsMessage));
+            }
         }
+
+        public bool HasBulkPCsForSelectedRoom => BulkPCs.Count > 0;
+
+        public string BulkPcSelectorEmptyMessage => SelectedBulkRoom != null && SelectedBulkRoom.Id > 0
+            ? $"No PCs assigned to {SelectedBulkRoom.RoomNumber}."
+            : "No PCs available for the selected laboratory.";
+
+        public bool ShowBulkNoPcsMessage => !BulkUploadToAll && !HasBulkPCsForSelectedRoom;
 
         public string BulkStatusMessage
         {
@@ -307,10 +355,12 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var rooms = await _roomService.GetRoomsAsync();
+                var rooms = (await _roomService.GetRoomsAsync()).OrderBy(r => r.RoomNumber).ToList();
+                HasAvailableLaboratories = rooms.Count > 0;
+
                 Rooms.Clear();
                 Rooms.Add(new RoomDto(-1, "All Laboratories", string.Empty, 0, true, DateTime.UtcNow));
-                foreach (var room in rooms.OrderBy(r => r.RoomNumber))
+                foreach (var room in rooms)
                     Rooms.Add(room);
 
                 _selectedRoom = Rooms.FirstOrDefault();
@@ -340,7 +390,7 @@ namespace IRIS.UI.ViewModels
                 var pcs = await _deploymentDataService.GetRegisteredPCsAsync(roomId);
 
                 PCs.Clear();
-                foreach (var pc in pcs)
+                foreach (var pc in pcs.OrderBy(pc => pc.Hostname, StringComparer.OrdinalIgnoreCase))
                 {
                     PCs.Add(new PCModel
                     {
@@ -352,11 +402,28 @@ namespace IRIS.UI.ViewModels
                     });
                 }
 
+                if (PCs.Count == 0)
+                {
+                    PCs.Add(new PCModel
+                    {
+                        Id = 0,
+                        Hostname = PcSelectorEmptyMessage,
+                        IPAddress = string.Empty,
+                        Status = "N/A",
+                        RoomNumber = SelectedRoom?.RoomNumber ?? string.Empty
+                    });
+                }
+
                 StatusMessage = $"Loaded {PCs.Count} PCs.";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Failed to load PCs: {ex.Message}";
+            }
+            finally
+            {
+                OnPropertyChanged(nameof(HasPCsForSelectedRoom));
+                OnPropertyChanged(nameof(PcSelectorEmptyMessage));
             }
         }
 
@@ -383,6 +450,12 @@ namespace IRIS.UI.ViewModels
             catch (Exception ex)
             {
                 BulkStatusMessage = $"Failed to load bulk PCs: {ex.Message}";
+            }
+            finally
+            {
+                OnPropertyChanged(nameof(HasBulkPCsForSelectedRoom));
+                OnPropertyChanged(nameof(BulkPcSelectorEmptyMessage));
+                OnPropertyChanged(nameof(ShowBulkNoPcsMessage));
             }
         }
 
