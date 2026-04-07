@@ -292,15 +292,15 @@ namespace IRIS.Agent
                     // Disable sleep when idle shutdown is active so the PC stays awake long enough
                     if (hasIdleShutdownPolicy && !_sleepDisabledForIdleShutdown)
                     {
-                        RunPowercfg("/change standby-timeout-ac 0");
-                        RunPowercfg("/change standby-timeout-dc 0");
+                        RunPowercfg("-change standby-timeout-ac 0");
+                        RunPowercfg("-change standby-timeout-dc 0");
                         _sleepDisabledForIdleShutdown = true;
                         Log.Information("Disabled sleep (set to Never) due to active idle shutdown policy.");
                     }
                     else if (!hasIdleShutdownPolicy && _sleepDisabledForIdleShutdown)
                     {
-                        RunPowercfg("/change standby-timeout-ac 30");
-                        RunPowercfg("/change standby-timeout-dc 15");
+                        RunPowercfg("-change standby-timeout-ac 30");
+                        RunPowercfg("-change standby-timeout-dc 15");
                         _sleepDisabledForIdleShutdown = false;
                         Log.Information("Restored default sleep settings (idle shutdown policy no longer active).");
                     }
@@ -364,7 +364,10 @@ namespace IRIS.Agent
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                process?.WaitForExit(5000);
+                if (process != null && process.WaitForExit(5000) && process.ExitCode != 0)
+                {
+                    Log.Warning("powercfg {Arguments} exited with code {ExitCode}", arguments, process.ExitCode);
+                }
             }
             catch (Exception ex)
             {
