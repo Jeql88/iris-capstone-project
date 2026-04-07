@@ -9,6 +9,8 @@ namespace IRIS.Agent
     {
         static async Task Main(string[] args)
         {
+            var isBackground = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
@@ -16,21 +18,26 @@ namespace IRIS.Agent
 
             try
             {
+                // Hide console window when launched in background mode (e.g. by scheduled task)
+                if (isBackground)
+                {
+                    try
+                    {
+                        var hwnd = NativeMethods.GetConsoleWindow();
+                        if (hwnd != IntPtr.Zero)
+                            NativeMethods.ShowWindow(hwnd, NativeMethods.SW_HIDE);
+                    }
+                    catch { /* Non-critical: ignore if no console window */ }
+                }
+
                 var builder = Host.CreateApplicationBuilder(args);
 
                 builder.Configuration
                     .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-                // UseWindowsService() auto-detects: runs as Windows Service when started
-                // by SCM, runs as normal console app when started interactively.
-                builder.Services.AddWindowsService(options =>
-                {
-                    options.ServiceName = "IRISAgent";
-                });
-
                 // Disable QuickEdit to prevent console-click freeze (only in interactive/console mode)
-                if (Environment.UserInteractive)
+                if (Environment.UserInteractive && !isBackground)
                 {
                     try
                     {
@@ -42,7 +49,7 @@ namespace IRIS.Agent
                             NativeMethods.SetConsoleMode(handle, mode);
                         }
                     }
-                    catch { /* Non-critical: ignore if no console handle (service mode) */ }
+                    catch { /* Non-critical: ignore if no console handle */ }
                 }
 
                 builder.Services.AddHostedService<AgentWorker>();

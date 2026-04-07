@@ -122,13 +122,6 @@ namespace IRIS.Agent.Logic
 
             try
             {
-                var queryResult = RunCommand("schtasks", $"/Query /TN \"{taskName}\"");
-                if (queryResult.ExitCode == 0)
-                {
-                    Log.Information("Scheduled task '{TaskName}' already exists.", taskName);
-                    return;
-                }
-
                 var exePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName;
                 if (string.IsNullOrWhiteSpace(exePath))
                 {
@@ -136,12 +129,21 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                var queryResult = RunCommand("schtasks", $"/Query /TN \"{taskName}\"");
+                if (queryResult.ExitCode == 0)
+                {
+                    Log.Information("Scheduled task '{TaskName}' already exists.", taskName);
+                    return;
+                }
+
+                // Use ONLOGON so the agent runs in the user's interactive session
+                // (Session 0 isolation prevents screen capture, UI dialogs, and freeze overlays)
                 var createResult = RunCommand("schtasks",
-                    $"/Create /TN \"{taskName}\" /TR \"\\\"{exePath}\\\"\" /SC ONSTART /RU SYSTEM /RL HIGHEST /F");
+                    $"/Create /TN \"{taskName}\" /TR \"\\\"{exePath}\\\" --background\" /SC ONLOGON /RL HIGHEST /F");
 
                 if (createResult.ExitCode == 0)
                 {
-                    Log.Information("Scheduled task '{TaskName}' created to run agent on startup.", taskName);
+                    Log.Information("Scheduled task '{TaskName}' created to run agent on user logon.", taskName);
                 }
                 else
                 {
