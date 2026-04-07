@@ -25,6 +25,8 @@ namespace IRIS.Agent
     {
         private readonly IConfiguration _configuration;
 
+        private static bool _sleepDisabledForIdleShutdown;
+
         // Disposables managed by this worker
         private IRISDbContext? _context;
         private IRISDbContext? _appUsageContext;
@@ -275,13 +277,32 @@ namespace IRIS.Agent
 
                 if (pc?.Room?.Policies != null)
                 {
+                    var hasIdleShutdownPolicy = false;
+
                     foreach (var policy in pc.Room.Policies.Where(p => p.IsActive))
                     {
                         // Check auto-shutdown policy
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                         {
+                            hasIdleShutdownPolicy = true;
                             await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value);
                         }
+                    }
+
+                    // Disable sleep when idle shutdown is active so the PC stays awake long enough
+                    if (hasIdleShutdownPolicy && !_sleepDisabledForIdleShutdown)
+                    {
+                        RunPowercfg("/change standby-timeout-ac 0");
+                        RunPowercfg("/change standby-timeout-dc 0");
+                        _sleepDisabledForIdleShutdown = true;
+                        Log.Information("Disabled sleep (set to Never) due to active idle shutdown policy.");
+                    }
+                    else if (!hasIdleShutdownPolicy && _sleepDisabledForIdleShutdown)
+                    {
+                        RunPowercfg("/change standby-timeout-ac 30");
+                        RunPowercfg("/change standby-timeout-dc 15");
+                        _sleepDisabledForIdleShutdown = false;
+                        Log.Information("Restored default sleep settings (idle shutdown policy no longer active).");
                     }
                 }
             }
@@ -330,6 +351,25 @@ namespace IRIS.Agent
             }
 
             return TimeSpan.Zero;
+        }
+
+        private static void RunPowercfg(string arguments)
+        {
+            try
+            {
+                using var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powercfg",
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                process?.WaitForExit(5000);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Failed to run powercfg {Arguments}: {Message}", arguments, ex.Message);
+            }
         }
 
         private static IEnumerable<string> GetLocalHostIpv4Addresses()
