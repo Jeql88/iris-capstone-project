@@ -202,14 +202,20 @@ namespace IRIS.Agent.Logic
         {
             try
             {
-                var result = MessageBox.Show(
-                    message,
-                    "IRIS Agent Initial Configuration",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button1);
+                var accepted = false;
 
-                return result == DialogResult.Yes;
+                var uiThread = new Thread(() =>
+                {
+                    using var form = new ConfigPromptForm("IRIS Agent Initial Configuration", message);
+                    if (form.ShowDialog() == DialogResult.Yes)
+                        accepted = true;
+                });
+
+                uiThread.SetApartmentState(ApartmentState.STA);
+                uiThread.Start();
+                uiThread.Join();
+
+                return accepted;
             }
             catch
             {
@@ -218,6 +224,61 @@ namespace IRIS.Agent.Logic
                 var input = Console.ReadLine();
                 return string.Equals(input?.Trim(), "Y", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(input?.Trim(), "YES", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private sealed class ConfigPromptForm : AgentDialogBase
+        {
+            public ConfigPromptForm(string title, string message) : base(accentColor: AccentBlue)
+            {
+                Text = title;
+                Width = 500;
+                Height = 300;
+
+                var iconLabel = CreateIconLabel("\u2139", AccentBlue);
+                iconLabel.Left = 24;
+                iconLabel.Top = 18;
+
+                var titleLabel = new Label
+                {
+                    Text = title,
+                    Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold),
+                    ForeColor = TextPrimary,
+                    BackColor = System.Drawing.Color.Transparent,
+                    Left = 62,
+                    Top = 20,
+                    Width = ClientSize.Width - 86,
+                    Height = 28,
+                    AutoSize = false
+                };
+
+                var messageLabel = CreateStyledLabel(message, 10F);
+                messageLabel.Left = 24;
+                messageLabel.Top = 60;
+                messageLabel.Width = ClientSize.Width - 48;
+                messageLabel.Height = 150;
+                messageLabel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+
+                var yesButton = CreateStyledButton("Yes", isPrimary: true);
+                yesButton.DialogResult = DialogResult.Yes;
+                yesButton.Left = ClientSize.Width - yesButton.Width * 2 - 36;
+                yesButton.Top = ClientSize.Height - yesButton.Height - 20;
+                yesButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+                var noButton = CreateStyledButton("No", isPrimary: false);
+                noButton.DialogResult = DialogResult.No;
+                noButton.Left = ClientSize.Width - noButton.Width - 24;
+                noButton.Top = ClientSize.Height - noButton.Height - 20;
+                noButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+                AcceptButton = yesButton;
+                CancelButton = noButton;
+
+                Controls.Add(iconLabel);
+                Controls.Add(titleLabel);
+                Controls.Add(messageLabel);
+                Controls.Add(yesButton);
+                Controls.Add(noButton);
             }
         }
 

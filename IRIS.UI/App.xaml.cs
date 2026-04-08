@@ -169,6 +169,7 @@ namespace IRIS.UI
             services.AddSingleton<DataRetentionBackgroundService>();
             services.AddSingleton<MonitoringBackgroundService>();
             services.AddSingleton<IWakeOnLanService, WakeOnLanService>();
+            services.AddSingleton<ILocalMachineIdentityService, LocalMachineIdentityService>();
             services.AddSingleton<AutoShutdownEnforcementService>();
 
             // ViewModels

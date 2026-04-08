@@ -19,6 +19,7 @@ namespace IRIS.UI.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IPowerCommandQueueService _powerCommandQueue;
         private readonly IWakeOnLanService _wakeOnLanService;
+        private readonly ILocalMachineIdentityService _localMachineIdentity;
         private readonly ILogger<AutoShutdownEnforcementService> _logger;
 
         private readonly bool _enabled;
@@ -34,12 +35,14 @@ namespace IRIS.UI.Services
             IServiceScopeFactory scopeFactory,
             IPowerCommandQueueService powerCommandQueue,
             IWakeOnLanService wakeOnLanService,
+            ILocalMachineIdentityService localMachineIdentity,
             IConfiguration configuration,
             ILogger<AutoShutdownEnforcementService> logger)
         {
             _scopeFactory = scopeFactory;
             _powerCommandQueue = powerCommandQueue;
             _wakeOnLanService = wakeOnLanService;
+            _localMachineIdentity = localMachineIdentity;
             _logger = logger;
 
             _enabled = bool.TryParse(configuration["AutoShutdownEnforcement:Enabled"], out var en) && en;
@@ -128,6 +131,14 @@ namespace IRIS.UI.Services
 
                     if (string.IsNullOrWhiteSpace(pc.MacAddress))
                         continue;
+
+                    if (_localMachineIdentity.IsLocalMachine(pc.MacAddress))
+                    {
+                        _logger.LogWarning(
+                            "Skipping auto-shutdown for PC {Hostname} ({Mac}) — this is the dashboard host machine",
+                            pc.Hostname ?? "unknown", pc.MacAddress);
+                        continue;
+                    }
 
                     var sinceLastSeen = now - pc.LastSeen;
 

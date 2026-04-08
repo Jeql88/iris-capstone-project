@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using System.Text;
 using IRIS.UI.Helpers;
 using IRIS.UI.Services;
+using IRIS.UI.Services.Contracts;
 using IRIS.UI.Views.Dialogs;
 using IRIS.UI.Views.Faculty;
 using IRIS.Core.Models;
@@ -26,6 +27,7 @@ namespace IRIS.UI.ViewModels
         private readonly IMonitoringService _monitoringService;
         private readonly IPowerCommandQueueService _powerCommandQueueService;
         private readonly IAuthenticationService _authenticationService;
+        private readonly ILocalMachineIdentityService _localMachineIdentity;
         private readonly int _screenStreamPort;
         private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
@@ -71,13 +73,15 @@ namespace IRIS.UI.ViewModels
             IMonitoringService monitoringService,
             IPowerCommandQueueService powerCommandQueueService,
             IConfiguration configuration,
-            IAuthenticationService authenticationService)
+            IAuthenticationService authenticationService,
+            ILocalMachineIdentityService localMachineIdentity)
         {
             _navigationService = navigationService;
             _cache = cache;
             _monitoringService = monitoringService;
             _powerCommandQueueService = powerCommandQueueService;
             _authenticationService = authenticationService;
+            _localMachineIdentity = localMachineIdentity;
             _screenStreamPort = int.TryParse(configuration["AgentSettings:ScreenStreamPort"], out var port) ? port : 5057;
             _remoteDesktopPort = int.TryParse(configuration["AgentSettings:RemoteDesktopPort"], out var rdpPort) ? rdpPort : 3389;
             _screenStreamToken = configuration["AgentSettings:ScreenStreamToken"];
@@ -341,6 +345,22 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            // if (_localMachineIdentity.IsLocalMachine(MacAddress))
+            // {
+            //     var selfWarning = new ConfirmationDialog(
+            //         "Shutdown Blocked",
+            //         $"The target PC \"{PCName}\" is this machine (the dashboard host). " +
+            //         "Shutting down will terminate the IRIS dashboard.\n\n" +
+            //         "This action has been blocked for safety.",
+            //         "Warning24",
+            //         "OK",
+            //         "Cancel",
+            //         false);
+            //     selfWarning.Owner = Application.Current.MainWindow;
+            //     selfWarning.ShowDialog();
+            //     return;
+            // }
+
             var confirmationDialog = new ConfirmationDialog(
                 "Confirm Shutdown",
                 $"Are you sure you want to shutdown {PCName}?",
@@ -374,6 +394,22 @@ namespace IRIS.UI.ViewModels
                 MessageBox.Show("Cannot send restart command: missing PC MAC address.", "Command Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            // if (_localMachineIdentity.IsLocalMachine(MacAddress))
+            // {
+            //     var selfWarning = new ConfirmationDialog(
+            //         "Restart Blocked",
+            //         $"The target PC \"{PCName}\" is this machine (the dashboard host). " +
+            //         "Restarting will terminate the IRIS dashboard.\n\n" +
+            //         "This action has been blocked for safety.",
+            //         "Warning24",
+            //         "OK",
+            //         "Cancel",
+            //         false);
+            //     selfWarning.Owner = Application.Current.MainWindow;
+            //     selfWarning.ShowDialog();
+            //     return;
+            // }
 
             var confirmationDialog = new ConfirmationDialog(
                 "Confirm Restart",

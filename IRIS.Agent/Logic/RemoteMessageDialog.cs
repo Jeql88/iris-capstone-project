@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Windows.Forms;
 using Serilog;
 
@@ -32,42 +33,7 @@ namespace IRIS.Agent.Logic
 
         private static void ShowDialogOnThread(TaskCompletionSource<bool> tcs, string title, string message)
         {
-            using var form = new Form
-            {
-                Text = title,
-                Width = 500,
-                Height = 260,
-                StartPosition = FormStartPosition.CenterScreen,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                ShowInTaskbar = true,
-                TopMost = true
-            };
-
-            var messageLabel = new Label
-            {
-                Text = message,
-                Left = 16,
-                Top = 16,
-                Width = 452,
-                Height = 170,
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            var okButton = new Button
-            {
-                Text = "OK",
-                Width = 90,
-                Height = 30,
-                Left = form.ClientSize.Width - 106,
-                Top = form.ClientSize.Height - 46,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-                DialogResult = DialogResult.OK
-            };
-
-            okButton.Click += (_, _) => form.Close();
+            using var form = new MessageForm(title, message);
 
             form.FormClosed += (_, _) =>
             {
@@ -75,10 +41,54 @@ namespace IRIS.Agent.Logic
                 Application.ExitThread();
             };
 
-            form.AcceptButton = okButton;
-            form.Controls.Add(messageLabel);
-            form.Controls.Add(okButton);
             Application.Run(form);
+        }
+
+        private sealed class MessageForm : AgentDialogBase
+        {
+            public MessageForm(string title, string message)
+            {
+                Text = title;
+                Width = 480;
+                Height = 250;
+
+                var iconLabel = CreateIconLabel("\u2139", AccentRed);
+                iconLabel.Left = 24;
+                iconLabel.Top = 18;
+
+                var titleLabel = new Label
+                {
+                    Text = title,
+                    Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                    ForeColor = TextPrimary,
+                    BackColor = Color.Transparent,
+                    Left = 62,
+                    Top = 20,
+                    Width = ClientSize.Width - 86,
+                    Height = 28,
+                    AutoSize = false
+                };
+
+                var messageLabel = CreateStyledLabel(message, 11F);
+                messageLabel.Left = 24;
+                messageLabel.Top = 60;
+                messageLabel.Width = ClientSize.Width - 48;
+                messageLabel.Height = 110;
+                messageLabel.TextAlign = ContentAlignment.TopLeft;
+
+                var okButton = CreateStyledButton("OK", isPrimary: true);
+                okButton.Left = ClientSize.Width - okButton.Width - 16;
+                okButton.Top = ClientSize.Height - okButton.Height - 16;
+                okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+                okButton.DialogResult = DialogResult.OK;
+                okButton.Click += (_, _) => Close();
+
+                AcceptButton = okButton;
+                Controls.Add(iconLabel);
+                Controls.Add(titleLabel);
+                Controls.Add(messageLabel);
+                Controls.Add(okButton);
+            }
         }
     }
 }

@@ -4,5 +4,10 @@
     "code-simplifier@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.cs$\")"
+    ]
   }
 }

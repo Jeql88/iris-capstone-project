@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+using System.Drawing;
 using System.Windows.Forms;
 using Serilog;
 
@@ -38,40 +38,13 @@ namespace IRIS.Agent.Logic
             var secondsRemaining = timeoutMs / 1000;
             var messageTemplate = ExtractMessageTemplate(baseMessage);
 
-            using var form = new Form
-            {
-                Text = title,
-                Width = 460,
-                Height = 230,
-                StartPosition = FormStartPosition.CenterScreen,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                ShowInTaskbar = true,
-                TopMost = true
-            };
+            using var form = new WarningForm(title, FormatMessage(messageTemplate, secondsRemaining));
 
-            var messageLabel = new Label
-            {
-                Text = FormatMessage(messageTemplate, secondsRemaining),
-                Left = 16,
-                Top = 16,
-                Width = 412,
-                Height = 120,
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            var cancelButton = new Button
-            {
-                Text = "Cancel",
-                Width = 90,
-                Height = 30,
-                Left = form.ClientSize.Width - 106,
-                Top = form.ClientSize.Height - 46,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-                DialogResult = DialogResult.Cancel
-            };
+            var cancelButton = AgentDialogBase.CreateStyledButton("Cancel", isPrimary: false);
+            cancelButton.Left = form.ClientSize.Width - cancelButton.Width - 16;
+            cancelButton.Top = form.ClientSize.Height - cancelButton.Height - 16;
+            cancelButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            cancelButton.DialogResult = DialogResult.Cancel;
 
             using var countdownTimer = new System.Windows.Forms.Timer
             {
@@ -95,7 +68,8 @@ namespace IRIS.Agent.Logic
                 secondsRemaining--;
                 if (secondsRemaining > 0)
                 {
-                    messageLabel.Text = FormatMessage(messageTemplate, secondsRemaining);
+                    form.UpdateMessage(FormatMessage(messageTemplate, secondsRemaining));
+                    form.UpdateCountdown(secondsRemaining);
                 }
                 else
                 {
@@ -118,7 +92,6 @@ namespace IRIS.Agent.Logic
                 Application.ExitThread();
             };
 
-            form.Controls.Add(messageLabel);
             form.Controls.Add(cancelButton);
 
             countdownTimer.Start();
@@ -128,10 +101,9 @@ namespace IRIS.Agent.Logic
 
         private static string ExtractMessageTemplate(string message)
         {
-            // Determine the action and reason from the original message
             var isRestart = message.Contains("restart", StringComparison.OrdinalIgnoreCase);
             var isIdlePolicy = message.Contains("idle time policy", StringComparison.OrdinalIgnoreCase);
-            
+
             if (isRestart)
                 return isIdlePolicy ? "restart_idle" : "restart_remote";
             return isIdlePolicy ? "shutdown_idle" : "shutdown_remote";
@@ -147,6 +119,74 @@ namespace IRIS.Agent.Logic
                 "restart_remote" => $"This PC will restart due to a remote command in {seconds} seconds.\n\nClick Cancel to prevent restart.",
                 _ => $"This PC will shut down in {seconds} seconds.\n\nClick Cancel to prevent shutdown."
             };
+        }
+
+        private sealed class WarningForm : AgentDialogBase
+        {
+            private readonly Label _messageLabel;
+            private readonly Label _countdownLabel;
+
+            public WarningForm(string title, string message)
+            {
+                Text = title;
+                Width = 480;
+                Height = 260;
+
+                var iconLabel = CreateIconLabel("\u26A0", AccentRed);
+                iconLabel.Left = 24;
+                iconLabel.Top = 18;
+
+                var titleLabel = new Label
+                {
+                    Text = title,
+                    Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                    ForeColor = TextPrimary,
+                    BackColor = Color.Transparent,
+                    Left = 62,
+                    Top = 20,
+                    Width = ClientSize.Width - 86,
+                    Height = 28,
+                    AutoSize = false
+                };
+
+                _countdownLabel = new Label
+                {
+                    Text = "",
+                    Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                    ForeColor = AccentRed,
+                    BackColor = Color.Transparent,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Left = ClientSize.Width - 100,
+                    Top = 15,
+                    Width = 70,
+                    Height = 40,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+
+                _messageLabel = CreateStyledLabel(message, 11F);
+                _messageLabel.Left = 24;
+                _messageLabel.Top = 60;
+                _messageLabel.Width = ClientSize.Width - 48;
+                _messageLabel.Height = 120;
+                _messageLabel.TextAlign = ContentAlignment.TopLeft;
+
+                Controls.Add(iconLabel);
+                Controls.Add(titleLabel);
+                Controls.Add(_countdownLabel);
+                Controls.Add(_messageLabel);
+            }
+
+            public void UpdateMessage(string message)
+            {
+                if (IsDisposed) return;
+                _messageLabel.Text = message;
+            }
+
+            public void UpdateCountdown(int seconds)
+            {
+                if (IsDisposed) return;
+                _countdownLabel.Text = $"{seconds}s";
+            }
         }
     }
 }
