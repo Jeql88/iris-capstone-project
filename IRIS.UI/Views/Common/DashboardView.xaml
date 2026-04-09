@@ -154,7 +154,7 @@
                                 <ui:SymbolIcon Symbol="Home24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                                 <TextBlock Text="Dashboard" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="44,4,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="{Binding ActiveRoomDescription}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text=" · " FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="{Binding ActiveRangeDescription}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>

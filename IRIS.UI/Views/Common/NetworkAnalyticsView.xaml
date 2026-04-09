@@ -17,24 +17,29 @@
         </Grid.RowDefinitions>
 
         <!-- Header with back button -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
+        <Grid Grid.Row="0" Margin="0,0,0,20">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <ui:Button x:Name="BackButton" Appearance="Secondary"
-                       Icon="{ui:SymbolIcon ArrowLeft24}"
-                       Content="Back to Dashboard"
-                       Click="BackButton_Click"
-                       VerticalAlignment="Center"
-                       Margin="0,0,16,0"/>
-
-            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                <TextBlock Text="{Binding Subtitle}" FontSize="12" Margin="0,4,0,0"
+            <StackPanel Grid.Column="0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <ui:SymbolIcon Symbol="DataHistogram24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="{Binding Title}" FontSize="32" FontWeight="Bold"
+                               Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12" Margin="0,0,0,8"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <ui:Button x:Name="BackButton"
+                           Click="BackButton_Click"
+                           Appearance="Secondary" BorderThickness="0" Padding="0"
+                           Background="Transparent" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="ArrowLeft24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
+                        <TextBlock Text="Back to Tiled-View" FontSize="14"
+                                   Foreground="{DynamicResource IRISSecondaryBrush}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </ui:Button>
             </StackPanel>
         </Grid>
 
