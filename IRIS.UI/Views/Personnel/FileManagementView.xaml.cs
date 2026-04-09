@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using IRIS.UI.Models;
 using IRIS.UI.ViewModels;
+using IRIS.UI.Views.Dialogs;
 
 namespace IRIS.UI.Views.Personnel
 {
@@ -33,6 +34,19 @@ namespace IRIS.UI.Views.Personnel
         {
             if (DataContext is FileManagementViewModel vm && vm.SelectedRemoteFile != null)
             {
+                // Keep directory/drive navigation immediate; only confirm before file download.
+                if (!vm.SelectedRemoteFile.IsDirectory && !vm.SelectedRemoteFile.IsDrive)
+                {
+                    var dialog = new ConfirmationDialog(
+                        "Download Remote File",
+                        $"Download '{vm.SelectedRemoteFile.Name}' to local files?",
+                        "ArrowDownload24",
+                        "Download",
+                        "Cancel");
+                    dialog.Owner = Application.Current.MainWindow;
+                    if (dialog.ShowDialog() != true) return;
+                }
+
                 await vm.OpenRemoteItemAsync(vm.SelectedRemoteFile);
             }
         }
