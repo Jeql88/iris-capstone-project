@@ -229,13 +229,13 @@ namespace IRIS.Agent.Logic
 
         private sealed class ConfigPromptForm : AgentDialogBase
         {
-            public ConfigPromptForm(string title, string message) : base(accentColor: AccentBlue)
+            public ConfigPromptForm(string title, string message)
             {
                 Text = title;
                 Width = 500;
                 Height = 300;
 
-                var iconLabel = CreateIconLabel("\u2139", AccentBlue);
+                var iconLabel = CreateIconLabel("\u2139", AccentRed);
                 iconLabel.Left = 24;
                 iconLabel.Top = 18;
 

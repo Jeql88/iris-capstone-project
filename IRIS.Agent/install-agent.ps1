@@ -29,10 +29,20 @@ if ($existing) {
 }
 
 # Remove existing scheduled task if it exists
-$taskExists = schtasks /Query /TN $TaskName 2>&1
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Removing existing scheduled task '$TaskName'..." -ForegroundColor Yellow
-    schtasks /Delete /TN $TaskName /F | Out-Null
+if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+    $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existingTask) {
+        Write-Host "Removing existing scheduled task '$TaskName'..." -ForegroundColor Yellow
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
+}
+else {
+    # Fallback for environments where ScheduledTasks cmdlets are unavailable.
+    schtasks /Query /TN $TaskName 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Removing existing scheduled task '$TaskName'..." -ForegroundColor Yellow
+        schtasks /Delete /TN $TaskName /F | Out-Null
+    }
 }
 
 # Kill any running agent processes
