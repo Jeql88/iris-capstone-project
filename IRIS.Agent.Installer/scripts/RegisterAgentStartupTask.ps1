@@ -1,8 +1,7 @@
 param(
 	[Parameter(Mandatory = $true)]
 	[string]$InstallDir,
-	[string]$TaskName = "IRISAgent",
-	[string]$TaskUser = ""
+	[string]$TaskName = "IRISAgent"
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,23 +12,10 @@ if (-not (Test-Path $exePath)) {
 	throw "Agent executable not found at $exePath"
 }
 
-# Determine the user principal for the task
-$isSystemOrEmpty = [string]::IsNullOrWhiteSpace($TaskUser) -or
-                   $TaskUser -match '(?i)^NT AUTHORITY\\SYSTEM$' -or
-                   $TaskUser -eq "\" -or
-                   $TaskUser -match '(?i)SYSTEM$'
-
 $action = New-ScheduledTaskAction -Execute $exePath -Argument "--background"
 $trigger = New-ScheduledTaskTrigger -AtLogOn
+$principal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -Hidden
-
-if ($isSystemOrEmpty) {
-	# SCCM/GPO scenario: create task for the built-in Users group (triggers for ALL users)
-	$principal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
-} else {
-	# Interactive install: create task for the specific installing user
-	$principal = New-ScheduledTaskPrincipal -UserId $TaskUser -LogonType Interactive -RunLevel Highest
-}
 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 
@@ -44,14 +30,16 @@ catch {
 # Creates a lightweight scheduled task whose sole purpose is to wake the PC
 # from sleep periodically. The agent process is already running; it detects
 # the wake via SystemEvents.PowerModeChanged and runs its idle check.
-# The task runs a no-op command — it just needs to exist with WakeToRun enabled.
 
 $wakeTaskName = "IRISAgentWakeCheck"
 $wakeIntervalMinutes = 15
 
 try {
 	$wakeAction  = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c exit 0"
-	$wakeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes $wakeIntervalMinutes) -RepetitionDuration ([TimeSpan]::MaxValue)
+	$wakeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
+		-RepetitionInterval (New-TimeSpan -Minutes $wakeIntervalMinutes) `
+		-RepetitionDuration (New-TimeSpan -Days 9999)
+	$wakePrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
 	$wakeSettings = New-ScheduledTaskSettingsSet `
 		-AllowStartIfOnBatteries `
 		-DontStopIfGoingOnBatteries `
@@ -59,12 +47,6 @@ try {
 		-StartWhenAvailable `
 		-MultipleInstances IgnoreNew `
 		-Hidden
-
-	if ($isSystemOrEmpty) {
-		$wakePrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
-	} else {
-		$wakePrincipal = New-ScheduledTaskPrincipal -UserId $TaskUser -LogonType Interactive -RunLevel Highest
-	}
 
 	Register-ScheduledTask -TaskName $wakeTaskName -Action $wakeAction -Trigger $wakeTrigger -Principal $wakePrincipal -Settings $wakeSettings -Force | Out-Null
 }
