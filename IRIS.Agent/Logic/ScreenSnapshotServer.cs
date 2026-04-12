@@ -103,30 +103,10 @@ namespace IRIS.Agent.Logic
 
         private IEnumerable<string> GetListenerPrefixes()
         {
-            var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                $"http://localhost:{_port}/",
-                $"http://127.0.0.1:{_port}/"
-            };
-
-            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
-                {
-                    continue;
-                }
-
-                var ipProperties = nic.GetIPProperties();
-                foreach (var unicast in ipProperties.UnicastAddresses)
-                {
-                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
-                    {
-                        prefixes.Add($"http://{unicast.Address}:{_port}/");
-                    }
-                }
-            }
-
-            return prefixes;
+            // Wildcard prefix accepts requests on any NIC/IP.
+            // Requires URL ACL: netsh http add urlacl url=http://+:{port}/ user=Everyone
+            // (registered by the MSI installer)
+            return [$"http://+:{_port}/"];
         }
 
         public async Task StopAsync()

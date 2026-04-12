@@ -4,7 +4,6 @@ param(
 	[string]$TaskName = "IRISAgent"
 )
 
-$ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $exePath = Join-Path $InstallDir "IRIS.Agent.exe"
@@ -12,18 +11,24 @@ if (-not (Test-Path $exePath)) {
 	throw "Agent executable not found at $exePath"
 }
 
-$action = New-ScheduledTaskAction -Execute $exePath -Argument "--background"
-$trigger = New-ScheduledTaskTrigger -AtLogOn
-$principal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -Hidden
-
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-
 try {
-	Start-ScheduledTask -TaskName $TaskName | Out-Null
+	$action = New-ScheduledTaskAction -Execute $exePath -Argument "--background"
+	$trigger = New-ScheduledTaskTrigger -AtLogOn
+	$principal = New-ScheduledTaskPrincipal -UserId "BUILTIN\Users" -LogonType Group -RunLevel Limited
+	$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -Hidden
+
+	Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+
+	try {
+		Start-ScheduledTask -TaskName $TaskName | Out-Null
+	}
+	catch {
+		# Immediate start can be blocked by session conditions.
+	}
 }
 catch {
-	# Task creation is the fail-fast requirement. Immediate start can be blocked by session conditions.
+	Write-Warning "Failed to create agent task '$TaskName': $_"
+	exit 1
 }
 
 # --- Wake Timer Task ---
@@ -39,7 +44,7 @@ try {
 	$wakeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
 		-RepetitionInterval (New-TimeSpan -Minutes $wakeIntervalMinutes) `
 		-RepetitionDuration (New-TimeSpan -Days 9999)
-	$wakePrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Highest
+	$wakePrincipal = New-ScheduledTaskPrincipal -UserId "BUILTIN\Users" -LogonType Group -RunLevel Limited
 	$wakeSettings = New-ScheduledTaskSettingsSet `
 		-AllowStartIfOnBatteries `
 		-DontStopIfGoingOnBatteries `
