@@ -32,6 +32,13 @@
                   Return="ignore"
                   ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
 
+    <CustomAction Id="DeleteAgentWakeTask"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgentWakeCheck" /F' />
+
     <CustomAction Id="RemoveSnapshotUrlAcl"
             Directory="SystemFolder"
             Execute="deferred"
@@ -49,21 +56,28 @@
     <CustomAction Id="DeleteAgentTaskBeforeInstall"
                   Directory="SystemFolder"
                   Execute="deferred"
-                  Impersonate="yes"
+                  Impersonate="no"
                   Return="ignore"
                   ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
+
+    <CustomAction Id="DeleteAgentWakeTaskBeforeInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgentWakeCheck" /F' />
 
     <CustomAction Id="StopLegacyAgentServiceBeforeInstall"
             Directory="SystemFolder"
             Execute="deferred"
-                  Impersonate="yes"
+                  Impersonate="no"
             Return="ignore"
             ExeCommand='sc.exe stop "IRISAgent"' />
 
     <CustomAction Id="DeleteLegacyAgentServiceBeforeInstall"
             Directory="SystemFolder"
             Execute="deferred"
-                  Impersonate="yes"
+                  Impersonate="no"
             Return="ignore"
             ExeCommand='sc.exe delete "IRISAgent"' />
 
@@ -84,16 +98,18 @@
     <CustomAction Id="CreateAgentTask"
                   Directory="SystemFolder"
                   Execute="deferred"
-                  Impersonate="yes"
+                  Impersonate="no"
                   Return="check"
-                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1" -InstallDir "[INSTALLDIR]"' />
+                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1" -InstallDir "[INSTALLDIR]" -TaskUser "[LogonUser]"' />
 
     <InstallExecuteSequence>
       <Custom Action="DeleteAgentTask" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentWakeTask" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentWakeTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveFileApiUrlAcl" After="RemoveSnapshotUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteAgentTaskBeforeInstall" After="InstallFiles" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="StopLegacyAgentServiceBeforeInstall" After="DeleteAgentTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentWakeTaskBeforeInstall" After="DeleteAgentTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="StopLegacyAgentServiceBeforeInstall" After="DeleteAgentWakeTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteLegacyAgentServiceBeforeInstall" After="StopLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddSnapshotUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddFileApiUrlAclBeforeInstall" After="AddSnapshotUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />

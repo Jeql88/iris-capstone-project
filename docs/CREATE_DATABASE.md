@@ -51,3 +51,40 @@ psql -U postgres -l
 # Or in psql
 \l
 ```
+
+## Linux Setup
+
+### Prerequisites
+- PostgreSQL client tools (`psql`): `sudo apt install postgresql-client`
+- PostgreSQL server accessible from the Linux machine
+
+### Quick Setup
+```bash
+# From the project root directory
+chmod +x scripts/setup-database-linux.sh
+./scripts/setup-database-linux.sh
+```
+
+### Custom Configuration
+```bash
+./scripts/setup-database-linux.sh \
+    --host 192.168.1.100 \
+    --port 5432 \
+    --user postgres \
+    --password mypassword \
+    --database iris_db
+```
+
+Or use environment variables:
+```bash
+export IRIS_DB_HOST=192.168.1.100
+export IRIS_DB_PASSWORD=mypassword
+./scripts/setup-database-linux.sh
+```
+
+### Regenerating Migration Script
+When new EF Core migrations are added, regenerate the SQL script on a dev machine:
+```bash
+dotnet ef migrations script --idempotent --project IRIS.Core --output docs/migrations.sql
+```
+Commit the updated `docs/migrations.sql` to the repository.

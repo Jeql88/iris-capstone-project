@@ -4,5 +4,6 @@ namespace IRIS.Core.Services.Contracts
     {
         Task<bool> QueueCommandAsync(string macAddress, string commandType);
         Task<string?> DequeuePendingCommandAsync(string macAddress);
+        Task<int> CleanupExpiredCommandsAsync();
     }
 }

@@ -339,6 +339,47 @@ namespace IRIS.Core.Migrations
                     b.ToTable("PCHardwareConfigs");
                 });
 
+            modelBuilder.Entity("IRIS.Core.Models.PendingCommand", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CommandType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MacAddress")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Payload")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MacAddress", "Status");
+
+                    b.HasIndex("Status", "ExpiresAtUtc");
+
+                    b.ToTable("PendingCommands");
+                });
+
             modelBuilder.Entity("IRIS.Core.Models.Policy", b =>
                 {
                     b.Property<int>("Id")

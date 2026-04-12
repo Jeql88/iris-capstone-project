@@ -125,6 +125,25 @@ namespace IRIS.Core.Services
                     .OrderBy(s => s.CreatedAt)
                     .Take(BatchSize));
 
+            // Mark expired pending commands and delete old consumed/expired ones
+            var now = DateTime.UtcNow;
+            var commandCutoff = now.AddDays(-1);
+
+            var expiredPending = await _context.PendingCommands
+                .Where(c => c.Status == PendingCommandStatus.Pending && c.ExpiresAtUtc < now)
+                .ToListAsync();
+            foreach (var cmd in expiredPending)
+                cmd.Status = PendingCommandStatus.Expired;
+
+            var oldCommands = await _context.PendingCommands
+                .Where(c => (c.Status == PendingCommandStatus.Consumed || c.Status == PendingCommandStatus.Expired)
+                            && c.CreatedAtUtc < commandCutoff)
+                .ToListAsync();
+            _context.PendingCommands.RemoveRange(oldCommands);
+
+            await _context.SaveChangesAsync();
+            result.PendingCommandsDeleted = expiredPending.Count + oldCommands.Count;
+
             return result;
         }
 

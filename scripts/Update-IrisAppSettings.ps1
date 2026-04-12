@@ -96,8 +96,6 @@ function Update-AgentEndpoints {
     }
 
     $raw = Get-Content -Path $resolvedPath -Raw
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"CommandServerHost"\s*:\s*"[^"]*"' -Replacement ('"CommandServerHost": "' + $UiHostName + '"') -Description "CommandServerHost"
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"CommandServerPort"\s*:\s*\d+' -Replacement ('"CommandServerPort": ' + $CommandPort) -Description "CommandServerPort"
     $raw = Replace-RegexOrFail -Text $raw -Pattern '"WallpaperServerBaseUrl"\s*:\s*"[^"]*"' -Replacement ('"WallpaperServerBaseUrl": "' + $UiHostName + ':' + $WallpaperPort + '"') -Description "WallpaperServerBaseUrl"
 
     Set-Content -Path $resolvedPath -Value $raw -Encoding UTF8

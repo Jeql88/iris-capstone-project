@@ -1,4 +1,7 @@
-using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using IRIS.Core.Data;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 
 namespace IRIS.Core.Services
@@ -7,93 +10,127 @@ namespace IRIS.Core.Services
     {
         private static readonly TimeSpan CommandTtl = TimeSpan.FromMinutes(3);
 
-        private readonly ConcurrentDictionary<string, PendingCommandEntry> _pendingCommands =
-            new(StringComparer.OrdinalIgnoreCase);
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public Task<bool> QueueCommandAsync(string macAddress, string commandType)
+        public PowerCommandQueueService(IServiceScopeFactory scopeFactory)
+        {
+            _scopeFactory = scopeFactory;
+        }
+
+        public async Task<bool> QueueCommandAsync(string macAddress, string commandType)
         {
             if (string.IsNullOrWhiteSpace(macAddress) || string.IsNullOrWhiteSpace(commandType))
-            {
-                return Task.FromResult(false);
-            }
+                return false;
 
             var normalizedCommand = commandType.Trim();
-            var isFreezeOnWithPayload = normalizedCommand.StartsWith("FreezeOn::", StringComparison.OrdinalIgnoreCase);
-            var isMessageWithPayload = normalizedCommand.StartsWith("Message::", StringComparison.OrdinalIgnoreCase);
-            if (!normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) &&
-                !normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase) &&
-                !normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase) &&
-                !normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase) &&
-                !isFreezeOnWithPayload &&
-                !normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase) &&
-                !isMessageWithPayload)
+
+            // Parse command type and optional payload (e.g., "FreezeOn::base64msg")
+            string parsedCommandType;
+            string? payload = null;
+
+            if (normalizedCommand.StartsWith("FreezeOn::", StringComparison.OrdinalIgnoreCase))
             {
-                return Task.FromResult(false);
+                parsedCommandType = "FreezeOn";
+                payload = normalizedCommand.Substring("FreezeOn::".Length);
             }
-
-            var normalizedMacAddress = NormalizeMacAddress(macAddress);
-            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
+            else if (normalizedCommand.StartsWith("Message::", StringComparison.OrdinalIgnoreCase))
             {
-                return Task.FromResult(false);
+                parsedCommandType = "Message";
+                payload = normalizedCommand.Substring("Message::".Length);
             }
+            else if (normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase))
+                parsedCommandType = "Shutdown";
+            else if (normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase))
+                parsedCommandType = "Restart";
+            else if (normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase))
+                parsedCommandType = "RefreshMetrics";
+            else if (normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase))
+                parsedCommandType = "FreezeOn";
+            else if (normalizedCommand.Equals("FreezeOff", StringComparison.OrdinalIgnoreCase))
+                parsedCommandType = "FreezeOff";
+            else
+                return false;
 
-            CleanupExpiredCommand(normalizedMacAddress);
+            var normalizedMac = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMac))
+                return false;
 
-            var finalCommand = normalizedCommand.Equals("Shutdown", StringComparison.OrdinalIgnoreCase)
-                ? "Shutdown"
-                : normalizedCommand.Equals("Restart", StringComparison.OrdinalIgnoreCase)
-                    ? "Restart"
-                    : normalizedCommand.Equals("RefreshMetrics", StringComparison.OrdinalIgnoreCase)
-                        ? "RefreshMetrics"
-                        : isFreezeOnWithPayload
-                            ? normalizedCommand
-                        : normalizedCommand.Equals("FreezeOn", StringComparison.OrdinalIgnoreCase)
-                            ? "FreezeOn"
-                            : isMessageWithPayload
-                                ? normalizedCommand
-                                : "FreezeOff";
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IRISDbContext>();
 
-            _pendingCommands[normalizedMacAddress] = new PendingCommandEntry(
-                finalCommand,
-                DateTime.UtcNow);
+            var now = DateTime.UtcNow;
+            context.PendingCommands.Add(new PendingCommand
+            {
+                MacAddress = normalizedMac,
+                CommandType = parsedCommandType,
+                Payload = payload,
+                CreatedAtUtc = now,
+                ExpiresAtUtc = now + CommandTtl,
+                Status = PendingCommandStatus.Pending
+            });
 
-            return Task.FromResult(true);
+            await context.SaveChangesAsync();
+            return true;
         }
 
-        public Task<string?> DequeuePendingCommandAsync(string macAddress)
+        public async Task<string?> DequeuePendingCommandAsync(string macAddress)
         {
             if (string.IsNullOrWhiteSpace(macAddress))
-            {
-                return Task.FromResult<string?>(null);
-            }
+                return null;
 
-            var normalizedMacAddress = NormalizeMacAddress(macAddress);
-            if (string.IsNullOrWhiteSpace(normalizedMacAddress))
-            {
-                return Task.FromResult<string?>(null);
-            }
+            var normalizedMac = NormalizeMacAddress(macAddress);
+            if (string.IsNullOrWhiteSpace(normalizedMac))
+                return null;
 
-            CleanupExpiredCommand(normalizedMacAddress);
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IRISDbContext>();
 
-            if (!_pendingCommands.TryRemove(normalizedMacAddress, out var pendingCommand))
-            {
-                return Task.FromResult<string?>(null);
-            }
+            var now = DateTime.UtcNow;
+            var pending = await context.PendingCommands
+                .Where(c => c.MacAddress == normalizedMac
+                            && c.Status == PendingCommandStatus.Pending
+                            && c.ExpiresAtUtc > now)
+                .OrderBy(c => c.CreatedAtUtc)
+                .FirstOrDefaultAsync();
 
-            return Task.FromResult<string?>(pendingCommand.CommandType);
+            if (pending == null)
+                return null;
+
+            pending.Status = PendingCommandStatus.Consumed;
+            await context.SaveChangesAsync();
+
+            // Reconstruct the command string with payload if present
+            return string.IsNullOrWhiteSpace(pending.Payload)
+                ? pending.CommandType
+                : $"{pending.CommandType}::{pending.Payload}";
         }
 
-        private void CleanupExpiredCommand(string macAddress)
+        public async Task<int> CleanupExpiredCommandsAsync()
         {
-            if (!_pendingCommands.TryGetValue(macAddress, out var existing))
-            {
-                return;
-            }
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IRISDbContext>();
 
-            if (DateTime.UtcNow - existing.CreatedAtUtc > CommandTtl)
-            {
-                _pendingCommands.TryRemove(macAddress, out _);
-            }
+            var now = DateTime.UtcNow;
+            var oneDayAgo = now.AddDays(-1);
+
+            // Mark expired pending commands
+            var expiredPending = await context.PendingCommands
+                .Where(c => c.Status == PendingCommandStatus.Pending && c.ExpiresAtUtc < now)
+                .ToListAsync();
+
+            foreach (var cmd in expiredPending)
+                cmd.Status = PendingCommandStatus.Expired;
+
+            // Delete old consumed/expired commands (older than 1 day)
+            var oldCommands = await context.PendingCommands
+                .Where(c => (c.Status == PendingCommandStatus.Consumed || c.Status == PendingCommandStatus.Expired)
+                            && c.CreatedAtUtc < oneDayAgo)
+                .ToListAsync();
+
+            context.PendingCommands.RemoveRange(oldCommands);
+
+            await context.SaveChangesAsync();
+            return expiredPending.Count + oldCommands.Count;
         }
 
         private static string NormalizeMacAddress(string macAddress)
@@ -104,7 +141,5 @@ namespace IRIS.Core.Services
 
             return normalized.ToUpperInvariant();
         }
-
-        private sealed record PendingCommandEntry(string CommandType, DateTime CreatedAtUtc);
     }
 }

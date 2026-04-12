@@ -79,7 +79,17 @@ Connection string in `appsettings.json` — PostgreSQL on localhost:5432, databa
 - itperson / admin (IT Personnel)
 - faculty / admin (Faculty)
 
+## Linux Database Setup
+```bash
+./scripts/setup-database-linux.sh              # Uses defaults from appsettings.json
+./scripts/setup-database-linux.sh --host IP    # Custom host
+```
+After adding new migrations, regenerate the SQL script:
+```bash
+dotnet ef migrations script --idempotent --project IRIS.Core --output docs/migrations.sql
+```
+
 ## Key Ports
 - 5057: Screen stream (agent)
 - 5065: File management API (agent)
-- 5091: Power command server (UI)
+- 5092: Wallpaper server (UI)

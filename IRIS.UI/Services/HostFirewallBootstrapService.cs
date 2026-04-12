@@ -19,17 +19,6 @@ namespace IRIS.UI.Services
             _logger = logger;
         }
 
-        public async Task EnsurePowerCommandRuleAsync(CancellationToken cancellationToken = default)
-        {
-            await EnsureRuleAsync(
-                "PowerCommandServer:EnsureFirewallRuleOnStartup",
-                "PowerCommandServer:Port",
-                "PowerCommandServer:FirewallRuleName",
-                5091,
-                "IRIS UI Power Command TCP",
-                cancellationToken);
-        }
-
         public async Task EnsureWallpaperFileRuleAsync(CancellationToken cancellationToken = default)
         {
             await EnsureRuleAsync(

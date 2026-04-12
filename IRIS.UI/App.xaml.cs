@@ -26,7 +26,6 @@ namespace IRIS.UI
     public partial class App : Application
     {
         private IServiceProvider? _serviceProvider;
-        private IPowerCommandPollingServer? _powerCommandPollingServer;
         private IWallpaperFileServer? _wallpaperFileServer;
         private DataRetentionBackgroundService? _dataRetentionService;
         private MonitoringBackgroundService? _monitoringService;
@@ -47,11 +46,7 @@ namespace IRIS.UI
             _serviceProvider = serviceCollection.BuildServiceProvider();
 
             var hostFirewallBootstrapService = _serviceProvider.GetRequiredService<IHostFirewallBootstrapService>();
-            _ = hostFirewallBootstrapService.EnsurePowerCommandRuleAsync();
             _ = hostFirewallBootstrapService.EnsureWallpaperFileRuleAsync();
-
-            _powerCommandPollingServer = _serviceProvider.GetRequiredService<IPowerCommandPollingServer>();
-            _powerCommandPollingServer.Start();
 
             _wallpaperFileServer = _serviceProvider.GetRequiredService<IWallpaperFileServer>();
             _wallpaperFileServer.Start();
@@ -83,15 +78,6 @@ namespace IRIS.UI
                 _dataRetentionService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
             catch { /* Ignore shutdown errors from background services */ }
-
-            try
-            {
-                _powerCommandPollingServer?.StopAsync().GetAwaiter().GetResult();
-            }
-            catch
-            {
-                // Ignore shutdown errors from background command polling server.
-            }
 
             try
             {
@@ -162,7 +148,6 @@ namespace IRIS.UI
             services.AddScoped<IDeploymentDataService, DeploymentDataService>();
             services.AddScoped<IDataRetentionService, DataRetentionService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
-            services.AddSingleton<IPowerCommandPollingServer, PowerCommandPollingServer>();
             services.AddSingleton<IWallpaperFileServer, WallpaperFileServer>();
             services.AddSingleton<IHostFirewallBootstrapService, HostFirewallBootstrapService>();
             services.AddSingleton<INavigationService, NavigationService>();

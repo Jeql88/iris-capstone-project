@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -22,8 +21,7 @@ namespace IRIS.Agent.Logic
         private readonly string _macAddress;
         private readonly string _pingHost;
         private readonly int _pingTimeoutMs;
-        private readonly string _commandServerHost;
-        private readonly int _commandServerPort;
+        private readonly DbContextOptions<IRISDbContext> _dbOptions;
         private readonly int _freezeAutoUnfreezeMinutes;
         private readonly string _machineName;
         private readonly SemaphoreSlim _contextLock = new(1, 1);
@@ -38,16 +36,14 @@ namespace IRIS.Agent.Logic
             string macAddress,
             string pingHost,
             int pingTimeoutMs,
-            string commandServerHost,
-            int commandServerPort,
+            DbContextOptions<IRISDbContext> dbOptions,
             int freezeAutoUnfreezeMinutes)
         {
             _context = context;
             _macAddress = macAddress;
             _pingHost = pingHost;
             _pingTimeoutMs = pingTimeoutMs;
-            _commandServerHost = commandServerHost;
-            _commandServerPort = commandServerPort;
+            _dbOptions = dbOptions;
             _freezeAutoUnfreezeMinutes = Math.Clamp(freezeAutoUnfreezeMinutes, 1, 120);
             _machineName = Environment.MachineName;
         }
@@ -263,22 +259,26 @@ namespace IRIS.Agent.Logic
         {
             try
             {
-                using var client = new TcpClient();
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                var normalizedMac = NormalizeMacAddress(_macAddress);
 
-                await client.ConnectAsync(_commandServerHost, _commandServerPort, timeout.Token);
+                using var commandContext = new IRISDbContext(_dbOptions);
+                var now = DateTime.UtcNow;
+                var pending = await commandContext.PendingCommands
+                    .Where(c => c.MacAddress == normalizedMac
+                                && c.Status == PendingCommandStatus.Pending
+                                && c.ExpiresAtUtc > now)
+                    .OrderBy(c => c.CreatedAtUtc)
+                    .FirstOrDefaultAsync();
 
-                using var stream = client.GetStream();
-                using var writer = new StreamWriter(stream) { AutoFlush = true };
-                using var reader = new StreamReader(stream);
-
-                await writer.WriteLineAsync(_macAddress);
-                var response = await reader.ReadLineAsync();
-
-                if (string.IsNullOrWhiteSpace(response) || response.Equals("NONE", StringComparison.OrdinalIgnoreCase))
-                {
+                if (pending == null)
                     return;
-                }
+
+                pending.Status = PendingCommandStatus.Consumed;
+                await commandContext.SaveChangesAsync();
+
+                var response = string.IsNullOrWhiteSpace(pending.Payload)
+                    ? pending.CommandType
+                    : $"{pending.CommandType}::{pending.Payload}";
 
                 if (response.Equals("Shutdown", StringComparison.OrdinalIgnoreCase))
                 {
@@ -346,18 +346,18 @@ namespace IRIS.Agent.Logic
                     }
                 }
             }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("Power command poll timed out for PC {MacAddress} when connecting to {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
-            }
-            catch (SocketException ex)
-            {
-                Log.Debug(ex, "Power command server is unreachable for PC {MacAddress} at {CommandServerHost}:{CommandServerPort}", _macAddress, _commandServerHost, _commandServerPort);
-            }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to process pending power command for PC {MacAddress}", _macAddress);
             }
+        }
+
+        private static string NormalizeMacAddress(string macAddress)
+        {
+            var normalized = new string(macAddress
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+            return normalized.ToUpperInvariant();
         }
 
         private static string? ExtractFreezeMessage(string command)

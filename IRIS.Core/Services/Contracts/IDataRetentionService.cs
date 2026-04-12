@@ -28,6 +28,7 @@ namespace IRIS.Core.Services.Contracts
         public int AlertsDeleted { get; set; }
         public int WebsiteUsageDeleted { get; set; }
         public int SoftwareUsageDeleted { get; set; }
-        public int TotalDeleted => HardwareMetricsDeleted + NetworkMetricsDeleted + AlertsDeleted + WebsiteUsageDeleted + SoftwareUsageDeleted;
+        public int PendingCommandsDeleted { get; set; }
+        public int TotalDeleted => HardwareMetricsDeleted + NetworkMetricsDeleted + AlertsDeleted + WebsiteUsageDeleted + SoftwareUsageDeleted + PendingCommandsDeleted;
     }
 }

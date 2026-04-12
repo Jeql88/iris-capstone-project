@@ -5,10 +5,11 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.IO;
-using Npgsql;
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Win32;
 using Serilog;
 using IRIS.Core.Data;
 using IRIS.Core.DTOs;
@@ -25,7 +26,10 @@ namespace IRIS.Agent
     {
         private readonly IConfiguration _configuration;
 
-        private static bool _sleepDisabledForIdleShutdown;
+        private static readonly SemaphoreSlim _idleCheckLock = new(1, 1);
+        private static DateTime _lastResumeTimestamp = DateTime.MinValue;
+        private static readonly TimeSpan _resumeDebounceWindow = TimeSpan.FromSeconds(10);
+        private string? _macAddress;
 
         // Disposables managed by this worker
         private IRISDbContext? _context;
@@ -67,19 +71,14 @@ namespace IRIS.Agent
             // Initialize monitoring components
             var pingHost = _configuration["AgentSettings:PingHost"] ?? "8.8.8.8";
             var pingTimeout = int.TryParse(_configuration["AgentSettings:PingTimeoutMs"], out var pto) ? pto : 1000;
-            var commandServerHost = ResolveCommandServerHost(_configuration);
-            var commandServerPort = int.TryParse(_configuration["AgentSettings:CommandServerPort"], out var csp) ? csp : 5091;
             var freezeAutoUnfreezeMinutes = int.TryParse(_configuration["AgentSettings:FreezeAutoUnfreezeMinutes"], out var fum) ? fum : 10;
-
-            Log.Information("Power command polling endpoint configured as {CommandServerHost}:{CommandServerPort}", commandServerHost, commandServerPort);
 
             var monitoringLogic = new MonitoringLogic(
                 _context,
                 networkInfo.MacAddress,
                 pingHost,
                 pingTimeout,
-                commandServerHost,
-                commandServerPort,
+                options,
                 freezeAutoUnfreezeMinutes);
             _monitoringController = new MonitoringController(monitoringLogic, _configuration);
             var screenStreamPort = int.TryParse(_configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
@@ -225,6 +224,12 @@ namespace IRIS.Agent
                 Log.Warning("Agent initialized in degraded mode (database unreachable). Snapshot and file endpoints may still be available.");
             }
 
+            // Store MAC for use in resume handler and restore sleep settings
+            _macAddress = networkInfo.MacAddress;
+            RestoreSleepSettingsIfNeeded();
+            SystemEvents.PowerModeChanged += OnPowerModeChanged;
+            Log.Information("Subscribed to system PowerModeChanged events for idle enforcement on resume.");
+
             // Wait until the host signals shutdown
             try
             {
@@ -239,6 +244,7 @@ namespace IRIS.Agent
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             Log.Information("Agent stopping...");
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             _policyTimer?.Dispose();
 
             if (_monitoringController != null)
@@ -273,6 +279,9 @@ namespace IRIS.Agent
 
         private static async Task CheckPoliciesAsync(IRISDbContext context, string macAddress)
         {
+            if (!await _idleCheckLock.WaitAsync(0))
+                return; // Another check is already in progress
+
             try
             {
                 var optionsBuilder = new DbContextOptionsBuilder<IRISDbContext>()
@@ -287,38 +296,22 @@ namespace IRIS.Agent
 
                 if (pc?.Room?.Policies != null)
                 {
-                    var hasIdleShutdownPolicy = false;
-
                     foreach (var policy in pc.Room.Policies.Where(p => p.IsActive))
                     {
-                        // Check auto-shutdown policy
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                         {
-                            hasIdleShutdownPolicy = true;
                             await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value);
                         }
-                    }
-
-                    // Disable sleep when idle shutdown is active so the PC stays awake long enough
-                    if (hasIdleShutdownPolicy && !_sleepDisabledForIdleShutdown)
-                    {
-                        RunPowercfg("-change standby-timeout-ac 0");
-                        RunPowercfg("-change standby-timeout-dc 0");
-                        _sleepDisabledForIdleShutdown = true;
-                        Log.Information("Disabled sleep (set to Never) due to active idle shutdown policy.");
-                    }
-                    else if (!hasIdleShutdownPolicy && _sleepDisabledForIdleShutdown)
-                    {
-                        RunPowercfg("-change standby-timeout-ac 30");
-                        RunPowercfg("-change standby-timeout-dc 15");
-                        _sleepDisabledForIdleShutdown = false;
-                        Log.Information("Restored default sleep settings (idle shutdown policy no longer active).");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to check policies: {ex.Message}");
+                Log.Error("Failed to check policies: {Message}", ex.Message);
+            }
+            finally
+            {
+                _idleCheckLock.Release();
             }
         }
 
@@ -356,32 +349,81 @@ namespace IRIS.Agent
 
             if (NativeMethods.GetLastInputInfo(ref lastInputInfo))
             {
-                var idleTime = Environment.TickCount - lastInputInfo.dwTime;
+                var idleTime = unchecked((uint)Environment.TickCount - lastInputInfo.dwTime);
                 return TimeSpan.FromMilliseconds(idleTime);
             }
 
             return TimeSpan.Zero;
         }
 
-        private static void RunPowercfg(string arguments)
+        private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            if (e.Mode == PowerModes.Resume)
+            {
+                Log.Information("System resumed from sleep/hibernate. Scheduling idle policy check.");
+
+                var now = DateTime.UtcNow;
+                if ((now - _lastResumeTimestamp) < _resumeDebounceWindow)
+                {
+                    Log.Information("Resume event debounced (within {Seconds}s of last resume).", _resumeDebounceWindow.TotalSeconds);
+                    return;
+                }
+                _lastResumeTimestamp = now;
+
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                    await RunIdleCheckOnResumeAsync();
+                });
+            }
+            else if (e.Mode == PowerModes.Suspend)
+            {
+                Log.Information("System entering sleep/hibernate.");
+            }
+        }
+
+        private async Task RunIdleCheckOnResumeAsync()
+        {
+            if (string.IsNullOrEmpty(_macAddress) || _context == null)
+                return;
+
+            try
+            {
+                await CheckPoliciesAsync(_context, _macAddress);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to run idle check on system resume.");
+            }
+        }
+
+        private static void RestoreSleepSettingsIfNeeded()
         {
             try
             {
                 using var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powercfg",
-                    Arguments = arguments,
+                    Arguments = "-change standby-timeout-ac 30",
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                if (process != null && process.WaitForExit(5000) && process.ExitCode != 0)
+                process?.WaitForExit(5000);
+
+                using var process2 = Process.Start(new ProcessStartInfo
                 {
-                    Log.Warning("powercfg {Arguments} exited with code {ExitCode}", arguments, process.ExitCode);
-                }
+                    FileName = "powercfg",
+                    Arguments = "-change standby-timeout-dc 15",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                process2?.WaitForExit(5000);
+
+                Log.Information("Restored default sleep timeouts (AC=30min, DC=15min) to undo any prior powercfg overrides.");
             }
             catch (Exception ex)
             {
-                Log.Warning("Failed to run powercfg {Arguments}: {Message}", arguments, ex.Message);
+                Log.Warning("Failed to restore sleep settings: {Message}", ex.Message);
             }
         }
 
@@ -448,56 +490,5 @@ namespace IRIS.Agent
             return fullExpanded;
         }
 
-        private static string ResolveCommandServerHost(IConfiguration configuration)
-        {
-            var configuredHost = (configuration["AgentSettings:CommandServerHost"] ?? string.Empty).Trim();
-
-            // Explicit non-loopback host wins.
-            if (!string.IsNullOrWhiteSpace(configuredHost) &&
-                !configuredHost.Equals("auto", StringComparison.OrdinalIgnoreCase) &&
-                !IsLoopbackHost(configuredHost))
-            {
-                return configuredHost;
-            }
-
-            var dbConnectionString = configuration.GetConnectionString("IRISDatabase");
-            if (!string.IsNullOrWhiteSpace(dbConnectionString))
-            {
-                try
-                {
-                    var builder = new NpgsqlConnectionStringBuilder(dbConnectionString);
-                    var dbHost = (builder.Host ?? string.Empty).Trim();
-                    if (!string.IsNullOrWhiteSpace(dbHost))
-                    {
-                        var firstHost = dbHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                            .FirstOrDefault();
-
-                        if (!string.IsNullOrWhiteSpace(firstHost) && !IsLoopbackHost(firstHost))
-                        {
-                            Log.Information("Resolved command server host from IRIS database host: {ResolvedHost}", firstHost);
-                            return firstHost;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to parse IRIS database connection string for command server host resolution");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(configuredHost) && !configuredHost.Equals("auto", StringComparison.OrdinalIgnoreCase))
-            {
-                return configuredHost;
-            }
-
-            return "127.0.0.1";
-        }
-
-        private static bool IsLoopbackHost(string host)
-        {
-            return host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-                || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
-                || host.Equals("::1", StringComparison.OrdinalIgnoreCase);
-        }
     }
 }

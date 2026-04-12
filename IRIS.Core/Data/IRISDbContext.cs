@@ -37,6 +37,7 @@ namespace IRIS.Core.Data
         public DbSet<PCHardwareConfig> PCHardwareConfigs { get; set; }
         public DbSet<DeploymentLog> DeploymentLogs { get; set; }
         public DbSet<SystemSettings> SystemSettings { get; set; }
+        public DbSet<PendingCommand> PendingCommands { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -56,6 +57,7 @@ namespace IRIS.Core.Data
             ConfigurePCHardwareConfig(modelBuilder);
             ConfigureDeploymentLog(modelBuilder);
             ConfigureSystemSettings(modelBuilder);
+            ConfigurePendingCommand(modelBuilder);
 
             // Seed test users with BCrypt hashed passwords (password: "admin")
             modelBuilder.Entity<User>().HasData(
@@ -300,6 +302,19 @@ namespace IRIS.Core.Data
 
             modelBuilder.Entity<DeploymentLog>()
                 .HasIndex(dl => dl.Timestamp);
+        }
+
+        private void ConfigurePendingCommand(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<PendingCommand>()
+                .Property(pc => pc.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<PendingCommand>()
+                .HasIndex(pc => new { pc.MacAddress, pc.Status });
+
+            modelBuilder.Entity<PendingCommand>()
+                .HasIndex(pc => new { pc.Status, pc.ExpiresAtUtc });
         }
 
         private void ConfigureSystemSettings(ModelBuilder modelBuilder)
