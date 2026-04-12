@@ -1,0 +1,105 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="IRIS UI"
+           Manufacturer="University of San Carlos - SAFAD ACC"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="E6D5DA57-6A85-4DF8-85D8-B87D42F9A4AB"
+           Language="1033"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <SummaryInformation Description="IRIS Management Dashboard" Manufacturer="University of San Carlos - SAFAD ACC" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <Property Id="INSTALLDESKTOPSHORTCUT" Value="1" />
+    <Property Id="ENABLE_CUSTOM_BOOTSTRAP" Value="1" />
+
+    <Feature Id="MainFeature" Title="IRIS UI" Level="1">
+      <ComponentGroupRef Id="UIFiles" />
+      <ComponentRef Id="UiNetworkScriptComponent" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+      <ComponentRef Id="DesktopShortcutComponent" />
+    </Feature>
+
+    <CustomAction Id="ConfigureUiHostNetworkInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]ConfigureUiHostNetwork.ps1" -Mode Install' />
+
+    <CustomAction Id="ConfigureUiHostNetworkUninstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]ConfigureUiHostNetwork.ps1" -Mode Uninstall' />
+
+    <InstallExecuteSequence>
+      <Custom Action="ConfigureUiHostNetworkInstall" After="InstallFiles" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="ConfigureUiHostNetworkUninstall" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+    </InstallExecuteSequence>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="COMPANYFOLDER" Name="IRIS">
+        <Directory Id="INSTALLDIR" Name="UI" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuIRISFolder" Name="IRIS" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="UIFiles" Directory="INSTALLDIR">
+      <Files Include="$(var.PayloadDir)\**">
+        <Exclude Files="$(var.PayloadDir)\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="UiNetworkScriptComponent" Directory="INSTALLDIR" Guid="*">
+      <File Id="UiNetworkScriptFile" Source="scripts\ConfigureUiHostNetwork.ps1" />
+    </Component>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="StartMenuShortcutComponent" Directory="ProgramMenuIRISFolder" Guid="*">
+      <Shortcut Id="StartMenuShortcut"
+                Name="IRIS UI"
+                Description="IRIS Management Dashboard"
+                Target="[INSTALLDIR]IRIS.UI.exe"
+                WorkingDirectory="INSTALLDIR" />
+      <RemoveFolder Id="RemoveProgramMenuIRISFolder" On="uninstall" />
+      <RegistryValue Root="HKCU"
+                     Key="Software\IRIS\IRIS.UI"
+                     Name="Installed"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+    </Component>
+
+    <Component Id="DesktopShortcutComponent" Directory="DesktopFolder" Guid="*" Condition="INSTALLDESKTOPSHORTCUT = 1">
+      <Shortcut Id="DesktopShortcut"
+                Name="IRIS UI"
+                Description="IRIS Management Dashboard"
+                Target="[INSTALLDIR]IRIS.UI.exe"
+                WorkingDirectory="INSTALLDIR" />
+      <RegistryValue Root="HKCU"
+                     Key="Software\IRIS\IRIS.UI"
+                     Name="DesktopShortcut"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+    </Component>
+  </Fragment>
+</Wix>

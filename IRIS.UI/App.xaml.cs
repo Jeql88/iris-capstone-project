@@ -69,6 +69,7 @@ namespace IRIS.UI
 
             // Show login window only
             var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
+            MainWindow = loginWindow;
             loginWindow.Show();
         }
 

@@ -1,0 +1,137 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="IRIS Agent"
+           Manufacturer="University of San Carlos - SAFAD ACC"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="7EF884DD-F012-4A22-B7B6-1B967D17E548"
+           Language="1033"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <SummaryInformation Description="IRIS endpoint agent" Manufacturer="University of San Carlos - SAFAD ACC" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <Property Id="ENABLE_CUSTOM_BOOTSTRAP" Value="1" />
+
+    <Launch Condition="Privileged"
+            Message="Administrator privileges are required to install IRIS Agent. Run the installer from an elevated Command Prompt or PowerShell window." />
+
+    <Feature Id="MainFeature" Title="IRIS Agent" Level="1">
+      <ComponentGroupRef Id="AgentFiles" />
+      <ComponentRef Id="AgentRunFallbackComponent" />
+      <ComponentRef Id="AgentTaskScriptComponent" />
+    </Feature>
+
+    <CustomAction Id="DeleteAgentTask"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
+
+    <CustomAction Id="RemoveSnapshotUrlAcl"
+            Directory="SystemFolder"
+            Execute="deferred"
+            Impersonate="no"
+            Return="ignore"
+            ExeCommand='netsh.exe http delete urlacl url=http://+:5057/' />
+
+    <CustomAction Id="RemoveFileApiUrlAcl"
+            Directory="SystemFolder"
+            Execute="deferred"
+            Impersonate="no"
+            Return="ignore"
+            ExeCommand='netsh.exe http delete urlacl url=http://+:5065/' />
+
+    <CustomAction Id="DeleteAgentTaskBeforeInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="yes"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
+
+    <CustomAction Id="StopLegacyAgentServiceBeforeInstall"
+            Directory="SystemFolder"
+            Execute="deferred"
+                  Impersonate="yes"
+            Return="ignore"
+            ExeCommand='sc.exe stop "IRISAgent"' />
+
+    <CustomAction Id="DeleteLegacyAgentServiceBeforeInstall"
+            Directory="SystemFolder"
+            Execute="deferred"
+                  Impersonate="yes"
+            Return="ignore"
+            ExeCommand='sc.exe delete "IRISAgent"' />
+
+        <CustomAction Id="AddSnapshotUrlAclBeforeInstall"
+          Directory="SystemFolder"
+          Execute="deferred"
+          Impersonate="no"
+          Return="ignore"
+          ExeCommand='netsh.exe http add urlacl url=http://+:5057/ user=Everyone' />
+
+        <CustomAction Id="AddFileApiUrlAclBeforeInstall"
+          Directory="SystemFolder"
+          Execute="deferred"
+          Impersonate="no"
+          Return="ignore"
+          ExeCommand='netsh.exe http add urlacl url=http://+:5065/ user=Everyone' />
+
+    <CustomAction Id="CreateAgentTask"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="yes"
+                  Return="check"
+                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1" -InstallDir "[INSTALLDIR]"' />
+
+    <InstallExecuteSequence>
+      <Custom Action="DeleteAgentTask" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveFileApiUrlAcl" After="RemoveSnapshotUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentTaskBeforeInstall" After="InstallFiles" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="StopLegacyAgentServiceBeforeInstall" After="DeleteAgentTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteLegacyAgentServiceBeforeInstall" After="StopLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="AddSnapshotUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="AddFileApiUrlAclBeforeInstall" After="AddSnapshotUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="CreateAgentTask" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+    </InstallExecuteSequence>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="COMPANYFOLDER" Name="IRIS">
+        <Directory Id="INSTALLDIR" Name="Agent" />
+      </Directory>
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="AgentFiles" Directory="INSTALLDIR">
+      <Files Include="$(var.PayloadDir)\**">
+        <Exclude Files="$(var.PayloadDir)\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="AgentTaskScriptComponent" Directory="INSTALLDIR" Guid="*">
+      <File Id="RegisterAgentStartupTaskScript" Source="scripts\RegisterAgentStartupTask.ps1" />
+    </Component>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="AgentRunFallbackComponent" Directory="INSTALLDIR" Guid="*">
+      <RegistryValue Root="HKLM"
+                     Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                     Name="IRISAgentFallback"
+                     Type="string"
+                     Value="&quot;[INSTALLDIR]IRIS.Agent.exe&quot; --background"
+                     KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+</Wix>

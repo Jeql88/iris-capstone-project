@@ -142,6 +142,16 @@ namespace IRIS.Agent
             {
                 await _fileManagementServer.StartAsync();
             }
+            catch (System.Net.HttpListenerException ex) when (ex.ErrorCode == 5)
+            {
+                var currentUser = Environment.UserDomainName + "\\" + Environment.UserName;
+                Log.Error(ex,
+                    "File management API failed to start due to URL ACL permissions on port {Port}. " +
+                    "Reserve URL ACL with: netsh http add urlacl url=http://+:{UrlAclPort}/ user={CurrentUser}",
+                    fileApiPort,
+                    fileApiPort,
+                    currentUser);
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, "File management API failed to start. Agent will continue without file API.");

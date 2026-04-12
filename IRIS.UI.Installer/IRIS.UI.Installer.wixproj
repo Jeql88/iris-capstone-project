@@ -1,0 +1,14 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <Cultures>en-US</Cultures>
+    <DefineConstants>PayloadDir=$(PayloadDir);ProductVersion=$(ProductVersion)</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PayloadDir Condition="'$(PayloadDir)' == ''">..\IRIS.UI\bin\Release\net9.0-windows\win-x64\publish</PayloadDir>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+  </PropertyGroup>
+</Project>

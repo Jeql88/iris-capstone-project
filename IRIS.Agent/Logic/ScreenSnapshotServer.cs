@@ -86,11 +86,13 @@ namespace IRIS.Agent.Logic
             }
             catch (HttpListenerException ex) when (ex.ErrorCode == 5)
             {
+                var currentUser = Environment.UserDomainName + "\\" + Environment.UserName;
                 Log.Error(ex,
                     "Access denied while starting snapshot listener on port {Port}. " +
-                    "Run the agent as Administrator once or reserve URL ACL with: netsh http add urlacl url=http://+:{Port}/ user={User}",
+                    "Run the agent as Administrator once or reserve URL ACL with: netsh http add urlacl url=http://+:{UrlAclPort}/ user={CurrentUser}",
                     _port,
-                    Environment.UserDomainName + "\\" + Environment.UserName);
+                    _port,
+                    currentUser);
                 throw;
             }
 
