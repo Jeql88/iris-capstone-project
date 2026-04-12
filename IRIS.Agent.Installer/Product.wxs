@@ -100,7 +100,7 @@
                   Execute="deferred"
                   Impersonate="no"
                   Return="check"
-                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1" -InstallDir "[INSTALLDIR]"' />
+                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1"' />
 
     <InstallExecuteSequence>
       <Custom Action="DeleteAgentTask" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
