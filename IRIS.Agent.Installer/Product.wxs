@@ -23,6 +23,7 @@
       <ComponentGroupRef Id="AgentFiles" />
       <ComponentRef Id="AgentRunFallbackComponent" />
       <ComponentRef Id="AgentTaskScriptComponent" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
     </Feature>
 
     <CustomAction Id="DeleteAgentTask"
@@ -123,6 +124,22 @@
         <Directory Id="INSTALLDIR" Name="Agent" />
       </Directory>
     </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="IRISStartMenuFolder" Name="IRIS" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="StartMenuShortcutComponent" Directory="IRISStartMenuFolder" Guid="*">
+      <Shortcut Id="AgentStartMenuShortcut"
+                Name="IRIS Agent"
+                Target="[INSTALLDIR]IRIS.Agent.exe"
+                Arguments="--background"
+                WorkingDirectory="INSTALLDIR"
+                Description="IRIS Endpoint Agent" />
+      <RemoveFolder Id="RemoveIRISStartMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\IRIS\Agent" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
   </Fragment>
 
   <Fragment>

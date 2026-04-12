@@ -39,7 +39,7 @@ try {
 	$wakeTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
 		-RepetitionInterval (New-TimeSpan -Minutes $wakeIntervalMinutes) `
 		-RepetitionDuration (New-TimeSpan -Days 9999)
-	$wakePrincipal = New-ScheduledTaskPrincipal -GroupId "Users" -RunLevel Limited
+	$wakePrincipal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
 	$wakeSettings = New-ScheduledTaskSettingsSet `
 		-AllowStartIfOnBatteries `
 		-DontStopIfGoingOnBatteries `
