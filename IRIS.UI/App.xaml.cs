@@ -45,9 +45,6 @@ namespace IRIS.UI
 
             _serviceProvider = serviceCollection.BuildServiceProvider();
 
-            var hostFirewallBootstrapService = _serviceProvider.GetRequiredService<IHostFirewallBootstrapService>();
-            _ = hostFirewallBootstrapService.EnsureWallpaperFileRuleAsync();
-
             _wallpaperFileServer = _serviceProvider.GetRequiredService<IWallpaperFileServer>();
             _wallpaperFileServer.Start();
 
@@ -149,7 +146,6 @@ namespace IRIS.UI
             services.AddScoped<IDataRetentionService, DataRetentionService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
             services.AddSingleton<IWallpaperFileServer, WallpaperFileServer>();
-            services.AddSingleton<IHostFirewallBootstrapService, HostFirewallBootstrapService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
             services.AddSingleton<DataRetentionBackgroundService>();

@@ -73,16 +73,40 @@ if (-not (Test-Path $exePath)) {
     exit 1
 }
 
-# Create the Scheduled Task (ONLOGON — runs in user's interactive session)
-Write-Host "Creating Scheduled Task '$TaskName' (runs on user logon)..." -ForegroundColor Cyan
-schtasks /Create /TN $TaskName `
-    /TR "`"$exePath`" --background" `
-    /SC ONLOGON `
-    /RL HIGHEST `
-    /F
+# Create the Scheduled Task (ONLOGON — runs in user's interactive session as admin)
+Write-Host "Creating Scheduled Task '$TaskName' (runs on user logon with admin rights)..." -ForegroundColor Cyan
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "schtasks /Create failed with exit code $LASTEXITCODE"
+# Determine the user to run as — prefer current installer (who must already be admin per #Requires)
+$runAsUser = "$env:USERDOMAIN\$env:USERNAME"
+Write-Host "  Task will run as: $runAsUser (with highest privileges)" -ForegroundColor Gray
+
+# Verify current user is in Administrators group
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Error "Current user '$runAsUser' is not in the Administrators group. Run this installer as an admin user."
+    exit 1
+}
+
+try {
+    $action    = New-ScheduledTaskAction    -Execute $exePath -Argument "--background"
+    $trigger   = New-ScheduledTaskTrigger   -AtLogOn -User $runAsUser
+    $principal = New-ScheduledTaskPrincipal -UserId $runAsUser -LogonType Interactive -RunLevel Highest
+    $settings  = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
+        -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -MultipleInstances IgnoreNew `
+        -StartWhenAvailable
+
+    Register-ScheduledTask -TaskName $TaskName `
+        -Action $action `
+        -Trigger $trigger `
+        -Principal $principal `
+        -Settings $settings `
+        -Force | Out-Null
+}
+catch {
+    Write-Error "Register-ScheduledTask failed: $_"
     exit 1
 }
 
@@ -98,9 +122,9 @@ if (Test-Path $settingsPath) {
     }
 }
 
-# Launch the agent now for the current session
-Write-Host "Starting IRIS Agent for current session..." -ForegroundColor Cyan
-Start-Process -FilePath $exePath -ArgumentList "--background" -WindowStyle Hidden
+# Launch the agent now for the current session (via scheduled task so it runs elevated)
+Write-Host "Starting IRIS Agent for current session (elevated)..." -ForegroundColor Cyan
+schtasks /Run /TN $TaskName | Out-Null
 
 Write-Host ""
 Write-Host "IRIS Agent installed successfully." -ForegroundColor Green
