@@ -1,15 +1,36 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using IRIS.Agent.Logic;
 
 namespace IRIS.Agent
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
-            var isBackground = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+            // --- System helper mode: runs as SYSTEM, spawns per-session agents, hosts admin pipe ---
+            if (args.Contains("--system-helper", StringComparer.OrdinalIgnoreCase))
+            {
+                return await Helper.SystemHelperEntryPoint.RunAsync(args);
+            }
+
+            // --- User-mode agent: runs in the student's session ---
+
+            // No-args or --background both mean background mode.
+            var isBackground = args.Length == 0
+                || args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+
+            // Session-scoped single-instance guard.
+            var sessionId = Process.GetCurrentProcess().SessionId;
+            using var mutex = new Mutex(true, $@"Local\IRIS.Agent.UserAgent.{sessionId}", out var createdNew);
+            if (!createdNew)
+            {
+                Console.Error.WriteLine("Another IRIS.Agent instance is already running in this session.");
+                return 1;
+            }
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -52,14 +73,18 @@ namespace IRIS.Agent
                     catch { /* Non-critical: ignore if no console handle */ }
                 }
 
+                // Register services
+                builder.Services.AddSingleton<IPrivilegedHelperClient, PrivilegedHelperClient>();
                 builder.Services.AddHostedService<AgentWorker>();
 
                 var host = builder.Build();
                 await host.RunAsync();
+                return 0;
             }
             catch (Exception ex)
             {
                 Log.Fatal(ex, "IRIS Agent terminated unexpectedly");
+                return 2;
             }
             finally
             {

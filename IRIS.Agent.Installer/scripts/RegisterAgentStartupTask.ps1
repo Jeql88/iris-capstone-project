@@ -1,36 +1,44 @@
-param(
-	[string]$TaskName = "IRISAgent"
-)
-
 Set-StrictMode -Version Latest
 
-# Use the script's own directory — it's installed alongside IRIS.Agent.exe
+# Use the script's own directory - it's installed alongside IRIS.Agent.exe
 $exePath = Join-Path $PSScriptRoot "IRIS.Agent.exe"
 if (-not (Test-Path $exePath)) {
 	throw "Agent executable not found at $exePath"
 }
 
+# 1) Register the SYSTEM helper task - runs at boot, spawns per-session user agents, hosts admin-op pipe
 try {
-	$action = New-ScheduledTaskAction -Execute $exePath -Argument "--background"
-	$trigger = New-ScheduledTaskTrigger -AtLogOn
-	$principal = New-ScheduledTaskPrincipal -GroupId "Users" -RunLevel Limited
-	$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -Hidden
+	$helperAction    = New-ScheduledTaskAction -Execute $exePath -Argument '--system-helper'
+	$helperTrigger   = New-ScheduledTaskTrigger -AtStartup
+	$helperPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+	$helperSettings  = New-ScheduledTaskSettingsSet `
+		-AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+		-RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) `
+		-ExecutionTimeLimit ([TimeSpan]::Zero) `
+		-MultipleInstances IgnoreNew `
+		-StartWhenAvailable -Hidden
 
-	Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-
-	try {
-		Start-ScheduledTask -TaskName $TaskName | Out-Null
-	}
-	catch {
-		# Immediate start can be blocked by session conditions.
-	}
+	Register-ScheduledTask -TaskName 'IRISAgentHelper' `
+		-Action $helperAction -Trigger $helperTrigger `
+		-Principal $helperPrincipal -Settings $helperSettings -Force | Out-Null
 }
 catch {
-	Write-Warning "Failed to create agent task '$TaskName': $_"
+	Write-Warning "Failed to create helper task 'IRISAgentHelper': $_"
 	exit 1
 }
 
-# --- Wake Timer Task ---
+# 2) Remove legacy per-user IRISAgent task if present (helper replaces it)
+Unregister-ScheduledTask -TaskName 'IRISAgent' -Confirm:$false -ErrorAction SilentlyContinue
+
+# 3) Start the helper now so the current boot session gets an agent without a reboot
+try {
+	Start-ScheduledTask -TaskName 'IRISAgentHelper' | Out-Null
+}
+catch {
+	# Immediate start can be blocked by session conditions.
+}
+
+# 4) Keep the wake timer task for sleep-wake scenarios
 $wakeTaskName = "IRISAgentWakeCheck"
 $wakeIntervalMinutes = 15
 

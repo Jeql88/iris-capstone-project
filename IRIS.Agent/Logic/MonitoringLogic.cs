@@ -24,6 +24,7 @@ namespace IRIS.Agent.Logic
         private readonly DbContextOptions<IRISDbContext> _dbOptions;
         private readonly int _freezeAutoUnfreezeMinutes;
         private readonly string _machineName;
+        private readonly IPrivilegedHelperClient _helperClient;
         private readonly SemaphoreSlim _contextLock = new(1, 1);
         private readonly FreezeOverlayController _freezeOverlayController = new();
 
@@ -37,7 +38,8 @@ namespace IRIS.Agent.Logic
             string pingHost,
             int pingTimeoutMs,
             DbContextOptions<IRISDbContext> dbOptions,
-            int freezeAutoUnfreezeMinutes)
+            int freezeAutoUnfreezeMinutes,
+            IPrivilegedHelperClient helperClient)
         {
             _context = context;
             _macAddress = macAddress;
@@ -46,6 +48,7 @@ namespace IRIS.Agent.Logic
             _dbOptions = dbOptions;
             _freezeAutoUnfreezeMinutes = Math.Clamp(freezeAutoUnfreezeMinutes, 1, 120);
             _machineName = Environment.MachineName;
+            _helperClient = helperClient;
         }
 
         public async Task SendHeartbeatAsync()
@@ -290,7 +293,14 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        StartSystemProcess("shutdown.exe", "/s /t 0 /f /c \"Shutdown requested from IRIS monitor\"");
+                        try
+                        {
+                            await _helperClient.ForceShutdownAsync(0);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Failed to execute remote shutdown via helper.");
+                        }
                     }
 
                     return;
@@ -306,7 +316,14 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        StartSystemProcess("shutdown.exe", "/r /t 0 /f /c \"Restart requested from IRIS monitor\"");
+                        try
+                        {
+                            await _helperClient.ForceRestartAsync(0);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Failed to execute remote restart via helper.");
+                        }
                     }
 
                     return;
@@ -640,18 +657,6 @@ namespace IRIS.Agent.Logic
             {
                 return null;
             }
-        }
-
-        private static void StartSystemProcess(string executableName, string arguments)
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = Path.Combine(Environment.SystemDirectory, executableName),
-                Arguments = arguments,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            Process.Start(psi);
         }
 
     }

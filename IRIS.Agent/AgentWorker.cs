@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -25,6 +24,7 @@ namespace IRIS.Agent
     internal sealed class AgentWorker : BackgroundService
     {
         private readonly IConfiguration _configuration;
+        private readonly IPrivilegedHelperClient _helperClient;
 
         private static readonly SemaphoreSlim _idleCheckLock = new(1, 1);
         private static DateTime _lastResumeTimestamp = DateTime.MinValue;
@@ -43,9 +43,10 @@ namespace IRIS.Agent
         private ShutdownLogic? _shutdownLogic;
         private System.Threading.Timer? _policyTimer;
 
-        public AgentWorker(IConfiguration configuration)
+        public AgentWorker(IConfiguration configuration, IPrivilegedHelperClient helperClient)
         {
             _configuration = configuration;
+            _helperClient = helperClient;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -79,7 +80,8 @@ namespace IRIS.Agent
                 pingHost,
                 pingTimeout,
                 options,
-                freezeAutoUnfreezeMinutes);
+                freezeAutoUnfreezeMinutes,
+                _helperClient);
             _monitoringController = new MonitoringController(monitoringLogic, _configuration);
             var screenStreamPort = int.TryParse(_configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
             var snapshotMaxWidth = int.TryParse(_configuration["AgentSettings:SnapshotMaxWidth"], out var smw) ? smw : 1280;
@@ -203,7 +205,7 @@ namespace IRIS.Agent
                 }
 
                 // Start policy enforcement
-                _policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(_context, networkInfo.MacAddress), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+                _policyTimer = new System.Threading.Timer(async _ => await CheckPoliciesAsync(_context, networkInfo.MacAddress, _helperClient), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
                 _shutdownLogic = new ShutdownLogic(_context, networkInfo.MacAddress);
             }
             catch (Exception ex)
@@ -226,7 +228,7 @@ namespace IRIS.Agent
 
             // Store MAC for use in resume handler and restore sleep settings
             _macAddress = networkInfo.MacAddress;
-            RestoreSleepSettingsIfNeeded();
+            await RestoreSleepSettingsAsync();
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             Log.Information("Subscribed to system PowerModeChanged events for idle enforcement on resume.");
 
@@ -277,7 +279,7 @@ namespace IRIS.Agent
             await base.StopAsync(cancellationToken);
         }
 
-        private static async Task CheckPoliciesAsync(IRISDbContext context, string macAddress)
+        private static async Task CheckPoliciesAsync(IRISDbContext context, string macAddress, IPrivilegedHelperClient helperClient)
         {
             if (!await _idleCheckLock.WaitAsync(0))
                 return; // Another check is already in progress
@@ -300,7 +302,7 @@ namespace IRIS.Agent
                     {
                         if (policy.AutoShutdownIdleMinutes.HasValue)
                         {
-                            await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value);
+                            await CheckIdleShutdownAsync(policy.AutoShutdownIdleMinutes.Value, helperClient);
                         }
                     }
                 }
@@ -315,7 +317,7 @@ namespace IRIS.Agent
             }
         }
 
-        private static async Task CheckIdleShutdownAsync(int idleMinutes)
+        private static async Task CheckIdleShutdownAsync(int idleMinutes, IPrivilegedHelperClient helperClient)
         {
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
@@ -330,14 +332,14 @@ namespace IRIS.Agent
 
                 if (!wasCancelled)
                 {
-                    var psi = new ProcessStartInfo
+                    try
                     {
-                        FileName = Path.Combine(Environment.SystemDirectory, "shutdown.exe"),
-                        Arguments = "/s /t 0",
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    Process.Start(psi);
+                        await helperClient.ForceShutdownAsync(0);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to execute idle-policy shutdown via helper.");
+                    }
                 }
             }
         }
@@ -389,7 +391,7 @@ namespace IRIS.Agent
 
             try
             {
-                await CheckPoliciesAsync(_context, _macAddress);
+                await CheckPoliciesAsync(_context, _macAddress, _helperClient);
             }
             catch (Exception ex)
             {
@@ -397,29 +399,16 @@ namespace IRIS.Agent
             }
         }
 
-        private static void RestoreSleepSettingsIfNeeded()
+        private async Task RestoreSleepSettingsAsync()
         {
             try
             {
-                using var process = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powercfg",
-                    Arguments = "-change standby-timeout-ac 30",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
-                process?.WaitForExit(5000);
-
-                using var process2 = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powercfg",
-                    Arguments = "-change standby-timeout-dc 15",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
-                process2?.WaitForExit(5000);
-
-                Log.Information("Restored default sleep timeouts (AC=30min, DC=15min) to undo any prior powercfg overrides.");
+                await _helperClient.SetSleepTimeoutsAsync(30, 15);
+                Log.Information("Restored default sleep timeouts (AC=30min, DC=15min) via helper.");
+            }
+            catch (HelperUnavailableException)
+            {
+                Log.Warning("Helper unavailable — could not restore sleep settings. Will retry on next resume.");
             }
             catch (Exception ex)
             {

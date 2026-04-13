@@ -21,8 +21,8 @@
 
     <Feature Id="MainFeature" Title="IRIS Agent" Level="1">
       <ComponentGroupRef Id="AgentFiles" />
-      <ComponentRef Id="AgentRunFallbackComponent" />
       <ComponentRef Id="AgentTaskScriptComponent" />
+      <ComponentRef Id="PipeTokenScriptComponent" />
       <ComponentRef Id="StartMenuShortcutComponent" />
     </Feature>
 
@@ -32,6 +32,13 @@
                   Impersonate="no"
                   Return="ignore"
                   ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
+
+    <CustomAction Id="DeleteAgentHelperTask"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgentHelper" /F' />
 
     <CustomAction Id="DeleteAgentWakeTask"
                   Directory="SystemFolder"
@@ -60,6 +67,13 @@
                   Impersonate="no"
                   Return="ignore"
                   ExeCommand='schtasks.exe /Delete /TN "IRISAgent" /F' />
+
+    <CustomAction Id="DeleteAgentHelperTaskBeforeInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='schtasks.exe /Delete /TN "IRISAgentHelper" /F' />
 
     <CustomAction Id="DeleteAgentWakeTaskBeforeInstall"
                   Directory="SystemFolder"
@@ -96,6 +110,13 @@
           Return="ignore"
           ExeCommand='netsh.exe http add urlacl url=http://+:5065/ user=Everyone' />
 
+    <CustomAction Id="ConfigurePipeToken"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]ConfigurePipeToken.ps1"' />
+
     <CustomAction Id="CreateAgentTask"
                   Directory="SystemFolder"
                   Execute="deferred"
@@ -104,17 +125,23 @@
                   ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1"' />
 
     <InstallExecuteSequence>
+      <!-- Uninstall: clean up tasks, ACLs -->
       <Custom Action="DeleteAgentTask" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="DeleteAgentWakeTask" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentHelperTask" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentWakeTask" After="DeleteAgentHelperTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentWakeTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveFileApiUrlAcl" After="RemoveSnapshotUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+
+      <!-- Install: clean up old tasks/services, add ACLs, configure token, register new task -->
       <Custom Action="DeleteAgentTaskBeforeInstall" After="InstallFiles" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="DeleteAgentWakeTaskBeforeInstall" After="DeleteAgentTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentHelperTaskBeforeInstall" After="DeleteAgentTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="DeleteAgentWakeTaskBeforeInstall" After="DeleteAgentHelperTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="StopLegacyAgentServiceBeforeInstall" After="DeleteAgentWakeTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteLegacyAgentServiceBeforeInstall" After="StopLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddSnapshotUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddFileApiUrlAclBeforeInstall" After="AddSnapshotUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="CreateAgentTask" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="ConfigurePipeToken" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="CreateAgentTask" After="ConfigurePipeToken" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
     </InstallExecuteSequence>
   </Package>
 
@@ -157,13 +184,8 @@
   </Fragment>
 
   <Fragment>
-    <Component Id="AgentRunFallbackComponent" Directory="INSTALLDIR" Guid="*">
-      <RegistryValue Root="HKLM"
-                     Key="Software\Microsoft\Windows\CurrentVersion\Run"
-                     Name="IRISAgentFallback"
-                     Type="string"
-                     Value="&quot;[INSTALLDIR]IRIS.Agent.exe&quot; --background"
-                     KeyPath="yes" />
+    <Component Id="PipeTokenScriptComponent" Directory="INSTALLDIR" Guid="*">
+      <File Id="ConfigurePipeTokenScript" Source="scripts\ConfigurePipeToken.ps1" />
     </Component>
   </Fragment>
 
