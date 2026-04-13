@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using IRIS.Core.Data;
 using IRIS.Core.Services;
 using IRIS.Core.Services.Contracts;
+using IRIS.UI.Views.Dialogs;
 using IRIS.UI.Views.Shared;
 using IRIS.UI.Views.Admin;
 using IRIS.UI.Views.Personnel;
@@ -25,16 +28,48 @@ namespace IRIS.UI
     /// </summary>
     public partial class App : Application
     {
+        private const string SingleInstanceMutexName = @"Global\IRIS.UI.SingleInstance";
+
         private IServiceProvider? _serviceProvider;
         private IWallpaperFileServer? _wallpaperFileServer;
         private DataRetentionBackgroundService? _dataRetentionService;
         private MonitoringBackgroundService? _monitoringService;
         private AutoShutdownEnforcementService? _autoShutdownService;
         private CancellationTokenSource? _appCts;
+        private Mutex? _singleInstanceMutex;
+        private bool _ownsSingleInstanceMutex;
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Enforce a single machine-wide instance. Port 5092 (wallpaper HTTP server)
+            // is a machine-level resource, so two instances cannot coexist regardless of
+            // session or elevation. Global\ keeps the guard honest across RDP sessions.
+            _singleInstanceMutex = new Mutex(initiallyOwned: false, SingleInstanceMutexName);
+            try
+            {
+                _ownsSingleInstanceMutex = _singleInstanceMutex.WaitOne(TimeSpan.Zero, exitContext: false);
+            }
+            catch (AbandonedMutexException)
+            {
+                // Previous owner died without releasing — we now own it.
+                _ownsSingleInstanceMutex = true;
+            }
+
+            if (!_ownsSingleInstanceMutex)
+            {
+                var dialog = new ConfirmationDialog(
+                    "IRIS UI is already running",
+                    "Another instance of IRIS UI is running on this machine. Close it before starting a new one.",
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    showCancelButton: false);
+                dialog.ShowDialog();
+                Shutdown();
+                return;
+            }
 
             // Add global exception handlers
             DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -46,7 +81,11 @@ namespace IRIS.UI
             _serviceProvider = serviceCollection.BuildServiceProvider();
 
             _wallpaperFileServer = _serviceProvider.GetRequiredService<IWallpaperFileServer>();
-            _wallpaperFileServer.Start();
+            if (!TryStartWallpaperFileServer(_wallpaperFileServer))
+            {
+                Shutdown();
+                return;
+            }
 
             // Start the data retention background cleanup service
             _appCts = new CancellationTokenSource();
@@ -85,8 +124,56 @@ namespace IRIS.UI
                 // Ignore shutdown errors from wallpaper file server.
             }
 
+            try
+            {
+                if (_ownsSingleInstanceMutex)
+                {
+                    _singleInstanceMutex?.ReleaseMutex();
+                }
+                _singleInstanceMutex?.Dispose();
+            }
+            catch
+            {
+                // Ignore mutex release errors; the OS releases it on process exit.
+            }
+
             _appCts?.Dispose();
             base.OnExit(e);
+        }
+
+        private static bool TryStartWallpaperFileServer(IWallpaperFileServer server)
+        {
+            try
+            {
+                server.Start();
+                return true;
+            }
+            catch (HttpListenerException)
+            {
+                // Defense-in-depth: the single-instance mutex should prevent this, but a
+                // previous instance may still be releasing HTTP.sys. Retry once briefly.
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+            }
+
+            try
+            {
+                server.Start();
+                return true;
+            }
+            catch (HttpListenerException ex)
+            {
+                var dialog = new ConfirmationDialog(
+                    "Port 5092 is already in use",
+                    "IRIS UI could not bind the wallpaper file server on port 5092. " +
+                    "Another process is using this port. Close any other IRIS UI instance " +
+                    "(or the process holding the port) and try again.\n\nDetails: " + ex.Message,
+                    "Warning24",
+                    "OK",
+                    "Cancel",
+                    showCancelButton: false);
+                dialog.ShowDialog();
+                return false;
+            }
         }
 
         private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
