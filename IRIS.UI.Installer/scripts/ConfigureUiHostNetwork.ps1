@@ -5,6 +5,10 @@ param(
     [int]$PowerPort = 5091,
     [string]$WallpaperRuleName = "IRIS UI Wallpaper HTTP 5092",
     [int]$WallpaperPort = 5092,
+    [string]$SnapshotOutRuleName = "IRIS UI Snapshot Outbound TCP 5057",
+    [int]$SnapshotPort = 5057,
+    [string]$FileApiOutRuleName = "IRIS UI File API Outbound TCP 5065",
+    [int]$FileApiPort = 5065,
     [string]$UrlAclUser = "Everyone"
 )
 
@@ -21,6 +25,20 @@ function Ensure-FirewallRule {
     netsh advfirewall firewall add rule name="$RuleName" dir=in action=allow protocol=TCP localport=$Port profile=private,domain remoteip=localsubnet | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to add firewall rule '$RuleName' for TCP $Port"
+    }
+}
+
+function Ensure-OutboundFirewallRule {
+    param([string]$RuleName, [int]$Port)
+
+    $existing = netsh advfirewall firewall show rule name="$RuleName" 2>&1
+    if (($LASTEXITCODE -eq 0) -and ($existing -notmatch "No rules match")) {
+        return
+    }
+
+    netsh advfirewall firewall add rule name="$RuleName" dir=out action=allow protocol=TCP remoteport=$Port profile=any | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to add outbound firewall rule '$RuleName' for TCP $Port"
     }
 }
 
@@ -55,10 +73,14 @@ function Remove-UrlAcl {
 if ($Mode -eq "Install") {
     Ensure-FirewallRule -RuleName $PowerRuleName -Port $PowerPort
     Ensure-FirewallRule -RuleName $WallpaperRuleName -Port $WallpaperPort
+    Ensure-OutboundFirewallRule -RuleName $SnapshotOutRuleName -Port $SnapshotPort
+    Ensure-OutboundFirewallRule -RuleName $FileApiOutRuleName -Port $FileApiPort
     Ensure-UrlAcl -Port $WallpaperPort -User $UrlAclUser
 }
 else {
     Remove-FirewallRule -RuleName $PowerRuleName
     Remove-FirewallRule -RuleName $WallpaperRuleName
+    Remove-FirewallRule -RuleName $SnapshotOutRuleName
+    Remove-FirewallRule -RuleName $FileApiOutRuleName
     Remove-UrlAcl -Port $WallpaperPort
 }

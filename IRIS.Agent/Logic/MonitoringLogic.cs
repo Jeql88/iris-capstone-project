@@ -209,10 +209,13 @@ namespace IRIS.Agent.Logic
                 if (_lastNetworkSample != DateTime.MinValue && _lastBytesSent >= 0 && _lastBytesReceived >= 0)
                 {
                     var seconds = (now - _lastNetworkSample).TotalSeconds;
-                    if (seconds > 0)
+                    var deltaSent = bytesSent - _lastBytesSent;
+                    var deltaReceived = bytesReceived - _lastBytesReceived;
+
+                    if (seconds > 0 && deltaSent >= 0 && deltaReceived >= 0)
                     {
-                        uploadMbps = (bytesSent - _lastBytesSent) * 8.0 / (seconds * 1_000_000.0);
-                        downloadMbps = (bytesReceived - _lastBytesReceived) * 8.0 / (seconds * 1_000_000.0);
+                        uploadMbps = deltaSent * 8.0 / (seconds * 1_000_000.0);
+                        downloadMbps = deltaReceived * 8.0 / (seconds * 1_000_000.0);
                     }
                 }
 

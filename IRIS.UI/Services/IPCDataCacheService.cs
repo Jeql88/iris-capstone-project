@@ -28,7 +28,7 @@ namespace IRIS.UI.Services
         Task RefreshPCDataAsync(bool forceWait = false);
 
         /// <summary>Refresh dashboard summary (KPIs, labs, heavy apps). Creates its own scope.</summary>
-        Task RefreshDashboardSummaryAsync();
+        Task RefreshDashboardSummaryAsync(DateTime? startUtc = null, DateTime? endUtc = null);
 
         /// <summary>Refresh live alerts. Creates its own scope.</summary>
         Task RefreshLiveAlertsAsync(bool forceWait = false);

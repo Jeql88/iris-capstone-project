@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -33,7 +32,8 @@ namespace IRIS.UI.ViewModels
         private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _refreshTimer;
-        private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(2200) };
+        // Snapshot fetching uses RawHttpClient (raw TCP) instead of HttpClient
+        // to bypass Sophos Web Protection interception of .NET's HTTP library layer.
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
         private string _selectedPcStatus = "All Statuses";
@@ -833,29 +833,44 @@ namespace IRIS.UI.ViewModels
         {
             try
             {
-                var url = $"http://{ipAddress}:{_screenStreamPort}/snapshot";
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (!string.IsNullOrWhiteSpace(_screenStreamToken))
-                {
-                    request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
-                }
+                var headers = string.IsNullOrWhiteSpace(_screenStreamToken)
+                    ? null
+                    : new[] { ("X-IRIS-Snapshot-Token", _screenStreamToken) };
 
-                using var cts = timeoutOverride.HasValue ? new CancellationTokenSource(timeoutOverride.Value) : null;
-                var cancellationToken = cts?.Token ?? CancellationToken.None;
+                var timeout = timeoutOverride ?? TimeSpan.FromMilliseconds(2200);
+                var bytes = await RawHttpClient.GetBytesAsync(
+                    ipAddress, _screenStreamPort, "/snapshot", headers, timeout);
 
-                using var response = await SnapshotHttpClient.SendAsync(request, cancellationToken);
-                if (!response.IsSuccessStatusCode)
+                if (bytes == null || bytes.Length == 0)
                 {
+                    SnapshotLog($"{ipAddress} returned no data");
                     return null;
                 }
 
-                var bytes = await response.Content.ReadAsByteArrayAsync();
-                return bytes.Length > 0 ? Convert.ToBase64String(bytes) : null;
+                SnapshotLog($"{ipAddress} OK, {bytes.Length} bytes");
+                return Convert.ToBase64String(bytes);
             }
-            catch
+            catch (Exception ex)
             {
+                SnapshotLog($"{ipAddress} EXCEPTION: {ex.GetType().Name}: {ex.Message}");
                 return null;
             }
+        }
+
+        private static readonly object _snapshotLogLock = new();
+        private static void SnapshotLog(string message)
+        {
+            try
+            {
+                var line = $"{DateTime.Now:HH:mm:ss.fff} [Snapshot] {message}";
+                System.Diagnostics.Trace.WriteLine(line);
+                lock (_snapshotLogLock)
+                {
+                    var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "snapshot-debug.log");
+                    System.IO.File.AppendAllText(logPath, line + Environment.NewLine);
+                }
+            }
+            catch { }
         }
 
         private async Task ViewScreenAsync()

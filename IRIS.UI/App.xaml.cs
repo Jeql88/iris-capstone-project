@@ -139,6 +139,7 @@ namespace IRIS.UI
 
             _appCts?.Dispose();
             base.OnExit(e);
+            Environment.Exit(0);
         }
 
         private static bool TryStartWallpaperFileServer(IWallpaperFileServer server)

@@ -19,7 +19,9 @@ param(
     [switch]$OverwriteConfig,
     [switch]$NoDesktopShortcut,
     [string]$FirewallRulePower = "IRIS UI Power Command TCP 5091",
-    [string]$FirewallRuleWallpaper = "IRIS UI Wallpaper HTTP 5092"
+    [string]$FirewallRuleWallpaper = "IRIS UI Wallpaper HTTP 5092",
+    [string]$FirewallRuleSnapshotOut = "IRIS UI Snapshot Outbound TCP 5057",
+    [string]$FirewallRuleFileApiOut = "IRIS UI File API Outbound TCP 5065"
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,6 +54,24 @@ function Ensure-FirewallRule {
     netsh advfirewall firewall add rule name="$RuleName" dir=in action=allow protocol=TCP localport=$Port profile=private,domain remoteip=localsubnet | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to add firewall rule '$RuleName' on TCP $Port."
+    }
+}
+
+function Ensure-OutboundFirewallRule {
+    param(
+        [Parameter(Mandatory = $true)][string]$RuleName,
+        [Parameter(Mandatory = $true)][int]$Port
+    )
+
+    $existing = netsh advfirewall firewall show rule name="$RuleName" 2>&1
+    if (($LASTEXITCODE -eq 0) -and ($existing -notmatch "No rules match")) {
+        Write-Host "  Outbound firewall rule already exists: $RuleName" -ForegroundColor DarkGray
+        return
+    }
+
+    netsh advfirewall firewall add rule name="$RuleName" dir=out action=allow protocol=TCP remoteport=$Port profile=any | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to add outbound firewall rule '$RuleName' on TCP $Port."
     }
 }
 
@@ -195,6 +215,8 @@ try {
     Write-Step "Ensuring firewall + URL ACL prerequisites"
     Ensure-FirewallRule -RuleName $FirewallRulePower -Port 5091
     Ensure-FirewallRule -RuleName $FirewallRuleWallpaper -Port 5092
+    Ensure-OutboundFirewallRule -RuleName $FirewallRuleSnapshotOut -Port 5057
+    Ensure-OutboundFirewallRule -RuleName $FirewallRuleFileApiOut -Port 5065
     Ensure-WallpaperUrlAcl -Port 5092
 
     Write-Step "Creating shortcuts"

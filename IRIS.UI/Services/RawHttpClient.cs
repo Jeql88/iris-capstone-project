@@ -1,0 +1,252 @@
+using System;
+using System.IO;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace IRIS.UI.Services
+{
+    /// <summary>
+    /// Lightweight HTTP GET client using raw TCP sockets.
+    /// Bypasses .NET's HttpClient/HttpWebRequest which can be intercepted
+    /// by endpoint security software (e.g. Sophos Web Protection).
+    /// Properly parses HTTP responses (Content-Length and chunked encoding)
+    /// so it returns as soon as the body is fully received — no dependency
+    /// on TCP connection close timing.
+    /// </summary>
+    internal static class RawHttpClient
+    {
+        public static async Task<byte[]?> GetBytesAsync(
+            string host, int port, string path,
+            (string Key, string Value)[]? headers = null,
+            TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(5);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(effectiveTimeout);
+            var ct = cts.Token;
+
+            using var tcp = new TcpClient { NoDelay = true };
+            await tcp.ConnectAsync(host, port, ct);
+
+            var stream = tcp.GetStream();
+
+            // Send HTTP/1.1 request. We parse chunked/content-length ourselves.
+            var sb = new StringBuilder();
+            sb.Append($"GET {path} HTTP/1.1\r\nHost: {host}\r\n");
+            if (headers != null)
+            {
+                foreach (var (key, value) in headers)
+                {
+                    sb.Append($"{key}: {value}\r\n");
+                }
+            }
+            sb.Append("\r\n");
+
+            var requestBytes = Encoding.ASCII.GetBytes(sb.ToString());
+            await stream.WriteAsync(requestBytes, ct);
+
+            // --- Read response headers ---
+            // Accumulate bytes until we see \r\n\r\n.
+            var headerBuf = new MemoryStream();
+            var readBuf = new byte[4096];
+            int headerEndIndex = -1;
+
+            while (headerEndIndex < 0)
+            {
+                int n = await stream.ReadAsync(readBuf, ct);
+                if (n == 0) return null; // connection closed before headers complete
+                headerBuf.Write(readBuf, 0, n);
+
+                var accumulated = headerBuf.GetBuffer();
+                int len = (int)headerBuf.Length;
+                // Search from where the previous read left off (minus 3 for overlap).
+                int searchStart = Math.Max(0, len - n - 3);
+                for (int i = searchStart; i < len - 3; i++)
+                {
+                    if (accumulated[i] == '\r' && accumulated[i + 1] == '\n'
+                        && accumulated[i + 2] == '\r' && accumulated[i + 3] == '\n')
+                    {
+                        headerEndIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            var allHeader = headerBuf.GetBuffer();
+            int totalHeaderBytes = (int)headerBuf.Length;
+            var headerText = Encoding.ASCII.GetString(allHeader, 0, headerEndIndex);
+
+            // Check for 200 status.
+            if (!headerText.StartsWith("HTTP/") || !headerText.Contains(" 200 "))
+                return null;
+
+            int bodyOffset = headerEndIndex + 4; // skip \r\n\r\n
+            int extraBytes = totalHeaderBytes - bodyOffset; // bytes already read past headers
+
+            // --- Determine body transfer mode ---
+            bool isChunked = headerText.Contains("Transfer-Encoding: chunked", StringComparison.OrdinalIgnoreCase);
+            int contentLength = -1;
+            if (!isChunked)
+            {
+                foreach (var line in headerText.Split("\r\n"))
+                {
+                    if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (int.TryParse(line.AsSpan("Content-Length:".Length), out var cl))
+                            contentLength = cl;
+                        break;
+                    }
+                }
+            }
+
+            // Build a BufferedReader over the network stream, seeded with leftover bytes.
+            var reader = new BufferedStreamReader(stream, allHeader, bodyOffset, extraBytes);
+
+            if (contentLength >= 0)
+            {
+                return await ReadContentLengthBodyAsync(reader, contentLength, ct);
+            }
+            if (isChunked)
+            {
+                return await ReadChunkedBodyAsync(reader, ct);
+            }
+
+            // Fallback: read until connection closes (shouldn't happen with HTTP.sys).
+            return await ReadUntilCloseAsync(reader, ct);
+        }
+
+        private static async Task<byte[]?> ReadContentLengthBodyAsync(
+            BufferedStreamReader reader, int contentLength, CancellationToken ct)
+        {
+            var body = new byte[contentLength];
+            int filled = 0;
+            while (filled < contentLength)
+            {
+                int n = await reader.ReadAsync(body.AsMemory(filled, contentLength - filled), ct);
+                if (n == 0) break;
+                filled += n;
+            }
+            return filled > 0 ? body.AsMemory(0, filled).ToArray() : null;
+        }
+
+        private static async Task<byte[]> ReadChunkedBodyAsync(
+            BufferedStreamReader reader, CancellationToken ct)
+        {
+            var body = new MemoryStream();
+
+            while (true)
+            {
+                // Read chunk size line.
+                var sizeLine = await reader.ReadLineAsync(ct);
+                if (sizeLine == null) break;
+
+                // Parse hex chunk size (ignore extensions after semicolon).
+                var sizeStr = sizeLine.Trim();
+                int semi = sizeStr.IndexOf(';');
+                if (semi >= 0) sizeStr = sizeStr[..semi];
+
+                if (!int.TryParse(sizeStr, System.Globalization.NumberStyles.HexNumber, null, out int chunkSize))
+                    break;
+
+                if (chunkSize == 0)
+                    break; // Last chunk — done.
+
+                // Read chunk data.
+                var chunk = new byte[chunkSize];
+                int filled = 0;
+                while (filled < chunkSize)
+                {
+                    int n = await reader.ReadAsync(chunk.AsMemory(filled, chunkSize - filled), ct);
+                    if (n == 0) break;
+                    filled += n;
+                }
+                body.Write(chunk, 0, filled);
+
+                // Consume trailing \r\n after chunk data.
+                await reader.ReadLineAsync(ct);
+            }
+
+            return body.ToArray();
+        }
+
+        private static async Task<byte[]?> ReadUntilCloseAsync(
+            BufferedStreamReader reader, CancellationToken ct)
+        {
+            var ms = new MemoryStream();
+            var buf = new byte[8192];
+            int n;
+            while ((n = await reader.ReadAsync(buf, ct)) > 0)
+            {
+                ms.Write(buf, 0, n);
+            }
+            return ms.Length > 0 ? ms.ToArray() : null;
+        }
+
+        /// <summary>
+        /// Thin wrapper that drains a seed buffer before reading from the underlying stream.
+        /// Supports both bulk reads and line-oriented reads for chunked encoding.
+        /// </summary>
+        private sealed class BufferedStreamReader
+        {
+            private readonly NetworkStream _stream;
+            private byte[] _buf;
+            private int _pos;
+            private int _len;
+
+            public BufferedStreamReader(NetworkStream stream, byte[] seed, int offset, int count)
+            {
+                _stream = stream;
+                _buf = new byte[Math.Max(count, 4096)];
+                if (count > 0)
+                {
+                    Buffer.BlockCopy(seed, offset, _buf, 0, count);
+                }
+                _pos = 0;
+                _len = count;
+            }
+
+            public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken ct)
+            {
+                // Drain buffer first.
+                if (_pos < _len)
+                {
+                    int avail = _len - _pos;
+                    int toCopy = Math.Min(avail, destination.Length);
+                    _buf.AsMemory(_pos, toCopy).CopyTo(destination);
+                    _pos += toCopy;
+                    return toCopy;
+                }
+
+                // Read directly from stream.
+                return await _stream.ReadAsync(destination, ct);
+            }
+
+            public async Task<string?> ReadLineAsync(CancellationToken ct)
+            {
+                // Read bytes until \n (lines are \r\n terminated).
+                var line = new MemoryStream();
+                var single = new byte[1];
+
+                while (true)
+                {
+                    int n = await ReadAsync(single, ct);
+                    if (n == 0) return line.Length > 0 ? GetLineString(line) : null;
+                    if (single[0] == '\n') return GetLineString(line);
+                    line.WriteByte(single[0]);
+                }
+            }
+
+            private static string GetLineString(MemoryStream ms)
+            {
+                var span = ms.ToArray().AsSpan();
+                // Strip trailing \r if present.
+                if (span.Length > 0 && span[^1] == '\r')
+                    span = span[..^1];
+                return Encoding.ASCII.GetString(span);
+            }
+        }
+    }
+}

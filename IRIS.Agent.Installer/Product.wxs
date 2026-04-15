@@ -61,6 +61,20 @@
             Return="ignore"
             ExeCommand='netsh.exe http delete urlacl url=http://+:5065/' />
 
+    <CustomAction Id="RemoveSnapshotFirewallRule"
+            Directory="SystemFolder"
+            Execute="deferred"
+            Impersonate="no"
+            Return="ignore"
+            ExeCommand='netsh.exe advfirewall firewall delete rule name="IRIS Agent Snapshot TCP 5057"' />
+
+    <CustomAction Id="RemoveFileApiFirewallRule"
+            Directory="SystemFolder"
+            Execute="deferred"
+            Impersonate="no"
+            Return="ignore"
+            ExeCommand='netsh.exe advfirewall firewall delete rule name="IRIS Agent File API TCP 5065"' />
+
     <CustomAction Id="DeleteAgentTaskBeforeInstall"
                   Directory="SystemFolder"
                   Execute="deferred"
@@ -110,6 +124,20 @@
           Return="ignore"
           ExeCommand='netsh.exe http add urlacl url=http://+:5065/ user=Everyone' />
 
+    <CustomAction Id="AddSnapshotFirewallRuleBeforeInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='netsh.exe advfirewall firewall add rule name="IRIS Agent Snapshot TCP 5057" dir=in action=allow protocol=TCP localport=5057 profile=any' />
+
+    <CustomAction Id="AddFileApiFirewallRuleBeforeInstall"
+                  Directory="SystemFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='netsh.exe advfirewall firewall add rule name="IRIS Agent File API TCP 5065" dir=in action=allow protocol=TCP localport=5065 profile=any' />
+
     <CustomAction Id="ConfigurePipeToken"
                   Directory="SystemFolder"
                   Execute="deferred"
@@ -131,6 +159,8 @@
       <Custom Action="DeleteAgentWakeTask" After="DeleteAgentHelperTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentWakeTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveFileApiUrlAcl" After="RemoveSnapshotUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveSnapshotFirewallRule" After="RemoveFileApiUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveFileApiFirewallRule" After="RemoveSnapshotFirewallRule" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
 
       <!-- Install: clean up old tasks/services, add ACLs, configure token, register new task -->
       <Custom Action="DeleteAgentTaskBeforeInstall" After="InstallFiles" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
@@ -140,7 +170,9 @@
       <Custom Action="DeleteLegacyAgentServiceBeforeInstall" After="StopLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddSnapshotUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddFileApiUrlAclBeforeInstall" After="AddSnapshotUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="ConfigurePipeToken" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="AddSnapshotFirewallRuleBeforeInstall" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="AddFileApiFirewallRuleBeforeInstall" After="AddSnapshotFirewallRuleBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="ConfigurePipeToken" After="AddFileApiFirewallRuleBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="CreateAgentTask" After="ConfigurePipeToken" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
     </InstallExecuteSequence>
   </Package>

@@ -123,11 +123,7 @@ namespace IRIS.UI.ViewModels
                         Window? mainWindow = null;
 
                         // Show appropriate window based on user role
-                        if (user.Role == UserRole.ITPersonnel)
-                        {
-                            mainWindow = serviceProvider.GetRequiredService<PersonnelMainWindow>();
-                        }
-                        else if (user.Role == UserRole.Faculty)
+                        if (user.Role == UserRole.Faculty)
                         {
                             mainWindow = serviceProvider.GetRequiredService<FacultyMainWindow>();
                         }

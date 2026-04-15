@@ -5,7 +5,7 @@ namespace IRIS.Core.Services.Contracts
 {
     public interface IMonitoringService
     {
-        Task<DashboardSummary> GetDashboardSummaryAsync(int? roomId = null);
+        Task<DashboardSummary> GetDashboardSummaryAsync(int? roomId = null, DateTime? startUtc = null, DateTime? endUtc = null);
         Task<DashboardMetrics> GetDashboardMetricsAsync(int? roomId = null);
         Task<List<LatencyDataPoint>> GetLatencyHistoryAsync(int hours = 24);
         Task<List<BandwidthDataPoint>> GetBandwidthHistoryAsync(int hours = 24);

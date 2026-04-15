@@ -236,8 +236,8 @@
                                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,15,0,0"
                                             Visibility="{Binding AutoShutdownEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <TextBlock Text="Idle Time (minutes):" FontSize="14" Margin="0,0,0,8"/>
-                                    <ui:NumberBox Value="{Binding AutoShutdownMinutes}" 
-                                                  Minimum="5" Maximum="120" 
+                                    <ui:NumberBox Value="{Binding AutoShutdownMinutes, UpdateSourceTrigger=PropertyChanged}"
+                                                  Minimum="5" Maximum="120"
                                                   Width="120" HorizontalAlignment="Left"/>
                                 </StackPanel>
                             </Grid>

@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -33,7 +32,8 @@ namespace IRIS.UI.ViewModels
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _screenRefreshTimer;
         private readonly DispatcherTimer _systemInfoRefreshTimer;
-        private static readonly HttpClient SnapshotHttpClient = new() { Timeout = TimeSpan.FromMilliseconds(1200) };
+        // Snapshot fetching uses RawHttpClient (raw TCP) instead of HttpClient
+        // to bypass Sophos Web Protection interception of .NET's HTTP library layer.
         private int _pcId;
         private bool _isActive;
         private bool _isDetailsExpanded = false;
@@ -248,21 +248,14 @@ namespace IRIS.UI.ViewModels
 
             try
             {
-                var url = $"http://{ipAddress}:{_screenStreamPort}/snapshot";
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (!string.IsNullOrWhiteSpace(_screenStreamToken))
-                {
-                    request.Headers.TryAddWithoutValidation("X-IRIS-Snapshot-Token", _screenStreamToken);
-                }
+                var headers = string.IsNullOrWhiteSpace(_screenStreamToken)
+                    ? null
+                    : new[] { ("X-IRIS-Snapshot-Token", _screenStreamToken) };
 
-                using var response = await SnapshotHttpClient.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
-                {
-                    return null;
-                }
+                var bytes = await RawHttpClient.GetBytesAsync(
+                    ipAddress, _screenStreamPort, "/snapshot", headers, TimeSpan.FromMilliseconds(1200));
 
-                var bytes = await response.Content.ReadAsByteArrayAsync();
-                return bytes.Length > 0 ? Convert.ToBase64String(bytes) : null;
+                return bytes is { Length: > 0 } ? Convert.ToBase64String(bytes) : null;
             }
             catch
             {

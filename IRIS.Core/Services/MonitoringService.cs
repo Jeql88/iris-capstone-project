@@ -18,10 +18,11 @@ namespace IRIS.Core.Services
             _context = context;
         }
 
-        public async Task<DashboardSummary> GetDashboardSummaryAsync(int? roomId = null)
+        public async Task<DashboardSummary> GetDashboardSummaryAsync(int? roomId = null, DateTime? startUtc = null, DateTime? endUtc = null)
         {
-            var since = DateTime.UtcNow.AddHours(-24);
             var nowUtc = DateTime.UtcNow;
+            var rangeStart = startUtc ?? nowUtc.AddHours(-24);
+            var rangeEnd = endUtc ?? nowUtc;
 
             var pcQuery = _context.PCs.AsQueryable();
             if (roomId.HasValue)
@@ -35,7 +36,7 @@ namespace IRIS.Core.Services
 
             var networkQuery = _context.NetworkMetrics
                 .AsNoTracking()
-                .Where(nm => nm.Timestamp >= since);
+                .Where(nm => nm.Timestamp >= rangeStart && nm.Timestamp <= rangeEnd);
 
             if (roomId.HasValue)
             {
@@ -57,7 +58,9 @@ namespace IRIS.Core.Services
             var avgPacketLoss = networkStats?.AvgPacketLoss ?? 0;
             var peakBandwidth = networkStats?.PeakBandwidth ?? 0;
 
-            var recentCutoff = nowUtc.AddHours(-1);
+            // Current bandwidth = average over the last hour of the selected range
+            var recentCutoff = rangeEnd.AddHours(-1);
+            if (recentCutoff < rangeStart) recentCutoff = rangeStart;
             var currentBandwidth = await networkQuery
                 .Where(n => n.Timestamp >= recentCutoff)
                 .GroupBy(_ => 1)

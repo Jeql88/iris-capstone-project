@@ -82,7 +82,7 @@ namespace IRIS.UI.Services
             }
         }
 
-        public async Task RefreshDashboardSummaryAsync()
+        public async Task RefreshDashboardSummaryAsync(DateTime? startUtc = null, DateTime? endUtc = null)
         {
             if (!await _dashboardRefreshSemaphore.WaitAsync(0))
                 return;
@@ -92,7 +92,7 @@ namespace IRIS.UI.Services
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
 
-                _cachedDashboardSummary = await service.GetDashboardSummaryAsync(CurrentRoomFilter);
+                _cachedDashboardSummary = await service.GetDashboardSummaryAsync(CurrentRoomFilter, startUtc, endUtc);
                 LastDashboardRefreshUtc = DateTime.UtcNow;
 
                 DataChanged?.Invoke();

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using Serilog;
@@ -239,7 +240,16 @@ namespace IRIS.Agent.Logic
 
         private sealed class FreezeOverlayForm : Form
         {
+            [DllImport("user32.dll")]
+            private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+            private static readonly IntPtr HWND_TOPMOST = new(-1);
+            private const uint SWP_NOMOVE = 0x0002;
+            private const uint SWP_NOSIZE = 0x0001;
+            private const uint SWP_NOACTIVATE = 0x0010;
+
             private readonly Label _messageLabel;
+            private readonly System.Windows.Forms.Timer _topMostTimer;
             internal bool AllowCloseFlag;
 
             public FreezeOverlayForm(Rectangle bounds, string message)
@@ -263,6 +273,17 @@ namespace IRIS.Agent.Logic
                 };
 
                 Controls.Add(_messageLabel);
+
+                _topMostTimer = new System.Windows.Forms.Timer { Interval = 500 };
+                _topMostTimer.Tick += (_, _) =>
+                {
+                    if (!IsDisposed && IsHandleCreated)
+                    {
+                        SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    }
+                };
+                _topMostTimer.Start();
             }
 
             internal void SetMessage(string message)
@@ -291,6 +312,8 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                _topMostTimer.Stop();
+                _topMostTimer.Dispose();
                 base.OnFormClosing(e);
             }
         }

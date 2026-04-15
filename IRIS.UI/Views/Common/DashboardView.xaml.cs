@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
 using IRIS.UI.ViewModels;
 using IRIS.UI.Services;
@@ -39,6 +40,17 @@ namespace IRIS.UI.Views.Common
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             dashboardContent = MainContent.Content as ScrollViewer;
+
+            var serviceProvider = ((App)Application.Current).GetServiceProvider();
+            var authService = serviceProvider.GetRequiredService<IAuthenticationService>();
+            var currentUser = authService.GetCurrentUser();
+
+            if (currentUser?.Role != UserRole.SystemAdministrator)
+            {
+                AccessLogsBtn.Visibility = Visibility.Collapsed;
+                AlertsBtn.Visibility = Visibility.Collapsed;
+                UserManagementBtn.Visibility = Visibility.Collapsed;
+            }
         }
 
         /// <summary>

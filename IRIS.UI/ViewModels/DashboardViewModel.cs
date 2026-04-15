@@ -264,15 +264,15 @@ namespace IRIS.UI.ViewModels
                 IsLoading = true;
 
                 // Force refresh from DB instead of using stale cache
+                var (startUtc, endUtc) = GetRangeUtc();
                 _cache.CurrentRoomFilter = _selectedRoomId;
-                await _cache.RefreshDashboardSummaryAsync();
+                await _cache.RefreshDashboardSummaryAsync(startUtc, endUtc);
                 await _cache.RefreshPCDataAsync();
                 ApplyCachedSummary();
 
                 // Load chart data with current date range — own scope for safe DB access
                 try
                 {
-                    var (startUtc, endUtc) = GetRangeUtc();
                     var rangeSpan = endUtc - startUtc;
                     var timeFormat = rangeSpan.TotalHours <= 48 ? "HH:mm" : "MM/dd HH:mm";
 

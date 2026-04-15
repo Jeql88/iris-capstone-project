@@ -24,8 +24,8 @@ namespace IRIS.UI.ViewModels
         private readonly IRoomService _roomService;
         private readonly IConfiguration _configuration;
         private readonly IAuthenticationService _authenticationService;
-        private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(120) };
-        private static readonly HttpClient _pingClient = new() { Timeout = TimeSpan.FromSeconds(3) };
+        private readonly HttpClient _httpClient = new(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(120) };
+        private static readonly HttpClient _pingClient = new(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(3) };
 
         private readonly int _agentFileApiPort;
         private readonly int _remoteDesktopPort;
