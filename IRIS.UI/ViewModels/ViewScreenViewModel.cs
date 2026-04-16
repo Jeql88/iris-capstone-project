@@ -214,24 +214,15 @@ namespace IRIS.UI.ViewModels
                 if (!string.IsNullOrWhiteSpace(imageBase64))
                 {
                     ScreenImage = CreateImage(imageBase64);
-                    IsConnected = true;
-                    IsDisconnected = false;
-                    ConnectionStatus = "Connected";
                     _lastFrameUpdatedUtc = DateTime.UtcNow;
                     OnPropertyChanged(nameof(LastFrameUpdatedText));
                 }
-                else
-                {
-                    IsConnected = false;
-                    IsDisconnected = true;
-                    ConnectionStatus = "Disconnected";
-                }
+                // Don't override connection status based on screenshot result.
+                // Use database status from RefreshSystemInfoFromCache() instead.
             }
             catch
             {
-                IsConnected = false;
-                IsDisconnected = true;
-                ConnectionStatus = "Disconnected";
+                // Screenshot failed — leave connection status as-is (driven by DB heartbeat).
             }
             finally
             {
@@ -253,7 +244,7 @@ namespace IRIS.UI.ViewModels
                     : new[] { ("X-IRIS-Snapshot-Token", _screenStreamToken) };
 
                 var bytes = await RawHttpClient.GetBytesAsync(
-                    ipAddress, _screenStreamPort, "/snapshot", headers, TimeSpan.FromMilliseconds(1200));
+                    ipAddress, _screenStreamPort, "/snapshot", headers, TimeSpan.FromMilliseconds(4000));
 
                 return bytes is { Length: > 0 } ? Convert.ToBase64String(bytes) : null;
             }

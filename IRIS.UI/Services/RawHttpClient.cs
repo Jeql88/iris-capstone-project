@@ -33,9 +33,11 @@ namespace IRIS.UI.Services
 
             var stream = tcp.GetStream();
 
-            // Send HTTP/1.1 request. We parse chunked/content-length ourselves.
+            // Send HTTP/1.1 request with Connection: close so the server releases
+            // the connection immediately after the response. Without this, HTTP.sys
+            // holds connections open (keep-alive) and they accumulate on the agent.
             var sb = new StringBuilder();
-            sb.Append($"GET {path} HTTP/1.1\r\nHost: {host}\r\n");
+            sb.Append($"GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n");
             if (headers != null)
             {
                 foreach (var (key, value) in headers)
@@ -186,64 +188,100 @@ namespace IRIS.UI.Services
         }
 
         /// <summary>
-        /// Thin wrapper that drains a seed buffer before reading from the underlying stream.
-        /// Supports both bulk reads and line-oriented reads for chunked encoding.
+        /// Wrapper that reads from the network in bulk (8KB chunks) and serves
+        /// both bulk and line-oriented reads from an internal buffer. This avoids
+        /// the massive overhead of one async call per byte.
         /// </summary>
         private sealed class BufferedStreamReader
         {
             private readonly NetworkStream _stream;
-            private byte[] _buf;
+            private readonly byte[] _buf = new byte[8192];
             private int _pos;
             private int _len;
 
             public BufferedStreamReader(NetworkStream stream, byte[] seed, int offset, int count)
             {
                 _stream = stream;
-                _buf = new byte[Math.Max(count, 4096)];
                 if (count > 0)
                 {
+                    if (count > _buf.Length)
+                        _buf = new byte[count];
                     Buffer.BlockCopy(seed, offset, _buf, 0, count);
                 }
                 _pos = 0;
                 _len = count;
             }
 
+            private async ValueTask EnsureBufferAsync(CancellationToken ct)
+            {
+                if (_pos >= _len)
+                {
+                    _len = await _stream.ReadAsync(_buf.AsMemory(), ct);
+                    _pos = 0;
+                }
+            }
+
             public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken ct)
             {
-                // Drain buffer first.
-                if (_pos < _len)
-                {
-                    int avail = _len - _pos;
-                    int toCopy = Math.Min(avail, destination.Length);
-                    _buf.AsMemory(_pos, toCopy).CopyTo(destination);
-                    _pos += toCopy;
-                    return toCopy;
-                }
+                await EnsureBufferAsync(ct);
+                if (_len == 0) return 0; // stream closed
 
-                // Read directly from stream.
-                return await _stream.ReadAsync(destination, ct);
+                int avail = _len - _pos;
+                int toCopy = Math.Min(avail, destination.Length);
+                _buf.AsMemory(_pos, toCopy).CopyTo(destination);
+                _pos += toCopy;
+                return toCopy;
             }
 
             public async Task<string?> ReadLineAsync(CancellationToken ct)
             {
-                // Read bytes until \n (lines are \r\n terminated).
-                var line = new MemoryStream();
-                var single = new byte[1];
+                // Fast path: scan for \n within the current buffer.
+                // Only allocates a MemoryStream if the line spans multiple buffer fills.
+                MemoryStream? overflow = null;
 
                 while (true)
                 {
-                    int n = await ReadAsync(single, ct);
-                    if (n == 0) return line.Length > 0 ? GetLineString(line) : null;
-                    if (single[0] == '\n') return GetLineString(line);
-                    line.WriteByte(single[0]);
+                    await EnsureBufferAsync(ct);
+                    if (_len == 0)
+                    {
+                        // Stream ended — return whatever we accumulated.
+                        return overflow is { Length: > 0 } ? FinishLine(overflow) : null;
+                    }
+
+                    // Scan buffer for \n starting at _pos.
+                    for (int i = _pos; i < _len; i++)
+                    {
+                        if (_buf[i] == '\n')
+                        {
+                            // Found end of line. Build result from overflow + this segment.
+                            int segLen = i - _pos; // excludes the \n itself
+                            if (overflow == null)
+                            {
+                                // Entire line is in the current buffer — fast path, no copies.
+                                var span = _buf.AsSpan(_pos, segLen);
+                                _pos = i + 1; // consume past \n
+                                if (span.Length > 0 && span[^1] == (byte)'\r')
+                                    span = span[..^1];
+                                return Encoding.ASCII.GetString(span);
+                            }
+
+                            overflow.Write(_buf, _pos, segLen);
+                            _pos = i + 1;
+                            return FinishLine(overflow);
+                        }
+                    }
+
+                    // No \n found — append entire remaining buffer to overflow and refill.
+                    overflow ??= new MemoryStream();
+                    overflow.Write(_buf, _pos, _len - _pos);
+                    _pos = _len; // buffer exhausted, next EnsureBufferAsync will refill
                 }
             }
 
-            private static string GetLineString(MemoryStream ms)
+            private static string FinishLine(MemoryStream ms)
             {
                 var span = ms.ToArray().AsSpan();
-                // Strip trailing \r if present.
-                if (span.Length > 0 && span[^1] == '\r')
+                if (span.Length > 0 && span[^1] == (byte)'\r')
                     span = span[..^1];
                 return Encoding.ASCII.GetString(span);
             }

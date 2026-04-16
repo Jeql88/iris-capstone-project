@@ -58,6 +58,7 @@ namespace IRIS.UI.ViewModels
         private bool _isInitialized;
         private bool _isActive = true;
         private bool _isLoading;
+        private int _snapshotLoadRunning;
         private bool _isTimelineLoading;
 
         public MonitorViewModel(
@@ -81,6 +82,7 @@ namespace IRIS.UI.ViewModels
             ToggleCardDetailsCommand = new RelayCommand<PCDisplayModel>(pc => ToggleCardDetails(pc));
             OpenPcAlertsForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenAlertsForPC(pc));
             ClosePcAlertsPanelCommand = new RelayCommand(() => IsPcAlertsPanelOpen = false, () => true);
+            DismissAllAlertsCommand = new RelayCommand(async () => await DismissAllAlertsForSelectedPcAsync(), () => IsPcAlertsPanelOpen && SelectedPcAlerts.Count > 0);
             ShowTimelineForPCCommand = new RelayCommand<PCDisplayModel>(pc => OpenTimelineForPC(pc));
             CloseTimelinePanelCommand = new RelayCommand(() => IsTimelinePanelOpen = false, () => true);
             FreezeCommand = new RelayCommand(async () => await ToggleFreezeAsync(), () => SelectedPC != null);
@@ -254,6 +256,7 @@ namespace IRIS.UI.ViewModels
         public ICommand ToggleCardDetailsCommand { get; }
         public ICommand OpenPcAlertsForPCCommand { get; }
         public ICommand ClosePcAlertsPanelCommand { get; }
+        public ICommand DismissAllAlertsCommand { get; }
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
         public ICommand FreezeCommand { get; }
@@ -753,6 +756,23 @@ namespace IRIS.UI.ViewModels
 
         private async Task LoadSnapshotsAsync(bool quickPass = false)
         {
+            // Prevent overlapping snapshot batches. If a previous batch is still
+            // running (slow network, timeouts), skip this one to avoid pile-up.
+            if (Interlocked.CompareExchange(ref _snapshotLoadRunning, 1, 0) != 0)
+                return;
+
+            try
+            {
+                await LoadSnapshotsCoreAsync(quickPass);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _snapshotLoadRunning, 0);
+            }
+        }
+
+        private async Task LoadSnapshotsCoreAsync(bool quickPass)
+        {
             const int quickPassBatchSize = 16;
 
             var visibleReachable = FilteredPCs
@@ -790,7 +810,7 @@ namespace IRIS.UI.ViewModels
                 await semaphore.WaitAsync();
                 try
                 {
-                    TimeSpan? timeout = quickPass ? TimeSpan.FromMilliseconds(800) : null;
+                    TimeSpan? timeout = quickPass ? TimeSpan.FromMilliseconds(1500) : null;
                     var base64 = await GetSnapshotBase64Async(pc.IPAddress, timeout);
                     if (!string.IsNullOrWhiteSpace(base64))
                     {
@@ -837,7 +857,7 @@ namespace IRIS.UI.ViewModels
                     ? null
                     : new[] { ("X-IRIS-Snapshot-Token", _screenStreamToken) };
 
-                var timeout = timeoutOverride ?? TimeSpan.FromMilliseconds(2200);
+                var timeout = timeoutOverride ?? TimeSpan.FromMilliseconds(4000);
                 var bytes = await RawHttpClient.GetBytesAsync(
                     ipAddress, _screenStreamPort, "/snapshot", headers, timeout);
 
@@ -933,6 +953,52 @@ namespace IRIS.UI.ViewModels
             foreach (var alert in ActiveAlerts.Where(a => a.PCId == pcId).OrderByDescending(a => a.Timestamp))
             {
                 SelectedPcAlerts.Add(alert);
+            }
+        }
+
+        private async Task DismissAllAlertsForSelectedPcAsync()
+        {
+            if (SelectedPC == null || SelectedPcAlerts.Count == 0)
+                return;
+
+            var dialog = new ConfirmationDialog(
+                "Acknowledge All Alerts",
+                $"Acknowledge all {SelectedPcAlerts.Count} alert(s) for {SelectedPC.PCName}?",
+                "Checkmark24", "Acknowledge", "Cancel");
+            dialog.Owner = Application.Current.MainWindow;
+            if (dialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
+
+                // Get persisted alert IDs for this PC's active alerts
+                var feed = await service.GetAlertFeedAsync(maxItems: 200);
+                var pcAlertIds = feed
+                    .Where(a => a.PCId == SelectedPC.Id && !a.IsAcknowledged)
+                    .Select(a => a.AlertId)
+                    .ToList();
+
+                if (pcAlertIds.Count > 0)
+                {
+                    await service.AcknowledgeAlertsAsync(pcAlertIds, userId);
+                }
+
+                // Refresh alerts in cache and UI
+                await _cache.RefreshLiveAlertsAsync(forceWait: true);
+                LoadLiveAlertsFromCache();
+
+                if (SelectedPcAlerts.Count == 0)
+                {
+                    IsPcAlertsPanelOpen = false;
+                }
+            }
+            catch
+            {
+                // Silently fail — alerts will refresh on next cycle
             }
         }
 

@@ -1201,9 +1201,14 @@ namespace IRIS.Core.Services
                 });
             }
 
+            // Auto-resolve alerts that have been absent from live alerts for a grace
+            // period. Without this, alerts flicker on/off when metrics oscillate
+            // near the threshold boundary.
+            const int resolveGraceSeconds = 60;
             foreach (var openAlert in existingOpenAlerts)
             {
-                if (!liveKeys.Contains(openAlert.AlertKey))
+                if (!liveKeys.Contains(openAlert.AlertKey)
+                    && (nowUtc - openAlert.CreatedAt).TotalSeconds > resolveGraceSeconds)
                 {
                     openAlert.IsResolved = true;
                     openAlert.ResolvedAt = nowUtc;

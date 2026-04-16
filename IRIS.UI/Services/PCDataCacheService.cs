@@ -23,6 +23,7 @@ namespace IRIS.UI.Services
         private DashboardSummary? _cachedDashboardSummary;
         private List<RoomDto> _cachedRooms = new();
         private List<LiveAlertItem> _cachedLiveAlerts = new();
+        private readonly Dictionary<string, DateTime> _alertLastSeenUtc = new();
         private readonly Dictionary<int, bool> _freezeStatesByPcId = new();
         private readonly Dictionary<int, string> _snapshotsByPcId = new();
         private readonly object _freezeStateLock = new();
@@ -125,9 +126,38 @@ namespace IRIS.UI.Services
 
                 var allAlerts = await service.GetLiveAlertsAsync(CurrentRoomFilter, 30);
                 // Filter to only Critical and High severity
-                _cachedLiveAlerts = allAlerts
+                var freshAlerts = allAlerts
                     .Where(a => a.Severity == "Critical" || a.Severity == "High")
                     .ToList();
+
+                // Track when each alert was last seen in the live set.
+                // Carry forward alerts for a grace period (60s) so they don't
+                // flicker on/off when metrics oscillate near the threshold.
+                var nowUtc = DateTime.UtcNow;
+                var freshKeys = new HashSet<string>(freshAlerts.Select(a => a.AlertKey));
+                foreach (var key in freshKeys)
+                    _alertLastSeenUtc[key] = nowUtc;
+
+                // Carry forward cached alerts whose key is still within the grace period
+                const int graceSeconds = 60;
+                var carriedForward = _cachedLiveAlerts
+                    .Where(a => !freshKeys.Contains(a.AlertKey)
+                                && _alertLastSeenUtc.TryGetValue(a.AlertKey, out var lastSeen)
+                                && (nowUtc - lastSeen).TotalSeconds < graceSeconds)
+                    .ToList();
+
+                _cachedLiveAlerts = freshAlerts.Concat(carriedForward)
+                    .OrderByDescending(a => a.SeverityRank)
+                    .ThenByDescending(a => a.Timestamp)
+                    .ToList();
+
+                // Prune stale tracking entries
+                var staleKeys = _alertLastSeenUtc
+                    .Where(kv => (nowUtc - kv.Value).TotalSeconds > graceSeconds * 2)
+                    .Select(kv => kv.Key)
+                    .ToList();
+                foreach (var key in staleKeys)
+                    _alertLastSeenUtc.Remove(key);
 
                 DataChanged?.Invoke();
             }
