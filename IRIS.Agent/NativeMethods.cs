@@ -91,5 +91,15 @@ namespace IRIS.Agent
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         public const int SW_HIDE = 0;
+
+        // --- DPI awareness (used by Program at startup so screen capture sees
+        //     physical pixels on high-DPI monitors; otherwise Screen.Bounds is
+        //     virtualised while CopyFromScreen reads physical pixels, producing
+        //     a top-left-only snapshot). Requires Windows 10 1703+. ---
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool SetProcessDpiAwarenessContext(IntPtr dpiAwarenessContext);
+
+        public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
     }
 }

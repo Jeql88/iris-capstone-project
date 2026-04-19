@@ -15,6 +15,11 @@ namespace IRIS.Agent
 
         static async Task<int> Main(string[] args)
         {
+            // Must run before any WinForms/GDI type loads so Screen.Bounds and
+            // CopyFromScreen agree on physical pixels.
+            try { NativeMethods.SetProcessDpiAwarenessContext(NativeMethods.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); }
+            catch { /* Pre-1703 Windows: leave default DPI unawareness */ }
+
             // --- System helper mode: runs as SYSTEM, spawns per-session agents, hosts admin pipe ---
             if (args.Contains("--system-helper", StringComparer.OrdinalIgnoreCase))
             {
