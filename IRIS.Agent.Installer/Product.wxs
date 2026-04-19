@@ -10,6 +10,8 @@
 
     <SummaryInformation Description="IRIS endpoint agent" Manufacturer="University of San Carlos - SAFAD ACC" />
 
+    <Icon Id="AgentIcon" SourceFile="..\IRIS.Agent\iris-logo.ico" />
+
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
