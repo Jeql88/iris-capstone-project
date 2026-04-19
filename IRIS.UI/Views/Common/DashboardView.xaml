@@ -405,9 +405,7 @@
                                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                                 <TextBlock FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                                                     <Run Text="{Binding Instances}"/>
-                                                                    <Run Text="instances ·"/>
-                                                                    <Run Text="{Binding RamUsage, StringFormat={}{0:F1}}"/>
-                                                                    <Run Text="GB RAM avg"/>
+                                                                    <Run Text="instances"/>
                                                                 </TextBlock>
                                                             </StackPanel>
                                                         </Grid>

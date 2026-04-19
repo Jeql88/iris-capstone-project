@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
@@ -109,15 +110,23 @@ namespace IRIS.UI
             try
             {
                 _appCts?.Cancel();
-                _monitoringService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-                _autoShutdownService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-                _dataRetentionService?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+                // Stop background services with a bounded wait so a hung service
+                // can never pin the process in Task Manager.
+                var stopTasks = new[]
+                {
+                    _monitoringService?.StopAsync(CancellationToken.None) ?? Task.CompletedTask,
+                    _autoShutdownService?.StopAsync(CancellationToken.None) ?? Task.CompletedTask,
+                    _dataRetentionService?.StopAsync(CancellationToken.None) ?? Task.CompletedTask,
+                };
+                Task.WhenAll(stopTasks).Wait(TimeSpan.FromSeconds(2));
             }
             catch { /* Ignore shutdown errors from background services */ }
 
             try
             {
-                _wallpaperFileServer?.StopAsync().GetAwaiter().GetResult();
+                var wallpaperStop = _wallpaperFileServer?.StopAsync() ?? Task.CompletedTask;
+                wallpaperStop.Wait(TimeSpan.FromSeconds(2));
             }
             catch
             {

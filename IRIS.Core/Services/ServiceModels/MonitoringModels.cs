@@ -50,7 +50,6 @@ namespace IRIS.Core.Services.ServiceModels
         public string Name { get; set; } = string.Empty;
         public string Icon { get; set; } = string.Empty;
         public int InstanceCount { get; set; }
-        public double AverageRamUsage { get; set; }
     }
 
     public class PCMonitorInfo
@@ -94,6 +93,8 @@ namespace IRIS.Core.Services.ServiceModels
         public string Message { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public int SeverityRank { get; set; }
+        public bool IsAcknowledged { get; set; }
+        public bool IsResolved { get; set; }
     }
 
     public class PersistedAlertItem

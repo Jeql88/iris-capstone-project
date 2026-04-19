@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,6 +10,9 @@ namespace IRIS.Agent
 {
     class Program
     {
+        [DllImport("kernel32.dll")]
+        private static extern uint WTSGetActiveConsoleSessionId();
+
         static async Task<int> Main(string[] args)
         {
             // --- System helper mode: runs as SYSTEM, spawns per-session agents, hosts admin pipe ---
@@ -23,12 +27,15 @@ namespace IRIS.Agent
             var isBackground = args.Length == 0
                 || args.Contains("--background", StringComparer.OrdinalIgnoreCase);
 
-            // Session-scoped single-instance guard.
-            var sessionId = Process.GetCurrentProcess().SessionId;
+            var currentProcess = Process.GetCurrentProcess();
+            var sessionId = currentProcess.SessionId;
+
+            // Session-scoped single-instance guard. Uses Local\ namespace (session-scoped
+            // by Windows) plus an explicit session id suffix for defence in depth.
             using var mutex = new Mutex(true, $@"Local\IRIS.Agent.UserAgent.{sessionId}", out var createdNew);
             if (!createdNew)
             {
-                Console.Error.WriteLine("Another IRIS.Agent instance is already running in this session.");
+                Console.Error.WriteLine($"Another IRIS.Agent instance is already running in session {sessionId}.");
                 return 1;
             }
 
@@ -36,6 +43,36 @@ namespace IRIS.Agent
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .CreateLogger();
+
+            Log.Information(
+                "IRIS.Agent starting: PID={Pid}, SessionId={SessionId}, WTSActiveSession={WtsSession}, UserInteractive={Interactive}, ProcessPath={Path}",
+                currentProcess.Id,
+                sessionId,
+                WTSGetActiveConsoleSessionId(),
+                Environment.UserInteractive,
+                currentProcess.MainModule?.FileName ?? "<unknown>");
+
+            // Diagnostic: enumerate other IRIS.Agent processes in this session so
+            // orphaned/duplicated installs are visible in the log.
+            try
+            {
+                var peers = Process.GetProcessesByName("IRIS.Agent")
+                    .Where(p => p.Id != currentProcess.Id && p.SessionId == sessionId)
+                    .ToList();
+                if (peers.Count > 0)
+                {
+                    Log.Warning(
+                        "Found {Count} other IRIS.Agent process(es) in session {SessionId}: {Pids}",
+                        peers.Count,
+                        sessionId,
+                        string.Join(",", peers.Select(p => p.Id)));
+                }
+                foreach (var p in peers) p.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Could not enumerate peer IRIS.Agent processes");
+            }
 
             try
             {

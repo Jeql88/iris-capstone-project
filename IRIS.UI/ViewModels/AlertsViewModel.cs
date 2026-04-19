@@ -71,7 +71,7 @@ namespace IRIS.UI.ViewModels
         public ObservableCollection<AlertRow> FilteredAlerts { get; } = new();
         public ObservableCollection<AlertRow> PagedAlerts { get; } = new();
         public string[] SeverityOptions { get; } = { "All", "Critical", "High" };
-        public string[] TypeOptions { get; } = { "All", "Hardware", "Network", "Thermal", "System" };
+        public string[] TypeOptions { get; } = { "All", "Hardware", "Network", "Thermal" };
         public string[] StateOptions { get; } = { "New", "Acknowledged", "Resolved", "All" };
         public int[] PageSizeOptions { get; } = { 10, 25, 50, 100 };
 

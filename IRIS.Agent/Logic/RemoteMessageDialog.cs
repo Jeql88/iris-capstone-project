@@ -50,7 +50,9 @@ namespace IRIS.Agent.Logic
             {
                 Text = title;
                 Width = 480;
-                Height = 250;
+                Height = 260;
+
+                var okButton = CreateStyledButton("OK", isPrimary: true);
 
                 var iconLabel = CreateIconLabel("\u2139", AccentRed);
                 iconLabel.Left = 24;
@@ -69,14 +71,16 @@ namespace IRIS.Agent.Logic
                     AutoSize = false
                 };
 
+                // Leave a gap above the OK button so the label never overlaps it.
+                var messageTop = 60;
+                var messageBottomPadding = okButton.Height + 32;
                 var messageLabel = CreateStyledLabel(message, 11F);
                 messageLabel.Left = 24;
-                messageLabel.Top = 60;
+                messageLabel.Top = messageTop;
                 messageLabel.Width = ClientSize.Width - 48;
-                messageLabel.Height = 110;
+                messageLabel.Height = Math.Max(40, ClientSize.Height - messageTop - messageBottomPadding);
                 messageLabel.TextAlign = ContentAlignment.TopLeft;
 
-                var okButton = CreateStyledButton("OK", isPrimary: true);
                 okButton.Left = ClientSize.Width - okButton.Width - 16;
                 okButton.Top = ClientSize.Height - okButton.Height - 16;
                 okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;

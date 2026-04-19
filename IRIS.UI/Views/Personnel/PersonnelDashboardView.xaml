@@ -86,6 +86,13 @@
                             <TextBlock Text="Usage Metrics" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
+
+                    <ui:Button x:Name="AlertsBtn" Style="{StaticResource SidebarNavButtonStyle}" Click="AlertsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Alert24" FontSize="18" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Alerts" Foreground="White" VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </ui:Button>
                 </StackPanel>
                 
 
@@ -203,9 +210,7 @@
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                         <TextBlock FontSize="12" Foreground="#666666">
                                                             <Run Text="{Binding Instances}"/>
-                                                            <Run Text="instances •"/>
-                                                            <Run Text="{Binding RamUsage, StringFormat={}{0:F1}}"/>
-                                                            <Run Text="GB RAM avg"/>
+                                                            <Run Text="instances"/>
                                                         </TextBlock>
                                                     </StackPanel>
                                                 </Grid>

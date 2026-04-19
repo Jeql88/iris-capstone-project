@@ -1,7 +1,36 @@
+using System.Diagnostics;
+using System.Windows;
 using System.Windows.Input;
+using IRIS.UI.Views.Dialogs;
 
 namespace IRIS.UI.Helpers
 {
+    internal static class RelayCommandErrorReporter
+    {
+        public static void Report(Exception ex)
+        {
+            Debug.WriteLine($"[RelayCommand] Unhandled exception: {ex}");
+            try
+            {
+                var dlg = new ConfirmationDialog(
+                    "Unexpected Error",
+                    ex.Message,
+                    "ErrorCircle24",
+                    "OK",
+                    "Cancel",
+                    false)
+                {
+                    Owner = Application.Current?.MainWindow
+                };
+                dlg.ShowDialog();
+            }
+            catch (Exception dialogEx)
+            {
+                Debug.WriteLine($"[RelayCommand] Failed to show error dialog: {dialogEx}");
+            }
+        }
+    }
+
     public class RelayCommand : ICommand
     {
         private readonly Func<Task>? _executeAsync;
@@ -27,23 +56,34 @@ namespace IRIS.UI.Helpers
             _canExecute = canExecute;
         }
 
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
 
         public bool CanExecute(object? parameter) => _canExecute();
 
         public async void Execute(object? parameter)
         {
-            if (_executeAsync != null)
-                await _executeAsync();
-            else if (_executeAsyncWithParam != null)
-                await _executeAsyncWithParam(parameter);
-            else
-                _executeSync?.Invoke();
+            try
+            {
+                if (_executeAsync != null)
+                    await _executeAsync();
+                else if (_executeAsyncWithParam != null)
+                    await _executeAsyncWithParam(parameter);
+                else
+                    _executeSync?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                RelayCommandErrorReporter.Report(ex);
+            }
         }
 
         public void RaiseCanExecuteChanged()
         {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -58,15 +98,28 @@ namespace IRIS.UI.Helpers
             _canExecute = canExecute;
         }
 
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
 
         public bool CanExecute(object? parameter) =>
             _canExecute == null || _canExecute((T?)parameter);
 
-        public void Execute(object? parameter) =>
-            _execute((T?)parameter);
+        public void Execute(object? parameter)
+        {
+            try
+            {
+                _execute((T?)parameter);
+            }
+            catch (Exception ex)
+            {
+                RelayCommandErrorReporter.Report(ex);
+            }
+        }
 
         public void RaiseCanExecuteChanged() =>
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            CommandManager.InvalidateRequerySuggested();
     }
 }

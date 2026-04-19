@@ -352,8 +352,7 @@ namespace IRIS.UI.ViewModels
                 {
                     Name = app.Name,
                     Icon = app.Icon,
-                    Instances = app.InstanceCount,
-                    RamUsage = app.AverageRamUsage
+                    Instances = app.InstanceCount
                 });
             OnPropertyChanged(nameof(HasHeavyApplications));
         }
@@ -573,7 +572,6 @@ namespace IRIS.UI.ViewModels
         public string Name { get; set; } = string.Empty;
         public string Icon { get; set; } = string.Empty;
         public int Instances { get; set; }
-        public double RamUsage { get; set; }
     }
 
     public class LabStatus

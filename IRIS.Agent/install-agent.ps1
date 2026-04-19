@@ -17,40 +17,51 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Remove legacy Windows Service if it exists (migration path)
-$existing = Get-Service -Name $TaskName -ErrorAction SilentlyContinue
-if ($existing) {
-    Write-Host "Found legacy Windows Service '$TaskName'. Removing..." -ForegroundColor Yellow
-    Stop-Service -Name $TaskName -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    sc.exe delete $TaskName | Out-Null
-    Start-Sleep -Seconds 2
-    Write-Host "Legacy service removed." -ForegroundColor Green
+# Remove legacy Windows Services whose names may match older installs (migration path)
+foreach ($svcName in @($TaskName, "IRIS.Agent", "IRISAgent", "IRISAgentHelper")) {
+    $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+    if ($svc) {
+        Write-Host "Found legacy Windows Service '$svcName'. Removing..." -ForegroundColor Yellow
+        Stop-Service -Name $svcName -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        sc.exe delete $svcName | Out-Null
+        Start-Sleep -Seconds 1
+    }
 }
 
-# Remove existing scheduled task if it exists
+# Remove ALL scheduled tasks whose name starts with "IRIS" so prior deploy cycles
+# or renamed tasks can never leave a stray launcher behind.
 if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
-    $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    if ($existingTask) {
-        Write-Host "Removing existing scheduled task '$TaskName'..." -ForegroundColor Yellow
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    $staleTasks = Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like "IRIS*" }
+    foreach ($t in $staleTasks) {
+        Write-Host "Removing scheduled task '$($t.TaskName)'..." -ForegroundColor Yellow
+        Unregister-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath -Confirm:$false -ErrorAction SilentlyContinue
     }
 }
 else {
-    # Fallback for environments where ScheduledTasks cmdlets are unavailable.
-    schtasks /Query /TN $TaskName 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Removing existing scheduled task '$TaskName'..." -ForegroundColor Yellow
-        schtasks /Delete /TN $TaskName /F | Out-Null
+    foreach ($legacyTaskName in @($TaskName, "IRIS.Agent", "IRISAgentHelper")) {
+        schtasks /Query /TN $legacyTaskName 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Removing scheduled task '$legacyTaskName'..." -ForegroundColor Yellow
+            schtasks /Delete /TN $legacyTaskName /F | Out-Null
+        }
     }
 }
 
-# Kill any running agent processes
+# Kill any running agent processes (all sessions, all users — requires admin)
 $agentProcesses = Get-Process -Name "IRIS.Agent" -ErrorAction SilentlyContinue
 if ($agentProcesses) {
-    Write-Host "Stopping running IRIS Agent processes..." -ForegroundColor Yellow
-    $agentProcesses | Stop-Process -Force
+    Write-Host "Stopping $($agentProcesses.Count) running IRIS.Agent process(es)..." -ForegroundColor Yellow
+    $agentProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
+}
+
+# Log stale install directories so the operator can clean them up manually if desired.
+$knownInstallRoots = @("C:\IRIS\Agent", "C:\Program Files\IRIS Agent", "C:\Program Files (x86)\IRIS Agent")
+foreach ($root in $knownInstallRoots) {
+    if ($root -ne $PublishDir -and (Test-Path $root)) {
+        Write-Host "NOTE: Found prior install directory at '$root' (not removed — remove manually if unused)." -ForegroundColor Yellow
+    }
 }
 
 # Publish the agent

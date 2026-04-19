@@ -9,6 +9,7 @@ namespace IRIS.UI.Views.Dialogs
         public FreezeMessageDialog(string title, string instruction, string? defaultMessage = null)
         {
             InitializeComponent();
+            Title = title;
             TitleTextBlock.Text = title;
             MessageTextBlock.Text = instruction;
             FreezeMessageTextBox.Text = string.IsNullOrWhiteSpace(defaultMessage)

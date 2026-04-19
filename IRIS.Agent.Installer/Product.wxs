@@ -143,14 +143,14 @@
                   Execute="deferred"
                   Impersonate="no"
                   Return="ignore"
-                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]ConfigurePipeToken.ps1"' />
+                  ExeCommand='cmd.exe /c (if not exist "C:\ProgramData\IRIS\Agent" mkdir "C:\ProgramData\IRIS\Agent") &amp; WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]ConfigurePipeToken.ps1" &gt;&gt; "C:\ProgramData\IRIS\Agent\install.log" 2&gt;&amp;1' />
 
     <CustomAction Id="CreateAgentTask"
                   Directory="SystemFolder"
                   Execute="deferred"
                   Impersonate="no"
                   Return="check"
-                  ExeCommand='WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1"' />
+                  ExeCommand='cmd.exe /c (if not exist "C:\ProgramData\IRIS\Agent" mkdir "C:\ProgramData\IRIS\Agent") &amp; WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File "[INSTALLDIR]RegisterAgentStartupTask.ps1" &gt;&gt; "C:\ProgramData\IRIS\Agent\install.log" 2&gt;&amp;1' />
 
     <InstallExecuteSequence>
       <!-- Uninstall: clean up tasks, ACLs -->

@@ -32,6 +32,12 @@ namespace IRIS.UI.ViewModels
         private readonly int _remoteDesktopPort;
         private readonly string? _screenStreamToken;
         private readonly DispatcherTimer _refreshTimer;
+        // Client-side suppression for dismissed live alerts. Keyed by "{pcId}|{alertKey}",
+        // value is the UTC expiry. Live alerts are recomputed from metrics each cycle, so
+        // dismissing in DB alone can't hide them while the condition persists; we hide
+        // them here for a bounded window so the dashboard reflects the user's intent.
+        private readonly Dictionary<string, DateTime> _dismissedAlertKeys = new();
+        private static readonly TimeSpan DismissSuppressionWindow = TimeSpan.FromMinutes(15);
         // Snapshot fetching uses RawHttpClient (raw TCP) instead of HttpClient
         // to bypass Sophos Web Protection interception of .NET's HTTP library layer.
         private string _searchText = string.Empty;
@@ -224,6 +230,7 @@ namespace IRIS.UI.ViewModels
         public bool HasSelectedPC => SelectedPC != null;
         public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
         public bool ShowRemoteDesktopQuickAction => !IsFaculty;
+        public bool ShowAlertsUi => !IsFaculty;
         public bool HasTimelineEvents => SelectedPcTimeline.Count > 0;
         public string TimelineEmptyMessage => HasSelectedPC
             ? "No timeline events for the selected period"
@@ -495,9 +502,9 @@ namespace IRIS.UI.ViewModels
                 Status = pc.Status,
                 OS = pc.OperatingSystem,
                 CPU = $"{pc.CpuUsage:F0}%",
-                CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A",
+                CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "—",
                 GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A",
-                GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A",
+                GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "—",
                 Network = $"{pc.NetworkUsage:F1} Mbps",
                 NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps",
                 NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps",
@@ -530,9 +537,9 @@ namespace IRIS.UI.ViewModels
             display.Status = pc.Status;
             display.OS = pc.OperatingSystem;
             display.CPU = $"{pc.CpuUsage:F0}%";
-            display.CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "N/A";
+            display.CPUTemperature = pc.CpuTemperature.HasValue ? $"{pc.CpuTemperature.Value:F1} °C" : "—";
             display.GPU = pc.GpuUsage.HasValue ? $"{pc.GpuUsage.Value:F0}%" : "N/A";
-            display.GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "N/A";
+            display.GPUTemperature = pc.GpuTemperature.HasValue ? $"{pc.GpuTemperature.Value:F1} °C" : "—";
             display.Network = $"{pc.NetworkUsage:F1} Mbps";
             display.NetworkUpload = $"{pc.NetworkUploadMbps:F1} Mbps";
             display.NetworkDownload = $"{pc.NetworkDownloadMbps:F1} Mbps";
@@ -605,14 +612,13 @@ namespace IRIS.UI.ViewModels
             }
 
             desired = desired
-                .OrderBy(pc => pc.PCName, Helpers.NaturalSortComparer.Instance)
+                .OrderByDescending(pc => string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(pc => pc.PCName, Helpers.NaturalSortComparer.Instance)
                 .ThenBy(pc => pc.Id)
                 .ToList();
 
-            // Build a set of desired IDs for quick removal lookup
             var desiredIds = new HashSet<int>(desired.Select(p => p.Id));
 
-            // Remove items that should no longer be visible
             for (int i = FilteredPCs.Count - 1; i >= 0; i--)
             {
                 if (!desiredIds.Contains(FilteredPCs[i].Id))
@@ -621,28 +627,59 @@ namespace IRIS.UI.ViewModels
                 }
             }
 
-            // Add items that are missing
-            var existingIds = new HashSet<int>(FilteredPCs.Select(p => p.Id));
-            foreach (var pc in desired)
+            // Reconcile ordering in place: walk desired order and Move/Insert so
+            // FilteredPCs[i] == desired[i]. Using Move preserves item identity for
+            // WPF ItemContainerGenerator (avoids rebuilding every tile on each pass).
+            for (int i = 0; i < desired.Count; i++)
             {
-                if (!existingIds.Contains(pc.Id))
+                var target = desired[i];
+                if (i < FilteredPCs.Count && FilteredPCs[i].Id == target.Id)
+                    continue;
+
+                int currentIndex = -1;
+                for (int j = i; j < FilteredPCs.Count; j++)
                 {
-                    FilteredPCs.Add(pc);
+                    if (FilteredPCs[j].Id == target.Id) { currentIndex = j; break; }
                 }
+
+                if (currentIndex >= 0)
+                    FilteredPCs.Move(currentIndex, i);
+                else
+                    FilteredPCs.Insert(i, target);
             }
 
             HasNoPCs = FilteredPCs.Count == 0;
         }
 
+        private IEnumerable<LiveAlertItem> FilterSuppressed(IEnumerable<LiveAlertItem> alerts)
+        {
+            if (_dismissedAlertKeys.Count == 0)
+                return alerts;
+
+            var nowUtc = DateTime.UtcNow;
+            var expired = _dismissedAlertKeys
+                .Where(kv => kv.Value <= nowUtc)
+                .Select(kv => kv.Key)
+                .ToList();
+            foreach (var k in expired)
+                _dismissedAlertKeys.Remove(k);
+
+            return alerts.Where(a => !_dismissedAlertKeys.ContainsKey($"{a.PCId}|{a.AlertKey}"));
+        }
+
         private void LoadLiveAlertsFromCache()
         {
-            var alerts = _cache.CachedLiveAlerts;
+            // Only show "New" alerts (not acknowledged and not resolved)
+            var alerts = FilterSuppressed(_cache.CachedLiveAlerts)
+                .Where(a => !a.IsAcknowledged && !a.IsResolved)
+                .ToList();
             ActiveAlerts.Clear();
 
             foreach (var alert in alerts)
             {
                 ActiveAlerts.Add(new LiveAlertDisplayModel
                 {
+                    AlertKey = alert.AlertKey,
                     PCId = alert.PCId,
                     PCName = alert.PCName,
                     RoomName = alert.RoomName,
@@ -696,13 +733,14 @@ namespace IRIS.UI.ViewModels
         {
             // Force wait for semaphore to ensure fresh data on navigation
             await _cache.RefreshLiveAlertsAsync(forceRefresh);
-            var alerts = _cache.CachedLiveAlerts;
+            var alerts = FilterSuppressed(_cache.CachedLiveAlerts).Where(a => !a.IsResolved && !a.IsAcknowledged).ToList();
             ActiveAlerts.Clear();
 
             foreach (var alert in alerts)
             {
                 ActiveAlerts.Add(new LiveAlertDisplayModel
                 {
+                    AlertKey = alert.AlertKey,
                     PCId = alert.PCId,
                     PCName = alert.PCName,
                     RoomName = alert.RoomName,
@@ -932,11 +970,39 @@ namespace IRIS.UI.ViewModels
             }
 
             SelectedPC = pc;
-            SelectedPcAlertsTitle = $"Alerts • {pc.PCName}";
+            SelectedPcAlertsTitle = $"Alerts \u2022 {pc.PCName}";
             IsPcAlertsPanelOpen = true;
 
-            // Just populate from already-loaded alerts, no fetch
+            // Populate from already-loaded alerts
             PopulateSelectedPcAlerts(pc.Id);
+
+            // Mark unacknowledged alerts for this PC as acknowledged (viewed)
+            _ = AcknowledgeAlertsForPcAsync(pc.Id);
+        }
+
+        private async Task AcknowledgeAlertsForPcAsync(int pcId)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
+                var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
+
+                var feed = await service.GetAlertFeedAsync(maxItems: 200);
+                var unacknowledgedIds = feed
+                    .Where(a => a.PCId == pcId && !a.IsAcknowledged && !a.IsResolved)
+                    .Select(a => a.AlertId)
+                    .ToList();
+
+                if (unacknowledgedIds.Count > 0)
+                {
+                    await service.AcknowledgeAlertsAsync(unacknowledgedIds, userId);
+                }
+            }
+            catch
+            {
+                // Non-critical — alerts will still display
+            }
         }
 
         private void OpenTimelineForPC(PCDisplayModel? pc)
@@ -962,9 +1028,9 @@ namespace IRIS.UI.ViewModels
                 return;
 
             var dialog = new ConfirmationDialog(
-                "Acknowledge All Alerts",
-                $"Acknowledge all {SelectedPcAlerts.Count} alert(s) for {SelectedPC.PCName}?",
-                "Checkmark24", "Acknowledge", "Cancel");
+                "Dismiss All Alerts",
+                $"Dismiss all {SelectedPcAlerts.Count} alert(s) for {SelectedPC.PCName}?\nThey will be marked as resolved.",
+                "Checkmark24", "Dismiss", "Cancel");
             dialog.Owner = Application.Current.MainWindow;
             if (dialog.ShowDialog() != true)
                 return;
@@ -975,30 +1041,38 @@ namespace IRIS.UI.ViewModels
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
                 var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
 
-                // Get persisted alert IDs for this PC's active alerts
+                // Suppress locally first so dismiss is reflected even if the condition
+                // still exceeds thresholds when the cache next recomputes live alerts.
+                var expiry = DateTime.UtcNow.Add(DismissSuppressionWindow);
+                foreach (var a in SelectedPcAlerts)
+                {
+                    _dismissedAlertKeys[$"{a.PCId}|{a.AlertKey}"] = expiry;
+                }
+
                 var feed = await service.GetAlertFeedAsync(maxItems: 200);
                 var pcAlertIds = feed
-                    .Where(a => a.PCId == SelectedPC.Id && !a.IsAcknowledged)
+                    .Where(a => a.PCId == SelectedPC.Id && !a.IsResolved)
                     .Select(a => a.AlertId)
                     .ToList();
 
                 if (pcAlertIds.Count > 0)
                 {
-                    await service.AcknowledgeAlertsAsync(pcAlertIds, userId);
+                    await service.ResolveAlertsAsync(pcAlertIds, userId);
                 }
 
-                // Refresh alerts in cache and UI
                 await _cache.RefreshLiveAlertsAsync(forceWait: true);
                 LoadLiveAlertsFromCache();
 
-                if (SelectedPcAlerts.Count == 0)
-                {
-                    IsPcAlertsPanelOpen = false;
-                }
+                IsPcAlertsPanelOpen = false;
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail — alerts will refresh on next cycle
+                var err = new ConfirmationDialog(
+                    "Dismiss Failed",
+                    $"Could not dismiss alerts: {ex.Message}",
+                    "ErrorCircle24", "OK", "Cancel", false);
+                err.Owner = Application.Current.MainWindow;
+                err.ShowDialog();
             }
         }
 
@@ -1283,17 +1357,6 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var confirmationDialog = new ConfirmationDialog(
-                "Open Remote Desktop",
-                $"Open Remote Desktop connection to {SelectedPC.PCName}?",
-                "Desktop24");
-            confirmationDialog.Owner = Application.Current.MainWindow;
-
-            if (confirmationDialog.ShowDialog() != true)
-            {
-                return;
-            }
-
             try
             {
                 Process.Start(new ProcessStartInfo
@@ -1355,9 +1418,9 @@ namespace IRIS.UI.ViewModels
         private string _status = string.Empty;
         private string _os = string.Empty;
         private string _cpu = string.Empty;
-        private string _cpuTemperature = "N/A";
+        private string _cpuTemperature = "—";
         private string _gpu = "N/A";
-        private string _gpuTemperature = "N/A";
+        private string _gpuTemperature = "—";
         private string _network = string.Empty;
         private string _networkUpload = "0 Mbps";
         private string _networkDownload = "0 Mbps";
@@ -1620,6 +1683,7 @@ namespace IRIS.UI.ViewModels
 
     public class LiveAlertDisplayModel
     {
+        public string AlertKey { get; set; } = string.Empty;
         public int PCId { get; set; }
         public string PCName { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;

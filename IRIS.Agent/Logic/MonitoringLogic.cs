@@ -590,7 +590,8 @@ namespace IRIS.Agent.Logic
 
         private (double? cpuTemperature, double? gpuTemperature, double? gpuUsage) GetTemperatureAndGpuMetrics()
         {
-            var cpuTemperature = TryGetWmiCpuTemperature();
+            var cpuTemperature = TryGetWmiCpuTemperature()
+                ?? TryGetPerfCounterCpuTemperature();
             var (gpuTemperature, gpuUsage) = TryGetNvidiaSmiGpuMetrics();
             return (cpuTemperature, gpuTemperature, gpuUsage);
         }
@@ -652,6 +653,35 @@ namespace IRIS.Agent.Logic
                     .OfType<uint>()
                     .Select(v => (v / 10.0) - 273.15)
                     .Where(v => v >= 10 && v <= 120)
+                    .ToList();
+
+                return values.Any() ? values.Max() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Fallback: ACPI thermal-zone data surfaced through the perf counter namespace.
+        // Some systems populate this when MSAcpi_ThermalZoneTemperature is empty
+        // (different provider path, same underlying sensors). Values are in 0.1 K,
+        // same convention as MSAcpi, so conversion matches.
+        private static double? TryGetPerfCounterCpuTemperature()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\CIMV2",
+                    "SELECT Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation");
+
+                var values = searcher.Get()
+                    .Cast<ManagementObject>()
+                    .Select(mo => mo["Temperature"])
+                    .Where(v => v != null)
+                    .Select(v => Convert.ToDouble(v, CultureInfo.InvariantCulture))
+                    .Select(kelvin => kelvin - 273.15)
+                    .Where(c => c >= 10 && c <= 120)
                     .ToList();
 
                 return values.Any() ? values.Max() : null;

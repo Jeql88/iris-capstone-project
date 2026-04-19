@@ -23,7 +23,6 @@ namespace IRIS.UI.Services
         private DashboardSummary? _cachedDashboardSummary;
         private List<RoomDto> _cachedRooms = new();
         private List<LiveAlertItem> _cachedLiveAlerts = new();
-        private readonly Dictionary<string, DateTime> _alertLastSeenUtc = new();
         private readonly Dictionary<int, bool> _freezeStatesByPcId = new();
         private readonly Dictionary<int, string> _snapshotsByPcId = new();
         private readonly object _freezeStateLock = new();
@@ -124,40 +123,37 @@ namespace IRIS.UI.Services
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
 
-                var allAlerts = await service.GetLiveAlertsAsync(CurrentRoomFilter, 30);
-                // Filter to only Critical and High severity
-                var freshAlerts = allAlerts
+                // GetAlertFeedAsync syncs live metrics to DB first, then returns
+                // all persisted unresolved alerts. Alerts stay visible until a
+                // user explicitly dismisses (resolves) them.
+                var persisted = await service.GetAlertFeedAsync(CurrentRoomFilter, maxItems: 200);
+
+                // Filter to Critical and High only for the monitor view
+                _cachedLiveAlerts = persisted
                     .Where(a => a.Severity == "Critical" || a.Severity == "High")
-                    .ToList();
-
-                // Track when each alert was last seen in the live set.
-                // Carry forward alerts for a grace period (60s) so they don't
-                // flicker on/off when metrics oscillate near the threshold.
-                var nowUtc = DateTime.UtcNow;
-                var freshKeys = new HashSet<string>(freshAlerts.Select(a => a.AlertKey));
-                foreach (var key in freshKeys)
-                    _alertLastSeenUtc[key] = nowUtc;
-
-                // Carry forward cached alerts whose key is still within the grace period
-                const int graceSeconds = 60;
-                var carriedForward = _cachedLiveAlerts
-                    .Where(a => !freshKeys.Contains(a.AlertKey)
-                                && _alertLastSeenUtc.TryGetValue(a.AlertKey, out var lastSeen)
-                                && (nowUtc - lastSeen).TotalSeconds < graceSeconds)
-                    .ToList();
-
-                _cachedLiveAlerts = freshAlerts.Concat(carriedForward)
+                    .Select(a => new LiveAlertItem
+                    {
+                        AlertKey = a.AlertKey,
+                        PCId = a.PCId,
+                        PCName = a.PCName,
+                        RoomName = a.RoomName,
+                        Severity = a.Severity,
+                        Type = a.Type,
+                        Message = a.Message,
+                        Timestamp = a.CreatedAt,
+                        SeverityRank = a.Severity switch
+                        {
+                            "Critical" => 4,
+                            "High" => 3,
+                            "Medium" => 2,
+                            _ => 1
+                        },
+                        IsAcknowledged = a.IsAcknowledged,
+                        IsResolved = a.IsResolved
+                    })
                     .OrderByDescending(a => a.SeverityRank)
                     .ThenByDescending(a => a.Timestamp)
                     .ToList();
-
-                // Prune stale tracking entries
-                var staleKeys = _alertLastSeenUtc
-                    .Where(kv => (nowUtc - kv.Value).TotalSeconds > graceSeconds * 2)
-                    .Select(kv => kv.Key)
-                    .ToList();
-                foreach (var key in staleKeys)
-                    _alertLastSeenUtc.Remove(key);
 
                 DataChanged?.Invoke();
             }

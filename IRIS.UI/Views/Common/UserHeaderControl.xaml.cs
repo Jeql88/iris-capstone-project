@@ -77,9 +77,14 @@ namespace IRIS.UI.Views.Common
                 await authService.LogoutAsync();
 
                 var loginWindow = new LoginWindow(authService);
+                var oldWindow = Window.GetWindow(this);
+
+                // Hand off MainWindow BEFORE closing the old one so WPF's
+                // OnMainWindowClose shutdown doesn't fire during logout.
+                Application.Current.MainWindow = loginWindow;
                 loginWindow.Show();
 
-                Window.GetWindow(this)?.Close();
+                oldWindow?.Close();
             }
         }
 

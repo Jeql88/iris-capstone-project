@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
@@ -193,8 +194,9 @@ namespace IRIS.Core.Services
             {
                 return BCrypt.Net.BCrypt.Verify(password, hash);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[AuthenticationService] VerifyPassword failed: {ex}");
                 return false;
             }
         }

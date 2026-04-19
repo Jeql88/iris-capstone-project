@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 
@@ -6,8 +8,21 @@ namespace IRIS.Agent.Logic
 {
     internal static class ShutdownWarningDialog
     {
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint WTSGetActiveConsoleSessionId();
+
         public static Task<bool> ShowCancelOnlyWarningAsync(string title, string baseMessage, int timeoutMs)
         {
+            Log.Information(
+                "ShutdownWarningDialog requested: Title={Title}, ProcSessionId={ProcSessionId}, WTSActiveSession={WtsSession}, UserInteractive={Interactive}",
+                title,
+                Process.GetCurrentProcess().SessionId,
+                WTSGetActiveConsoleSessionId(),
+                Environment.UserInteractive);
+
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var uiThread = new Thread(() =>
@@ -19,9 +34,9 @@ namespace IRIS.Agent.Logic
                 catch (Exception ex)
                 {
                     // No interactive desktop session (e.g., running as SYSTEM via Task Scheduler).
-                    // Proceed with shutdown — there is no user to warn.
-                    Log.Warning("Cannot show shutdown warning dialog (no desktop session): {Message}", ex.Message);
-                    tcs.TrySetResult(false);
+                    // Treat as cancelled — we refuse to shut down a machine without warning the user.
+                    Log.Warning("Cannot show shutdown warning dialog (no desktop session): {Message}. Cancelling operation.", ex.Message);
+                    tcs.TrySetResult(true);
                 }
             });
 
@@ -94,6 +109,14 @@ namespace IRIS.Agent.Logic
 
             form.Controls.Add(cancelButton);
 
+            form.Shown += (_, _) =>
+            {
+                form.Activate();
+                form.BringToFront();
+                SetForegroundWindow(form.Handle);
+                Log.Information("ShutdownWarningDialog form shown for title {Title}", title);
+            };
+
             countdownTimer.Start();
             closeTimer.Start();
             Application.Run(form);
@@ -123,8 +146,21 @@ namespace IRIS.Agent.Logic
 
         private sealed class WarningForm : AgentDialogBase
         {
+            private const int WS_EX_TOPMOST = 0x00000008;
+            private const int WS_EX_TOOLWINDOW = 0x00000080;
+
             private readonly Label _messageLabel;
             private readonly Label _countdownLabel;
+
+            protected override CreateParams CreateParams
+            {
+                get
+                {
+                    var cp = base.CreateParams;
+                    cp.ExStyle |= WS_EX_TOPMOST | WS_EX_TOOLWINDOW;
+                    return cp;
+                }
+            }
 
             public WarningForm(string title, string message)
             {

@@ -35,7 +35,7 @@ namespace IRIS.UI.Views.Personnel
 
         private void SetActiveButton(Button activeButton)
         {
-            foreach (var btn in new[] { DashboardBtn, MonitorBtn, FileManagementBtn, PolicyBtn, LabsBtn, UsageMetricsBtn })
+            foreach (var btn in new[] { DashboardBtn, MonitorBtn, FileManagementBtn, PolicyBtn, LabsBtn, UsageMetricsBtn, AlertsBtn })
             {
                 btn.Background = Brushes.Transparent;
                 btn.Foreground = DefaultForeground;
@@ -97,6 +97,15 @@ namespace IRIS.UI.Views.Personnel
             SetActiveButton(UsageMetricsBtn);
             CollapseRightPanel();
             _navigationService?.NavigateTo("UsageMetrics");
+        }
+
+        private void AlertsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            UserHeader.SetVisibility(true);
+            UserHeader.CloseDropdown();
+            SetActiveButton(AlertsBtn);
+            CollapseRightPanel();
+            _navigationService?.NavigateTo("Alerts");
         }
 
         private async void LogoutBtn_Click(object sender, RoutedEventArgs e)

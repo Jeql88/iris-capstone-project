@@ -13,6 +13,11 @@ namespace IRIS.Core.Services
         private readonly IRISDbContext _context;
         private static readonly TimeSpan MonitorHeartbeatGrace = TimeSpan.FromMinutes(3);
 
+        // After a user dismisses (resolves) an alert, suppress recreating it for
+        // the same (PCId, AlertKey) for this window even if the underlying
+        // condition (CPU/RAM/temp) is still over threshold. Keeps dismiss honest.
+        private static readonly TimeSpan DismissSuppressionWindow = TimeSpan.FromMinutes(15);
+
         public MonitoringService(IRISDbContext context)
         {
             _context = context;
@@ -317,8 +322,7 @@ namespace IRIS.Core.Services
                                    g.Key.Contains("Visual Studio") ? "VS" :
                                    g.Key.Contains("Chrome") ? "CH" :
                                    g.Key.Contains("Blender") ? "BL" : "APP",
-                            InstanceCount = g.Count(),
-                            AverageRamUsage = 0
+                            InstanceCount = g.Count()
                         };
 
             return await query.OrderByDescending(a => a.InstanceCount).Take(6).ToListAsync();
@@ -600,6 +604,57 @@ namespace IRIS.Core.Services
                         activePolicy?.WarningSustainSeconds ?? 30,
                         activePolicy?.CriticalSustainSeconds ?? 20,
                         latestNetwork.Timestamp, " ms", "latency");
+                }
+            }
+
+            // Honor recent dismiss across all clients: hide live alerts whose
+            // (PCId, AlertKey) was resolved within the suppression window.
+            if (alerts.Count > 0)
+            {
+                var suppressionCutoff = nowUtc - DismissSuppressionWindow;
+                var alertPcIds = alerts.Select(a => a.PCId).Distinct().ToList();
+                
+                // Get persisted alert states to populate IsAcknowledged and IsResolved
+                var persistedAlerts = await _context.Alerts
+                    .AsNoTracking()
+                    .Where(a => alertPcIds.Contains(a.PCId) && !a.IsResolved)
+                    .Select(a => new { a.PCId, a.AlertKey, a.IsAcknowledged, a.IsResolved })
+                    .ToListAsync();
+
+                var alertStateMap = persistedAlerts
+                    .ToDictionary(
+                        a => $"{a.PCId}|{a.AlertKey}",
+                        a => (a.IsAcknowledged, a.IsResolved),
+                        StringComparer.OrdinalIgnoreCase);
+
+                // Populate IsAcknowledged and IsResolved from persisted alerts
+                foreach (var alert in alerts)
+                {
+                    var key = $"{alert.PCId}|{alert.AlertKey}";
+                    if (alertStateMap.TryGetValue(key, out var state))
+                    {
+                        alert.IsAcknowledged = state.IsAcknowledged;
+                        alert.IsResolved = state.IsResolved;
+                    }
+                }
+
+                var recentlyResolved = await _context.Alerts
+                    .AsNoTracking()
+                    .Where(a => alertPcIds.Contains(a.PCId)
+                                && a.IsResolved
+                                && a.ResolvedAt != null
+                                && a.ResolvedAt >= suppressionCutoff)
+                    .Select(a => new { a.PCId, a.AlertKey })
+                    .ToListAsync();
+
+                if (recentlyResolved.Count > 0)
+                {
+                    var suppressed = new HashSet<string>(
+                        recentlyResolved.Select(r => $"{r.PCId}|{r.AlertKey}"),
+                        StringComparer.OrdinalIgnoreCase);
+                    alerts = alerts
+                        .Where(a => !suppressed.Contains($"{a.PCId}|{a.AlertKey}"))
+                        .ToList();
                 }
             }
 
@@ -1126,7 +1181,7 @@ namespace IRIS.Core.Services
         {
             return new LiveAlertItem
             {
-                AlertKey = $"pc:{pcId}|type:{type.ToLowerInvariant()}|metric:{metricKey}|severity:{severity.ToLowerInvariant()}",
+                AlertKey = $"pc:{pcId}|type:{type.ToLowerInvariant()}|metric:{metricKey}",
                 PCId = pcId,
                 PCName = pcName,
                 RoomName = roomName,
@@ -1162,11 +1217,29 @@ namespace IRIS.Core.Services
                 return;
             }
 
+            // Suppression window: if a user dismissed an alert recently, do not
+            // immediately recreate it on the next sync just because the underlying
+            // condition (CPU/RAM/temp) is still over threshold. Without this, a
+            // dismiss appears to do nothing because a fresh unresolved row gets
+            // inserted on the very next poll for the same (PCId, AlertKey).
+            var suppressionCutoff = nowUtc - DismissSuppressionWindow;
+
             var existingOpenAlerts = await _context.Alerts
                 .Where(a => pcIds.Contains(a.PCId) && !a.IsResolved)
                 .ToListAsync();
 
-            var liveKeys = new HashSet<string>(liveAlerts.Select(a => a.AlertKey), StringComparer.OrdinalIgnoreCase);
+            var recentlyResolvedKeys = await _context.Alerts
+                .Where(a => pcIds.Contains(a.PCId)
+                            && a.IsResolved
+                            && a.ResolvedAt != null
+                            && a.ResolvedAt >= suppressionCutoff)
+                .Select(a => new { a.PCId, a.AlertKey })
+                .ToListAsync();
+
+            var suppressed = new HashSet<string>(
+                recentlyResolvedKeys.Select(k => $"{k.PCId}|{k.AlertKey}"),
+                StringComparer.OrdinalIgnoreCase);
+
             var defaultUserId = await GetDefaultAlertUserIdAsync();
 
             foreach (var live in liveAlerts)
@@ -1181,6 +1254,11 @@ namespace IRIS.Core.Services
                     existing.CreatedAt = live.Timestamp;
                     existing.Severity = ParseSeverity(live.Severity);
                     existing.Type = ParseType(live.Type);
+                    continue;
+                }
+
+                if (suppressed.Contains($"{live.PCId}|{live.AlertKey}"))
+                {
                     continue;
                 }
 
@@ -1201,19 +1279,9 @@ namespace IRIS.Core.Services
                 });
             }
 
-            // Auto-resolve alerts that have been absent from live alerts for a grace
-            // period. Without this, alerts flicker on/off when metrics oscillate
-            // near the threshold boundary.
-            const int resolveGraceSeconds = 60;
-            foreach (var openAlert in existingOpenAlerts)
-            {
-                if (!liveKeys.Contains(openAlert.AlertKey)
-                    && (nowUtc - openAlert.CreatedAt).TotalSeconds > resolveGraceSeconds)
-                {
-                    openAlert.IsResolved = true;
-                    openAlert.ResolvedAt = nowUtc;
-                }
-            }
+            // Do NOT auto-resolve alerts. Alerts persist until a user manually
+            // dismisses (resolves) them from the UI. This prevents alerts from
+            // disappearing before they are reviewed.
 
             await _context.SaveChangesAsync();
         }

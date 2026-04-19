@@ -243,14 +243,54 @@ namespace IRIS.Agent.Logic
             [DllImport("user32.dll")]
             private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+            [DllImport("user32.dll")]
+            private static extern bool SetForegroundWindow(IntPtr hWnd);
+
             private static readonly IntPtr HWND_TOPMOST = new(-1);
             private const uint SWP_NOMOVE = 0x0002;
             private const uint SWP_NOSIZE = 0x0001;
-            private const uint SWP_NOACTIVATE = 0x0010;
+
+            private const int WS_EX_TOPMOST = 0x00000008;
+            private const int WS_EX_TOOLWINDOW = 0x00000080;
+            private const int WM_WINDOWPOSCHANGING = 0x0046;
 
             private readonly Label _messageLabel;
             private readonly System.Windows.Forms.Timer _topMostTimer;
+            private int _tickCount;
             internal bool AllowCloseFlag;
+
+            protected override CreateParams CreateParams
+            {
+                get
+                {
+                    var cp = base.CreateParams;
+                    cp.ExStyle |= WS_EX_TOPMOST | WS_EX_TOOLWINDOW;
+                    return cp;
+                }
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct WINDOWPOS
+            {
+                public IntPtr hwnd;
+                public IntPtr hwndInsertAfter;
+                public int x;
+                public int y;
+                public int cx;
+                public int cy;
+                public uint flags;
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == WM_WINDOWPOSCHANGING && m.LParam != IntPtr.Zero)
+                {
+                    var wp = Marshal.PtrToStructure<WINDOWPOS>(m.LParam);
+                    wp.hwndInsertAfter = HWND_TOPMOST;
+                    Marshal.StructureToPtr(wp, m.LParam, fDeleteOld: false);
+                }
+                base.WndProc(ref m);
+            }
 
             public FreezeOverlayForm(Rectangle bounds, string message)
             {
@@ -274,13 +314,28 @@ namespace IRIS.Agent.Logic
 
                 Controls.Add(_messageLabel);
 
-                _topMostTimer = new System.Windows.Forms.Timer { Interval = 500 };
+                Shown += (_, _) =>
+                {
+                    SetForegroundWindow(Handle);
+                };
+
+                _topMostTimer = new System.Windows.Forms.Timer { Interval = 100 };
                 _topMostTimer.Tick += (_, _) =>
                 {
-                    if (!IsDisposed && IsHandleCreated)
+                    if (IsDisposed || !IsHandleCreated)
                     {
-                        SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                        return;
+                    }
+
+                    SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+                    // Pull focus back every ~1s (every 10th tick) so we recover from hijacks
+                    // without stealing focus so aggressively that it breaks Ctrl+Alt+Del.
+                    _tickCount++;
+                    if (_tickCount >= 10)
+                    {
+                        _tickCount = 0;
+                        SetForegroundWindow(Handle);
                     }
                 };
                 _topMostTimer.Start();
