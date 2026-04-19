@@ -24,6 +24,9 @@ namespace IRIS.Agent.Logic
             BackColor = BackgroundLight;
             ForeColor = TextPrimary;
             Font = new Font("Segoe UI", 11F, FontStyle.Regular);
+            // Required — without a non-zero baseline, AutoScaleMode.Dpi is a no-op
+            // and the form stays at designer pixels on high-DPI monitors, clipping controls.
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = new Padding(0);
         }
