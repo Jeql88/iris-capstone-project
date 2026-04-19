@@ -49,8 +49,7 @@ namespace IRIS.Agent.Logic
             public MessageForm(string title, string message)
             {
                 Text = title;
-                Width = 480;
-                Height = 260;
+                ClientSize = new Size(464, 221);
 
                 var okButton = CreateStyledButton("OK", isPrimary: true);
 
@@ -71,18 +70,14 @@ namespace IRIS.Agent.Logic
                     AutoSize = false
                 };
 
-                // Leave a gap above the OK button so the label never overlaps it.
                 var messageTop = 60;
-                var messageBottomPadding = okButton.Height + 32;
                 var messageLabel = CreateStyledLabel(message, 11F);
                 messageLabel.Left = 24;
                 messageLabel.Top = messageTop;
-                messageLabel.Width = ClientSize.Width - 48;
-                messageLabel.Height = Math.Max(40, ClientSize.Height - messageTop - messageBottomPadding);
+                messageLabel.MaximumSize = new Size(ClientSize.Width - 48, 0);
+                messageLabel.AutoSize = true;
                 messageLabel.TextAlign = ContentAlignment.TopLeft;
 
-                okButton.Left = ClientSize.Width - okButton.Width - 16;
-                okButton.Top = ClientSize.Height - okButton.Height - 16;
                 okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
                 okButton.DialogResult = DialogResult.OK;
                 okButton.Click += (_, _) => Close();
@@ -92,6 +87,16 @@ namespace IRIS.Agent.Logic
                 Controls.Add(titleLabel);
                 Controls.Add(messageLabel);
                 Controls.Add(okButton);
+
+                // Grow the form if the (possibly long) wrapped message needs more room.
+                var neededClientHeight = messageLabel.Bottom + 16 + okButton.Height + 16;
+                if (ClientSize.Height < neededClientHeight)
+                {
+                    ClientSize = new Size(ClientSize.Width, neededClientHeight);
+                }
+
+                okButton.Left = ClientSize.Width - okButton.Width - 16;
+                okButton.Top = ClientSize.Height - okButton.Height - 16;
             }
         }
     }

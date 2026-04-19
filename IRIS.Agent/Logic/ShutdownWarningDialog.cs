@@ -55,12 +55,6 @@ namespace IRIS.Agent.Logic
 
             using var form = new WarningForm(title, FormatMessage(messageTemplate, secondsRemaining));
 
-            var cancelButton = AgentDialogBase.CreateStyledButton("Cancel", isPrimary: false);
-            cancelButton.Left = form.ClientSize.Width - cancelButton.Width - 16;
-            cancelButton.Top = form.ClientSize.Height - cancelButton.Height - 16;
-            cancelButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            cancelButton.DialogResult = DialogResult.Cancel;
-
             using var countdownTimer = new System.Windows.Forms.Timer
             {
                 Interval = 1000
@@ -72,7 +66,7 @@ namespace IRIS.Agent.Logic
                 Enabled = false
             };
 
-            cancelButton.Click += (_, _) =>
+            form.CancelBtn.Click += (_, _) =>
             {
                 wasCancelled = true;
                 form.Close();
@@ -106,8 +100,6 @@ namespace IRIS.Agent.Logic
                 tcs.TrySetResult(wasCancelled);
                 Application.ExitThread();
             };
-
-            form.Controls.Add(cancelButton);
 
             form.Shown += (_, _) =>
             {
@@ -152,6 +144,8 @@ namespace IRIS.Agent.Logic
             private readonly Label _messageLabel;
             private readonly Label _countdownLabel;
 
+            internal Button CancelBtn { get; }
+
             protected override CreateParams CreateParams
             {
                 get
@@ -165,8 +159,7 @@ namespace IRIS.Agent.Logic
             public WarningForm(string title, string message)
             {
                 Text = title;
-                Width = 480;
-                Height = 260;
+                ClientSize = new Size(464, 221);
 
                 var iconLabel = CreateIconLabel("\u26A0", AccentRed);
                 iconLabel.Left = 24;
@@ -202,14 +195,29 @@ namespace IRIS.Agent.Logic
                 _messageLabel = CreateStyledLabel(message, 11F);
                 _messageLabel.Left = 24;
                 _messageLabel.Top = 60;
-                _messageLabel.Width = ClientSize.Width - 48;
-                _messageLabel.Height = 120;
+                _messageLabel.MaximumSize = new Size(ClientSize.Width - 48, 0);
+                _messageLabel.AutoSize = true;
                 _messageLabel.TextAlign = ContentAlignment.TopLeft;
+
+                CancelBtn = CreateStyledButton("Cancel", isPrimary: false);
+                CancelBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+                CancelBtn.DialogResult = DialogResult.Cancel;
 
                 Controls.Add(iconLabel);
                 Controls.Add(titleLabel);
                 Controls.Add(_countdownLabel);
                 Controls.Add(_messageLabel);
+                Controls.Add(CancelBtn);
+
+                // Grow the form if the (possibly long) wrapped message needs more room.
+                var neededClientHeight = _messageLabel.Bottom + 16 + CancelBtn.Height + 16;
+                if (ClientSize.Height < neededClientHeight)
+                {
+                    ClientSize = new Size(ClientSize.Width, neededClientHeight);
+                }
+
+                CancelBtn.Left = ClientSize.Width - CancelBtn.Width - 16;
+                CancelBtn.Top = ClientSize.Height - CancelBtn.Height - 16;
             }
 
             public void UpdateMessage(string message)
