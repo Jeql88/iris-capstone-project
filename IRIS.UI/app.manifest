@@ -5,7 +5,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- IRIS.UI performs admin-sensitive operations. Always elevate at launch. -->
+        <!-- IRIS.UI hosts the wallpaper HTTP server on http://+:5092/ and performs
+             admin-sensitive operations. Always elevate at launch. -->
         <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
       </requestedPrivileges>
     </security>

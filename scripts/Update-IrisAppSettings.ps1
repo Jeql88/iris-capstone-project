@@ -19,13 +19,10 @@ param(
     [string]$UiHost = "",
     [int]$UiCommandPort = 5091,
     [int]$UiWallpaperPort = 5092,
-    [string]$WallpaperHost = "",
-    [string]$WallpaperScheme = "http",
 
     [string]$UiConfigPath = "IRIS.UI\appsettings.json",
     [string]$AgentConfigPath = "IRIS.Agent\appsettings.json",
-    [string]$CoreConfigPath = "IRIS.Core\appsettings.json",
-    [string]$CoreServerConfigPath = "IRIS.Core.Server\appsettings.json"
+    [string]$CoreConfigPath = "IRIS.Core\appsettings.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,72 +96,17 @@ function Update-AgentEndpoints {
     }
 
     $raw = Get-Content -Path $resolvedPath -Raw
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"WallpaperServerBaseUrl"\s*:\s*"[^"]*"' -Replacement ('"WallpaperServerBaseUrl": "' + $WallpaperScheme + '://' + $UiHostName + ':' + $WallpaperPort + '"') -Description "WallpaperServerBaseUrl"
+    $raw = Replace-RegexOrFail -Text $raw -Pattern '"WallpaperServerBaseUrl"\s*:\s*"[^"]*"' -Replacement ('"WallpaperServerBaseUrl": "' + $UiHostName + ':' + $WallpaperPort + '"') -Description "WallpaperServerBaseUrl"
 
     Set-Content -Path $resolvedPath -Value $raw -Encoding UTF8
     Write-Host "Updated: $resolvedPath (agent endpoint settings)" -ForegroundColor Green
 }
 
-function Update-UiWallpaperService {
-    param([string]$Path, [string]$WallpaperHostName, [int]$WallpaperPort)
-
-    $resolvedPath = Resolve-ConfigPath -Path $Path
-
-    if (-not (Test-Path $resolvedPath)) {
-        Write-Host "Skip: $resolvedPath (not found)" -ForegroundColor Yellow
-        return
-    }
-
-    if ([string]::IsNullOrWhiteSpace($WallpaperHostName)) {
-        Write-Host "Skip UI wallpaper service update: wallpaper host not provided." -ForegroundColor Yellow
-        return
-    }
-
-    $uploadUrl = $WallpaperScheme + "://" + $WallpaperHostName + ":" + $WallpaperPort + "/api/wallpapers/upload"
-    $raw = Get-Content -Path $resolvedPath -Raw
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"UploadUrl"\s*:\s*"[^"]*"' -Replacement ('"UploadUrl": "' + $uploadUrl + '"') -Description "WallpaperService:UploadUrl"
-
-    Set-Content -Path $resolvedPath -Value $raw -Encoding UTF8
-    Write-Host "Updated: $resolvedPath (WallpaperService UploadUrl)" -ForegroundColor Green
-}
-
-function Update-CoreServerWallpaperPublicBaseUrl {
-    param([string]$Path, [string]$WallpaperHostName, [int]$WallpaperPort)
-
-    $resolvedPath = Resolve-ConfigPath -Path $Path
-
-    if (-not (Test-Path $resolvedPath)) {
-        Write-Host "Skip: $resolvedPath (not found)" -ForegroundColor Yellow
-        return
-    }
-
-    if ([string]::IsNullOrWhiteSpace($WallpaperHostName)) {
-        Write-Host "Skip core server wallpaper base URL update: wallpaper host not provided." -ForegroundColor Yellow
-        return
-    }
-
-    $publicBaseUrl = $WallpaperScheme + "://" + $WallpaperHostName + ":" + $WallpaperPort
-    $raw = Get-Content -Path $resolvedPath -Raw
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"PublicBaseUrl"\s*:\s*"[^"]*"' -Replacement ('"PublicBaseUrl": "' + $publicBaseUrl + '"') -Description "WallpaperStorage:PublicBaseUrl"
-
-    Set-Content -Path $resolvedPath -Value $raw -Encoding UTF8
-    Write-Host "Updated: $resolvedPath (WallpaperStorage PublicBaseUrl)" -ForegroundColor Green
-}
-
 $connectionString = Build-ConnectionString -DbHostName $DbHost -Port $DbPort -Database $DbName -Username $DbUser -Password $DbPassword
-$effectiveWallpaperHost = $WallpaperHost
-if ([string]::IsNullOrWhiteSpace($effectiveWallpaperHost)) {
-    $effectiveWallpaperHost = $UiHost
-}
-if ([string]::IsNullOrWhiteSpace($effectiveWallpaperHost)) {
-    $effectiveWallpaperHost = $DbHost
-}
 
 Update-ConnectionString -Path $UiConfigPath -NewConnectionString $connectionString
 Update-ConnectionString -Path $AgentConfigPath -NewConnectionString $connectionString
 Update-ConnectionString -Path $CoreConfigPath -NewConnectionString $connectionString
-Update-AgentEndpoints -Path $AgentConfigPath -UiHostName $effectiveWallpaperHost -CommandPort $UiCommandPort -WallpaperPort $UiWallpaperPort
-Update-UiWallpaperService -Path $UiConfigPath -WallpaperHostName $effectiveWallpaperHost -WallpaperPort $UiWallpaperPort
-Update-CoreServerWallpaperPublicBaseUrl -Path $CoreServerConfigPath -WallpaperHostName $effectiveWallpaperHost -WallpaperPort $UiWallpaperPort
+Update-AgentEndpoints -Path $AgentConfigPath -UiHostName $UiHost -CommandPort $UiCommandPort -WallpaperPort $UiWallpaperPort
 
 Write-Host "Done." -ForegroundColor Cyan
