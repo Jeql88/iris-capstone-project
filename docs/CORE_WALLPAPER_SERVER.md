@@ -51,6 +51,37 @@ Use helper script:
 dotnet run --project IRIS.Core.Server
 ```
 
+## Run as Windows Service (auto-start on boot)
+
+On the server PC, in elevated PowerShell:
+
+```powershell
+cd IRIS.Core.Server
+.\install-service.ps1
+```
+
+Optional flags:
+
+- `-PublishDir "C:\IRIS\CoreServer"`
+- `-OverwriteConfig` (replace existing deployed appsettings)
+- `-SelfContained`
+
+Useful commands:
+
+```powershell
+Get-Service IRISCoreWallpaperServer
+Restart-Service IRISCoreWallpaperServer
+Stop-Service IRISCoreWallpaperServer
+Start-Service IRISCoreWallpaperServer
+```
+
+Uninstall:
+
+```powershell
+cd IRIS.Core.Server
+.\uninstall-service.ps1
+```
+
 ## Security
 
 - Upload and download endpoints require API token via `X-IRIS-Wallpaper-Token` or `Authorization: Bearer <token>`.

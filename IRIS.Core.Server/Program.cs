@@ -3,6 +3,10 @@ using System.Text;
 using Microsoft.AspNetCore.Http;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseWindowsService(options =>
+{
+    options.ServiceName = "IRIS Core Wallpaper Server";
+});
 
 builder.Configuration
     .SetBasePath(AppContext.BaseDirectory)
