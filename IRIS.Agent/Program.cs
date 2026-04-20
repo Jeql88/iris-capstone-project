@@ -44,10 +44,7 @@ namespace IRIS.Agent
                 return 1;
             }
 
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .CreateLogger();
+            Helper.AgentLogging.Configure("user");
 
             Log.Information(
                 "IRIS.Agent starting: PID={Pid}, SessionId={SessionId}, WTSActiveSession={WtsSession}, UserInteractive={Interactive}, ProcessPath={Path}",

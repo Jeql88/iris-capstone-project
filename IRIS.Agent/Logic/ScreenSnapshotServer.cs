@@ -28,9 +28,12 @@ namespace IRIS.Agent.Logic
         private CancellationTokenSource? _cts;
         private Task? _serverTask;
 
-        private readonly object _frameLock = new();
+        private readonly SemaphoreSlim _captureGate = new(1, 1);
         private byte[]? _cachedFrame;
         private DateTime _cachedAtUtc = DateTime.MinValue;
+        private static readonly TimeSpan CacheFreshWindow = TimeSpan.FromMilliseconds(200);
+        private static readonly TimeSpan CacheStaleAcceptable = TimeSpan.FromMilliseconds(2000);
+        private byte[]? _placeholderFrame;
 
         public ScreenSnapshotServer(
             int port,
@@ -98,7 +101,34 @@ namespace IRIS.Agent.Logic
 
             _serverTask = Task.Run(() => ListenLoopAsync(_cts.Token));
             Log.Information("Screen snapshot server started on port {Port}", _port);
+            _ = Task.Run(LogUrlAclDiagnosticAsync);
             return Task.CompletedTask;
+        }
+
+        private async Task LogUrlAclDiagnosticAsync()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("netsh",
+                    $"http show urlacl url=http://+:{_port}/")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = System.Diagnostics.Process.Start(psi);
+                if (proc == null) return;
+                var stdout = await proc.StandardOutput.ReadToEndAsync();
+                await proc.WaitForExitAsync();
+                var oneLine = stdout.Replace('\r', ' ').Replace('\n', ' ').Trim();
+                Log.Information("URL ACL for port {Port}: {Acl}", _port,
+                    string.IsNullOrWhiteSpace(oneLine) ? "(no reservation)" : oneLine);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to query URL ACL diagnostic");
+            }
         }
 
         private IEnumerable<string> GetListenerPrefixes()
@@ -158,26 +188,34 @@ namespace IRIS.Agent.Logic
         private async Task HandleRequestAsync(HttpListenerContext context)
         {
             var path = context.Request.Url?.AbsolutePath?.ToLowerInvariant() ?? "/";
+            var remoteIp = context.Request.RemoteEndPoint?.Address?.ToString() ?? "?";
+            int status;
 
             if (path == "/health")
             {
                 context.Response.StatusCode = 200;
                 await context.Response.OutputStream.WriteAsync("ok"u8.ToArray());
                 context.Response.Close();
+                LogRequestOutcome(path, remoteIp, 200, null);
                 return;
             }
 
             if (path != "/snapshot")
             {
-                context.Response.StatusCode = 404;
+                context.Response.StatusCode = status = 404;
                 context.Response.Close();
+                LogRequestOutcome(path, remoteIp, status, "unknown path");
                 return;
             }
 
             if (!HasValidToken(context))
             {
-                context.Response.StatusCode = 401;
+                context.Response.StatusCode = status = 401;
                 context.Response.Close();
+                var hasHeader = !string.IsNullOrWhiteSpace(context.Request.Headers["X-IRIS-Snapshot-Token"]);
+                var hasQuery = !string.IsNullOrWhiteSpace(context.Request.QueryString["token"]);
+                LogRequestOutcome(path, remoteIp, status,
+                    $"bad token (header={hasHeader}, query={hasQuery})");
                 return;
             }
 
@@ -185,24 +223,61 @@ namespace IRIS.Agent.Logic
 
             if (!IsAllowedSource(context))
             {
-                context.Response.StatusCode = 403;
+                context.Response.StatusCode = status = 403;
                 context.Response.Close();
+                LogRequestOutcome(path, remoteIp, status, "source not allowed");
                 return;
             }
 
-            var frame = GetOrCaptureFrame();
+            var frame = await GetOrCaptureFrameAsync();
             if (frame == null || frame.Length == 0)
             {
-                context.Response.StatusCode = 204;
-                context.Response.Close();
-                return;
+                // Capture failed (likely non-interactive session). Serve a placeholder JPEG
+                // so the UI keeps a visual for this agent and doesn't blacklist it.
+                frame = GetPlaceholderFrame();
+                if (frame == null || frame.Length == 0)
+                {
+                    context.Response.StatusCode = status = 204;
+                    context.Response.Close();
+                    LogEmptyResponse();
+                    LogRequestOutcome(path, remoteIp, status, "empty frame");
+                    return;
+                }
             }
 
-            context.Response.StatusCode = 200;
+            context.Response.StatusCode = status = 200;
             context.Response.ContentType = "image/jpeg";
             context.Response.ContentLength64 = frame.Length;
             await context.Response.OutputStream.WriteAsync(frame, 0, frame.Length);
             context.Response.Close();
+            LogRequestOutcome(path, remoteIp, status, $"{frame.Length} bytes");
+        }
+
+        private DateTime _lastRequestLogUtc = DateTime.MinValue;
+        private int _requestLogSuppressed;
+
+        private void LogRequestOutcome(string path, string remoteIp, int status, string? note)
+        {
+            // Unconditionally log non-200 outcomes; throttle 200/health to 1/10s.
+            var now = DateTime.UtcNow;
+            if (status == 200 || path == "/health")
+            {
+                if ((now - _lastRequestLogUtc).TotalSeconds < 10)
+                {
+                    Interlocked.Increment(ref _requestLogSuppressed);
+                    return;
+                }
+                _lastRequestLogUtc = now;
+                var suppressed = Interlocked.Exchange(ref _requestLogSuppressed, 0);
+                var tail = suppressed > 0 ? $" (+{suppressed} similar suppressed)" : "";
+                Log.Information("Snapshot req {Path} from {Ip} → {Status} {Note}{Tail}",
+                    path, remoteIp, status, note ?? string.Empty, tail);
+            }
+            else
+            {
+                Log.Warning("Snapshot req {Path} from {Ip} → {Status} {Note}",
+                    path, remoteIp, status, note ?? string.Empty);
+            }
         }
 
         private bool IsAllowedSource(HttpListenerContext context)
@@ -362,19 +437,121 @@ namespace IRIS.Agent.Logic
             return string.Equals(token, _accessToken, StringComparison.Ordinal);
         }
 
-        private byte[]? GetOrCaptureFrame()
+        private async Task<byte[]?> GetOrCaptureFrameAsync()
         {
-            lock (_frameLock)
+            // Fast path: fresh cache, no lock.
+            var cached = Volatile.Read(ref _cachedFrame);
+            var age = DateTime.UtcNow - _cachedAtUtc;
+            if (cached != null && age < CacheFreshWindow)
             {
-                if (_cachedFrame != null && (DateTime.UtcNow - _cachedAtUtc).TotalMilliseconds < 200)
+                return cached;
+            }
+
+            // Only one capture at a time. If we can't enter quickly and we have a
+            // reasonably fresh frame, return it instead of piling up captures.
+            if (!await _captureGate.WaitAsync(0))
+            {
+                if (cached != null && age < CacheStaleAcceptable)
                 {
-                    return _cachedFrame;
+                    return cached;
+                }
+                await _captureGate.WaitAsync();
+            }
+
+            try
+            {
+                // Re-check after acquiring the gate — another caller may have just refreshed.
+                age = DateTime.UtcNow - _cachedAtUtc;
+                cached = _cachedFrame;
+                if (cached != null && age < CacheFreshWindow)
+                {
+                    return cached;
                 }
 
-                _cachedFrame = CaptureFrame();
-                _cachedAtUtc = DateTime.UtcNow;
-                return _cachedFrame;
+                var captured = CaptureFrame();
+                if (captured != null && captured.Length > 0)
+                {
+                    _cachedFrame = captured;
+                    _cachedAtUtc = DateTime.UtcNow;
+                    return captured;
+                }
+
+                // Capture failed but a recent cached frame exists — serve it.
+                if (cached != null && age < CacheStaleAcceptable)
+                {
+                    return cached;
+                }
+
+                return null;
             }
+            finally
+            {
+                _captureGate.Release();
+            }
+        }
+
+        private byte[]? GetPlaceholderFrame()
+        {
+            var existing = Volatile.Read(ref _placeholderFrame);
+            if (existing != null) return existing;
+
+            try
+            {
+                var width = Math.Max(320, Math.Min(_maxWidth, 1280));
+                var height = (int)Math.Round(width * 9.0 / 16.0);
+                using var bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.FromArgb(25, 28, 36));
+                    using var titleFont = new Font("Segoe UI", Math.Max(12f, width / 40f), FontStyle.Bold);
+                    using var subFont = new Font("Segoe UI", Math.Max(9f, width / 70f));
+                    using var brush = new SolidBrush(Color.FromArgb(235, 235, 240));
+                    using var subBrush = new SolidBrush(Color.FromArgb(160, 165, 175));
+                    var title = "Screen unavailable";
+                    var sub = "Agent session is not interactive (locked or not signed in).";
+                    var titleSize = g.MeasureString(title, titleFont);
+                    var subSize = g.MeasureString(sub, subFont);
+                    g.DrawString(title, titleFont, brush,
+                        (width - titleSize.Width) / 2f, (height - titleSize.Height) / 2f - subSize.Height);
+                    g.DrawString(sub, subFont, subBrush,
+                        (width - subSize.Width) / 2f, (height - titleSize.Height) / 2f + titleSize.Height / 2f);
+                }
+
+                using var ms = new MemoryStream();
+                var encoder = ImageCodecInfo.GetImageDecoders().FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+                if (encoder != null)
+                {
+                    using var encoderParams = new EncoderParameters(1);
+                    encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 70L);
+                    bmp.Save(ms, encoder, encoderParams);
+                }
+                else
+                {
+                    bmp.Save(ms, ImageFormat.Jpeg);
+                }
+                var bytes = ms.ToArray();
+                _placeholderFrame = bytes;
+                return bytes;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to build placeholder JPEG");
+                return null;
+            }
+        }
+
+        private DateTime _lastCaptureErrorLogUtc = DateTime.MinValue;
+        private DateTime _lastEmptyResponseLogUtc = DateTime.MinValue;
+        private int _emptyResponseCount;
+
+        private void LogEmptyResponse()
+        {
+            Interlocked.Increment(ref _emptyResponseCount);
+            var now = DateTime.UtcNow;
+            if ((now - _lastEmptyResponseLogUtc).TotalSeconds < 30) return;
+            _lastEmptyResponseLogUtc = now;
+            var count = Interlocked.Exchange(ref _emptyResponseCount, 0);
+            Log.Warning("Snapshot handler returned 204 No Content {Count} time(s) in last 30s.", count);
         }
 
         private byte[]? CaptureFrame()
@@ -384,6 +561,7 @@ namespace IRIS.Agent.Logic
                 var primaryScreen = Screen.PrimaryScreen;
                 if (primaryScreen == null)
                 {
+                    LogCaptureFailure("Screen.PrimaryScreen is null — no interactive display available to this session.");
                     return null;
                 }
 
@@ -445,10 +623,29 @@ namespace IRIS.Agent.Logic
 
                 return ms.ToArray();
             }
-            catch
+            catch (Exception ex)
             {
+                LogCaptureFailure(ex);
                 return null;
             }
+        }
+
+        private void LogCaptureFailure(Exception ex)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _lastCaptureErrorLogUtc).TotalSeconds < 10) return;
+            _lastCaptureErrorLogUtc = now;
+            Log.Warning(ex, "Screen capture failed. SessionId={SessionId}, Interactive={Interactive}",
+                System.Diagnostics.Process.GetCurrentProcess().SessionId, Environment.UserInteractive);
+        }
+
+        private void LogCaptureFailure(string message)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _lastCaptureErrorLogUtc).TotalSeconds < 10) return;
+            _lastCaptureErrorLogUtc = now;
+            Log.Warning("Screen capture failed: {Message}. SessionId={SessionId}, Interactive={Interactive}",
+                message, System.Diagnostics.Process.GetCurrentProcess().SessionId, Environment.UserInteractive);
         }
 
         public void Dispose()

@@ -40,6 +40,13 @@ namespace IRIS.UI.ViewModels
         private static readonly TimeSpan DismissSuppressionWindow = TimeSpan.FromMinutes(15);
         // Snapshot fetching uses RawHttpClient (raw TCP) instead of HttpClient
         // to bypass Sophos Web Protection interception of .NET's HTTP library layer.
+        // Short-lived backoff for IPs that just failed. An unresponsive PC used to
+        // tie up a concurrency slot every 5s; skipping it for a window lets healthy
+        // PCs get served first.
+        private readonly Dictionary<string, DateTime> _snapshotFailureBackoff = new();
+        private readonly Dictionary<string, int> _snapshotFailureCount = new();
+        private static readonly TimeSpan SnapshotFailureBackoffWindow = TimeSpan.FromSeconds(5);
+        private const int SnapshotFailureThreshold = 2;
         private string _searchText = string.Empty;
         private RoomDto? _selectedRoom;
         private string _selectedPcStatus = "All Statuses";
@@ -813,13 +820,17 @@ namespace IRIS.UI.ViewModels
         {
             const int quickPassBatchSize = 16;
 
+            var nowUtc = DateTime.UtcNow;
+            bool IsBackedOff(string ip) =>
+                _snapshotFailureBackoff.TryGetValue(ip, out var until) && until > nowUtc;
+
             var visibleReachable = FilteredPCs
-                .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .Where(p => !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A" && !IsBackedOff(p.IPAddress))
                 .ToList();
 
             var visibleIds = new HashSet<int>(visibleReachable.Select(p => p.Id));
             var nonVisibleReachable = PCs
-                .Where(p => !visibleIds.Contains(p.Id) && !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A")
+                .Where(p => !visibleIds.Contains(p.Id) && !string.IsNullOrWhiteSpace(p.IPAddress) && p.IPAddress != "N/A" && !IsBackedOff(p.IPAddress))
                 .OrderByDescending(p => string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
                 .ThenBy(p => p.PCName, Helpers.NaturalSortComparer.Instance)
                 .ToList();
@@ -848,12 +859,26 @@ namespace IRIS.UI.ViewModels
                 await semaphore.WaitAsync();
                 try
                 {
-                    TimeSpan? timeout = quickPass ? TimeSpan.FromMilliseconds(1500) : null;
+                    TimeSpan? timeout = quickPass ? TimeSpan.FromMilliseconds(3500) : null;
                     var base64 = await GetSnapshotBase64Async(pc.IPAddress, timeout);
                     if (!string.IsNullOrWhiteSpace(base64))
                     {
                         pc.SnapshotImageBase64 = base64;
                         _cache.SetCachedSnapshot(pc.Id, base64);
+                        _snapshotFailureBackoff.Remove(pc.IPAddress);
+                        _snapshotFailureCount.Remove(pc.IPAddress);
+                    }
+                    else if (!quickPass)
+                    {
+                        // Only engage backoff on full-pass failures, and only after
+                        // N consecutive failures — a single blip shouldn't mute an agent.
+                        _snapshotFailureCount.TryGetValue(pc.IPAddress, out var count);
+                        count++;
+                        _snapshotFailureCount[pc.IPAddress] = count;
+                        if (count >= SnapshotFailureThreshold)
+                        {
+                            _snapshotFailureBackoff[pc.IPAddress] = DateTime.UtcNow.Add(SnapshotFailureBackoffWindow);
+                        }
                     }
                 }
                 finally
@@ -895,7 +920,7 @@ namespace IRIS.UI.ViewModels
                     ? null
                     : new[] { ("X-IRIS-Snapshot-Token", _screenStreamToken) };
 
-                var timeout = timeoutOverride ?? TimeSpan.FromMilliseconds(4000);
+                var timeout = timeoutOverride ?? TimeSpan.FromMilliseconds(7000);
                 var bytes = await RawHttpClient.GetBytesAsync(
                     ipAddress, _screenStreamPort, "/snapshot", headers, timeout);
 
@@ -962,7 +987,7 @@ namespace IRIS.UI.ViewModels
             pc.IsFlipped = !pc.IsFlipped;
         }
 
-        private async void OpenAlertsForPC(PCDisplayModel? pc)
+        private void OpenAlertsForPC(PCDisplayModel? pc)
         {
             if (pc == null)
             {
@@ -973,36 +998,9 @@ namespace IRIS.UI.ViewModels
             SelectedPcAlertsTitle = $"Alerts \u2022 {pc.PCName}";
             IsPcAlertsPanelOpen = true;
 
-            // Populate from already-loaded alerts
+            // Populate from already-loaded alerts. Viewing alerts does not change
+            // their state — they remain New until the user clicks Dismiss All.
             PopulateSelectedPcAlerts(pc.Id);
-
-            // Mark unacknowledged alerts for this PC as acknowledged (viewed)
-            _ = AcknowledgeAlertsForPcAsync(pc.Id);
-        }
-
-        private async Task AcknowledgeAlertsForPcAsync(int pcId)
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
-                var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
-
-                var feed = await service.GetAlertFeedAsync(maxItems: 200);
-                var unacknowledgedIds = feed
-                    .Where(a => a.PCId == pcId && !a.IsAcknowledged && !a.IsResolved)
-                    .Select(a => a.AlertId)
-                    .ToList();
-
-                if (unacknowledgedIds.Count > 0)
-                {
-                    await service.AcknowledgeAlertsAsync(unacknowledgedIds, userId);
-                }
-            }
-            catch
-            {
-                // Non-critical — alerts will still display
-            }
         }
 
         private void OpenTimelineForPC(PCDisplayModel? pc)

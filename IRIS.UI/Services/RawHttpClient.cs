@@ -29,6 +29,9 @@ namespace IRIS.UI.Services
             var ct = cts.Token;
 
             using var tcp = new TcpClient { NoDelay = true };
+            // TCP keep-alive so a half-dead peer (agent crashed, switch dropped flow state)
+            // is detected during the response read instead of blocking the full request timeout.
+            tcp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             await tcp.ConnectAsync(host, port, ct);
 
             var stream = tcp.GetStream();

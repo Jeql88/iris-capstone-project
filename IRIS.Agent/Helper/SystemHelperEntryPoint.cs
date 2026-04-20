@@ -31,10 +31,7 @@ namespace IRIS.Agent.Helper
                 .Build();
 
             // Configure Serilog for the helper.
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .CreateLogger();
+            AgentLogging.Configure("helper");
 
             Log.Information("IRIS Agent System Helper starting.");
 
