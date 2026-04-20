@@ -21,8 +21,13 @@ namespace IRIS.Core.Models
         // Policy Settings
         public bool ResetWallpaperOnStartup { get; set; } = false;
 
-        [MaxLength(500)]
-        public string? WallpaperPath { get; set; }
+        public byte[]? WallpaperData { get; set; }
+
+        [MaxLength(260)]
+        public string? WallpaperFileName { get; set; }
+
+        [MaxLength(64)]
+        public string? WallpaperHash { get; set; }
 
         public int? AutoShutdownIdleMinutes { get; set; } = 30;
 

@@ -58,8 +58,9 @@ if (Test-Path $InstallDir) {
 if (-not $KeepNetworkRules) {
     Write-Step "Removing firewall rules + URL ACL"
     netsh advfirewall firewall delete rule name="$FirewallRulePower" | Out-Null
-    netsh advfirewall firewall delete rule name="$FirewallRuleWallpaper" | Out-Null
-    netsh http delete urlacl url=http://+:5092/ | Out-Null
+    # Best-effort cleanup of the legacy wallpaper HTTP server (removed in favor of DB-backed wallpapers).
+    netsh advfirewall firewall delete rule name="$FirewallRuleWallpaper" 2>&1 | Out-Null
+    netsh http delete urlacl url=http://+:5092/ 2>&1 | Out-Null
 }
 else {
     Write-Step "Keeping firewall rules + URL ACL (requested)"
@@ -70,7 +71,7 @@ Write-Host "IRIS.UI uninstall complete." -ForegroundColor Green
 Write-Host "  Removed path: $InstallDir"
 Write-Host ""
 if (-not $KeepNetworkRules) {
-    Write-Host "Network rules removed for ports 5091/5092."
+    Write-Host "Network rules removed."
 } else {
     Write-Host "Network rules were kept."
 }

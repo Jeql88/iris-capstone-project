@@ -460,9 +460,16 @@ namespace IRIS.Core.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("WallpaperPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                    b.Property<byte[]>("WallpaperData")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("WallpaperFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<string>("WallpaperHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int>("WarningSustainSeconds")
                         .HasColumnType("integer");

@@ -5,7 +5,7 @@
     Applies server-host values to connection strings and selected agent endpoint settings.
     This script edits JSON/JSONC text directly so it works with commented appsettings files.
 .EXAMPLE
-    .\scripts\Update-IrisAppSettings.ps1 -DbHost localhost -UiHost localhost
+    .\scripts\Update-IrisAppSettings.ps1 -DbHost localhost
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -15,10 +15,6 @@ param(
     [string]$DbName = "iris_db",
     [string]$DbUser = "postgres",
     [string]$DbPassword = "postgres",
-
-    [string]$UiHost = "",
-    [int]$UiCommandPort = 5091,
-    [int]$UiWallpaperPort = 5092,
 
     [string]$UiConfigPath = "IRIS.UI\appsettings.json",
     [string]$AgentConfigPath = "IRIS.Agent\appsettings.json",
@@ -80,33 +76,10 @@ function Update-ConnectionString {
     Write-Host "Updated: $resolvedPath (IRISDatabase)" -ForegroundColor Green
 }
 
-function Update-AgentEndpoints {
-    param([string]$Path, [string]$UiHostName, [int]$CommandPort, [int]$WallpaperPort)
-
-    $resolvedPath = Resolve-ConfigPath -Path $Path
-
-    if (-not (Test-Path $resolvedPath)) {
-        Write-Host "Skip: $resolvedPath (not found)" -ForegroundColor Yellow
-        return
-    }
-
-    if ([string]::IsNullOrWhiteSpace($UiHostName)) {
-        Write-Host "Skip agent endpoint update: UiHost not provided." -ForegroundColor Yellow
-        return
-    }
-
-    $raw = Get-Content -Path $resolvedPath -Raw
-    $raw = Replace-RegexOrFail -Text $raw -Pattern '"WallpaperServerBaseUrl"\s*:\s*"[^"]*"' -Replacement ('"WallpaperServerBaseUrl": "' + $UiHostName + ':' + $WallpaperPort + '"') -Description "WallpaperServerBaseUrl"
-
-    Set-Content -Path $resolvedPath -Value $raw -Encoding UTF8
-    Write-Host "Updated: $resolvedPath (agent endpoint settings)" -ForegroundColor Green
-}
-
 $connectionString = Build-ConnectionString -DbHostName $DbHost -Port $DbPort -Database $DbName -Username $DbUser -Password $DbPassword
 
 Update-ConnectionString -Path $UiConfigPath -NewConnectionString $connectionString
 Update-ConnectionString -Path $AgentConfigPath -NewConnectionString $connectionString
 Update-ConnectionString -Path $CoreConfigPath -NewConnectionString $connectionString
-Update-AgentEndpoints -Path $AgentConfigPath -UiHostName $UiHost -CommandPort $UiCommandPort -WallpaperPort $UiWallpaperPort
 
 Write-Host "Done." -ForegroundColor Cyan

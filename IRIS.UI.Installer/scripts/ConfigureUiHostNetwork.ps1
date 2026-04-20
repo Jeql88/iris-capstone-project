@@ -3,13 +3,12 @@ param(
     [string]$Mode = "Install",
     [string]$PowerRuleName = "IRIS UI Power Command TCP 5091",
     [int]$PowerPort = 5091,
-    [string]$WallpaperRuleName = "IRIS UI Wallpaper HTTP 5092",
-    [int]$WallpaperPort = 5092,
+    [string]$LegacyWallpaperRuleName = "IRIS UI Wallpaper HTTP 5092",
+    [int]$LegacyWallpaperPort = 5092,
     [string]$SnapshotOutRuleName = "IRIS UI Snapshot Outbound TCP 5057",
     [int]$SnapshotPort = 5057,
     [string]$FileApiOutRuleName = "IRIS UI File API Outbound TCP 5065",
-    [int]$FileApiPort = 5065,
-    [string]$UrlAclUser = "Everyone"
+    [int]$FileApiPort = 5065
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,39 +47,18 @@ function Remove-FirewallRule {
     netsh advfirewall firewall delete rule name="$RuleName" | Out-Null
 }
 
-function Ensure-UrlAcl {
-    param([int]$Port, [string]$User)
-
-    $url = "http://+:$Port/"
-    $existing = netsh http show urlacl url=$url 2>&1
-    if (($LASTEXITCODE -eq 0) -and ($existing -match [Regex]::Escape($url))) {
-        return
-    }
-
-    netsh http add urlacl url=$url user="$User" | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to add URL ACL for $url"
-    }
-}
-
-function Remove-UrlAcl {
-    param([int]$Port)
-
-    $url = "http://+:$Port/"
-    netsh http delete urlacl url=$url | Out-Null
-}
-
 if ($Mode -eq "Install") {
     Ensure-FirewallRule -RuleName $PowerRuleName -Port $PowerPort
-    Ensure-FirewallRule -RuleName $WallpaperRuleName -Port $WallpaperPort
     Ensure-OutboundFirewallRule -RuleName $SnapshotOutRuleName -Port $SnapshotPort
     Ensure-OutboundFirewallRule -RuleName $FileApiOutRuleName -Port $FileApiPort
-    Ensure-UrlAcl -Port $WallpaperPort -User $UrlAclUser
+    # Legacy: wallpapers are now stored in Postgres. Best-effort cleanup of older hosts.
+    netsh advfirewall firewall delete rule name="$LegacyWallpaperRuleName" 2>&1 | Out-Null
+    netsh http delete urlacl url="http://+:$LegacyWallpaperPort/" 2>&1 | Out-Null
 }
 else {
     Remove-FirewallRule -RuleName $PowerRuleName
-    Remove-FirewallRule -RuleName $WallpaperRuleName
     Remove-FirewallRule -RuleName $SnapshotOutRuleName
     Remove-FirewallRule -RuleName $FileApiOutRuleName
-    Remove-UrlAcl -Port $WallpaperPort
+    netsh advfirewall firewall delete rule name="$LegacyWallpaperRuleName" 2>&1 | Out-Null
+    netsh http delete urlacl url="http://+:$LegacyWallpaperPort/" 2>&1 | Out-Null
 }

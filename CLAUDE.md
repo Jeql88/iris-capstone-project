@@ -92,4 +92,3 @@ dotnet ef migrations script --idempotent --project IRIS.Core --output docs/migra
 ## Key Ports
 - 5057: Screen stream (agent)
 - 5065: File management API (agent)
-- 5092: Wallpaper server (UI)

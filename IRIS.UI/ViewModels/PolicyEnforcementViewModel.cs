@@ -43,6 +43,11 @@ namespace IRIS.UI.ViewModels
         private int _warningSustainSeconds = 30;
         private int _criticalSustainSeconds = 20;
         private string _selectedWallpaperPath = "No wallpaper selected";
+        private byte[]? _pendingWallpaperData;
+        private string? _pendingWallpaperFileName;
+        private bool _hasStoredWallpaper;
+        private const long MaxWallpaperBytes = 10L * 1024L * 1024L;
+        private const string NoWallpaperLabel = "No wallpaper selected";
         private string _selectionStatusText = "No rooms selected";
         private string _lastAppliedText = "Never applied";
         private string _statusMessage = string.Empty;
@@ -422,7 +427,9 @@ namespace IRIS.UI.ViewModels
                     selectedRoom.Id,
                     WallpaperResetEnabled,
                     AutoShutdownEnabled ? AutoShutdownMinutes : null,
-                    WallpaperResetEnabled && !string.IsNullOrEmpty(SelectedWallpaperPath) && SelectedWallpaperPath != "No wallpaper selected" ? SelectedWallpaperPath : null,
+                    _pendingWallpaperData,
+                    _pendingWallpaperFileName,
+                    clearWallpaper: !WallpaperResetEnabled,
                     CpuWarningThreshold,
                     CpuCriticalThreshold,
                     RamWarningThreshold,
@@ -455,6 +462,9 @@ namespace IRIS.UI.ViewModels
                     false);
                 deploySuccessDialog.Owner = Application.Current.MainWindow;
                 deploySuccessDialog.ShowDialog();
+
+                _pendingWallpaperData = null;
+                _pendingWallpaperFileName = null;
 
                 await LoadRoomDataAsync();
                 LoadCurrentPolicySettings();
@@ -531,6 +541,8 @@ namespace IRIS.UI.ViewModels
         {
             if (!Rooms.Any(r => r.IsSelected)) return false;
 
+            if (_pendingWallpaperData != null) return true;
+
             // Check if any changes were made
             return WallpaperResetEnabled != _originalWallpaperResetEnabled ||
                    AutoShutdownEnabled != _originalAutoShutdownEnabled ||
@@ -556,7 +568,7 @@ namespace IRIS.UI.ViewModels
 
         private bool ValidatePolicySettings()
         {
-            if (WallpaperResetEnabled && (string.IsNullOrEmpty(SelectedWallpaperPath) || SelectedWallpaperPath == "No wallpaper selected"))
+            if (WallpaperResetEnabled && _pendingWallpaperData == null && !_hasStoredWallpaper)
             {
                 StatusMessage = "Please select a wallpaper image when wallpaper reset is enabled.";
                 StatusMessageColor = "#EF4444";
@@ -633,14 +645,12 @@ namespace IRIS.UI.ViewModels
                 AutoShutdownEnabled = activePolicy.AutoShutdownIdleMinutes.HasValue;
                 AutoShutdownMinutes = activePolicy.AutoShutdownIdleMinutes ?? 30;
 
-                if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
-                {
-                    SelectedWallpaperPath = activePolicy.WallpaperPath;
-                }
-                else
-                {
-                    SelectedWallpaperPath = "No wallpaper selected";
-                }
+                _pendingWallpaperData = null;
+                _pendingWallpaperFileName = null;
+                _hasStoredWallpaper = activePolicy.WallpaperData != null && activePolicy.WallpaperData.Length > 0;
+                SelectedWallpaperPath = _hasStoredWallpaper
+                    ? $"Current: {activePolicy.WallpaperFileName ?? "wallpaper"}"
+                    : NoWallpaperLabel;
 
                 CpuWarningThreshold = activePolicy.CpuUsageWarningThreshold;
                 CpuCriticalThreshold = activePolicy.CpuUsageCriticalThreshold;
@@ -692,7 +702,10 @@ namespace IRIS.UI.ViewModels
                 WallpaperResetEnabled = false;
                 AutoShutdownEnabled = false;
                 AutoShutdownMinutes = 30;
-                SelectedWallpaperPath = "No wallpaper selected";
+                _pendingWallpaperData = null;
+                _pendingWallpaperFileName = null;
+                _hasStoredWallpaper = false;
+                SelectedWallpaperPath = NoWallpaperLabel;
                 CpuWarningThreshold = 85;
                 CpuCriticalThreshold = 95;
                 RamWarningThreshold = 85;
@@ -784,39 +797,44 @@ namespace IRIS.UI.ViewModels
                 FilterIndex = 1
             };
 
-            if (openFileDialog.ShowDialog() == true)
-            {
-                var sourcePath = openFileDialog.FileName;
+            if (openFileDialog.ShowDialog() != true) return;
 
-                if (!File.Exists(sourcePath))
+            var sourcePath = openFileDialog.FileName;
+
+            if (!File.Exists(sourcePath))
+            {
+                StatusMessage = "Selected file does not exist.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
+                return;
+            }
+
+            try
+            {
+                var info = new FileInfo(sourcePath);
+                if (info.Length > MaxWallpaperBytes)
                 {
-                    StatusMessage = "Selected file does not exist.";
+                    StatusMessage = $"Wallpaper must be 10 MB or smaller (selected file is {info.Length / (1024.0 * 1024.0):F1} MB).";
                     StatusMessageColor = "#EF4444";
                     StartMessageTimer();
                     return;
                 }
 
-                try
-                {
-                    var wallpaperDir = @"C:\ProgramData\IRIS\Wallpapers";
-                    Directory.CreateDirectory(wallpaperDir);
+                var fileName = Path.GetFileName(sourcePath);
+                _pendingWallpaperData = File.ReadAllBytes(sourcePath);
+                _pendingWallpaperFileName = fileName;
 
-                    var fileName = Path.GetFileName(sourcePath);
-                    var destinationPath = Path.Combine(wallpaperDir, fileName);
-
-                    File.Copy(sourcePath, destinationPath, true);
-
-                    SelectedWallpaperPath = destinationPath;
-                    StatusMessage = $"Wallpaper copied to {wallpaperDir}";
-                    StatusMessageColor = "#10B981";
-                    StartMessageTimer();
-                }
-                catch (Exception ex)
-                {
-                    StatusMessage = $"Failed to copy wallpaper: {ex.Message}";
-                    StatusMessageColor = "#EF4444";
-                    StartMessageTimer();
-                }
+                SelectedWallpaperPath = fileName;
+                StatusMessage = $"Selected {fileName} ({info.Length / 1024.0:F0} KB). Apply policies to save.";
+                StatusMessageColor = "#10B981";
+                StartMessageTimer();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Failed to read wallpaper: {ex.Message}";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
             }
         }
 
@@ -867,17 +885,22 @@ namespace IRIS.UI.ViewModels
                     WarningSustainSeconds = activePolicy.WarningSustainSeconds;
                     CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
 
-                    if (!string.IsNullOrEmpty(activePolicy.WallpaperPath))
-                    {
-                        SelectedWallpaperPath = activePolicy.WallpaperPath;
-                    }
+                    _pendingWallpaperData = null;
+                    _pendingWallpaperFileName = null;
+                    _hasStoredWallpaper = activePolicy.WallpaperData != null && activePolicy.WallpaperData.Length > 0;
+                    SelectedWallpaperPath = _hasStoredWallpaper
+                        ? $"Current: {activePolicy.WallpaperFileName ?? "wallpaper"}"
+                        : NoWallpaperLabel;
                 }
                 else
                 {
                     WallpaperResetEnabled = false;
                     AutoShutdownEnabled = false;
                     AutoShutdownMinutes = 30;
-                    SelectedWallpaperPath = "No wallpaper selected";
+                    _pendingWallpaperData = null;
+                    _pendingWallpaperFileName = null;
+                    _hasStoredWallpaper = false;
+                    SelectedWallpaperPath = NoWallpaperLabel;
                     CpuWarningThreshold = 85;
                     CpuCriticalThreshold = 95;
                     RamWarningThreshold = 85;

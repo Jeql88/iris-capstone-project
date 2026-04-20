@@ -19,8 +19,7 @@ Current MSI scope:
 - Installs UI files to Program Files
 - Creates Start Menu/Desktop shortcuts
 - Registers uninstall entry in Add/Remove Programs
-- Ensures firewall rules for TCP `5091` and `5092`
-- Ensures URL ACL for `http://+:5092/`
+- Ensures firewall rule for TCP `5091`
 - Runs custom bootstrap by default
 
 Build MSI (elevated PowerShell):
@@ -88,8 +87,7 @@ Why Core appsettings is included:
 - Publishes `IRIS.UI` in Release mode
 - Deploys files to `C:\Program Files\IRIS\UI` (default)
 - Preserves existing `appsettings.json` unless `-OverwriteConfig` is used
-- Ensures firewall rules for TCP `5091` and `5092`
-- Ensures URL ACL for `http://+:5092/` (required by wallpaper HTTP server)
+- Ensures firewall rule for TCP `5091`
 - Creates Start Menu shortcut for all users
 - Optionally creates a Public Desktop shortcut
 
@@ -156,7 +154,7 @@ cd IRIS.UI
 ## Post-Install Checklist
 
 1. Set `ConnectionStrings:IRISDatabase` in installed `appsettings.json`.
-2. Confirm host firewall allows inbound TCP `5091` and `5092`.
+2. Confirm host firewall allows inbound TCP `5091`.
 3. Ensure agent PCs can reach UI host over LAN.
 4. Launch IRIS UI and verify login.
 

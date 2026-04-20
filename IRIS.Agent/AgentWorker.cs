@@ -166,7 +166,7 @@ namespace IRIS.Agent
                 await pcController.RegisterPCAsync();
 
                 // Initialize wallpaper policy enforcer
-                var wallpaperEnforcer = new WallpaperPolicyEnforcer(_context, networkInfo.MacAddress, _configuration);
+                var wallpaperEnforcer = new WallpaperPolicyEnforcer(_context, networkInfo.MacAddress);
 
                 // Enforce wallpaper policy on startup
                 await wallpaperEnforcer.EnforceWallpaperPolicyAsync();

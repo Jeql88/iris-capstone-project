@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using IRIS.Core.Data;
 using IRIS.Core.Models;
 using IRIS.Core.Services.Contracts;
@@ -20,7 +21,9 @@ namespace IRIS.Core.Services
             int roomId,
             bool resetWallpaperOnStartup,
             int? autoShutdownIdleMinutes,
-            string? wallpaperPath = null,
+            byte[]? wallpaperData = null,
+            string? wallpaperFileName = null,
+            bool clearWallpaper = false,
             double? cpuUsageWarningThreshold = null,
             double? cpuUsageCriticalThreshold = null,
             double? ramUsageWarningThreshold = null,
@@ -58,10 +61,17 @@ namespace IRIS.Core.Services
                 existingPolicy.ResetWallpaperOnStartup = resetWallpaperOnStartup;
                 existingPolicy.AutoShutdownIdleMinutes = autoShutdownIdleMinutes;
 
-                // Update wallpaper path if provided
-                if (!string.IsNullOrEmpty(wallpaperPath))
+                if (clearWallpaper)
                 {
-                    existingPolicy.WallpaperPath = wallpaperPath;
+                    existingPolicy.WallpaperData = null;
+                    existingPolicy.WallpaperFileName = null;
+                    existingPolicy.WallpaperHash = null;
+                }
+                else if (wallpaperData != null && wallpaperData.Length > 0)
+                {
+                    existingPolicy.WallpaperData = wallpaperData;
+                    existingPolicy.WallpaperFileName = wallpaperFileName;
+                    existingPolicy.WallpaperHash = Convert.ToHexString(SHA256.HashData(wallpaperData));
                 }
 
                 existingPolicy.CpuUsageWarningThreshold = cpuUsageWarningThreshold ?? existingPolicy.CpuUsageWarningThreshold;
@@ -103,7 +113,11 @@ namespace IRIS.Core.Services
                     RoomId = roomId,
                     ResetWallpaperOnStartup = resetWallpaperOnStartup,
                     AutoShutdownIdleMinutes = autoShutdownIdleMinutes,
-                    WallpaperPath = wallpaperPath,
+                    WallpaperData = (!clearWallpaper && wallpaperData != null && wallpaperData.Length > 0) ? wallpaperData : null,
+                    WallpaperFileName = (!clearWallpaper && wallpaperData != null && wallpaperData.Length > 0) ? wallpaperFileName : null,
+                    WallpaperHash = (!clearWallpaper && wallpaperData != null && wallpaperData.Length > 0)
+                        ? Convert.ToHexString(SHA256.HashData(wallpaperData))
+                        : null,
                     CpuUsageWarningThreshold = cpuUsageWarningThreshold ?? 85,
                     CpuUsageCriticalThreshold = cpuUsageCriticalThreshold ?? 95,
                     RamUsageWarningThreshold = ramUsageWarningThreshold ?? 85,
