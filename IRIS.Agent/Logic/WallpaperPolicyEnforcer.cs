@@ -33,9 +33,8 @@ namespace IRIS.Agent.Logic
                 commandServerHost = "localhost";
             }
 
-            _wallpaperServerBaseUrl = (configuration?["AgentSettings:WallpaperServerBaseUrl"] ?? $"http://{commandServerHost}:5092")
-                .Trim()
-                .TrimEnd('/');
+            var configuredBaseUrl = (configuration?["AgentSettings:WallpaperServerBaseUrl"] ?? $"http://{commandServerHost}:5092").Trim();
+            _wallpaperServerBaseUrl = NormalizeWallpaperServerBaseUrl(configuredBaseUrl, commandServerHost);
 
             _wallpaperRoutePrefix = (configuration?["AgentSettings:WallpaperRoutePrefix"] ?? "/api/wallpapers")
                 .Trim();
@@ -52,6 +51,30 @@ namespace IRIS.Agent.Logic
             
             // Ensure cache directory exists
             Directory.CreateDirectory(_wallpaperCachePath);
+        }
+
+        private static string NormalizeWallpaperServerBaseUrl(string configuredValue, string fallbackHost)
+        {
+            var candidate = configuredValue;
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                candidate = $"http://{fallbackHost}:5092";
+            }
+
+            if (!candidate.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                && !candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = "http://" + candidate;
+            }
+
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                Log.Warning("Invalid AgentSettings:WallpaperServerBaseUrl '{ConfiguredValue}'. Falling back to http://{FallbackHost}:5092", configuredValue, fallbackHost);
+                return $"http://{fallbackHost}:5092";
+            }
+
+            return uri.ToString().TrimEnd('/');
         }
 
         public async Task<bool> EnforceWallpaperPolicyAsync()

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRIS.UI", "IRIS.UI\IRIS.UI.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRIS.Agent", "IRIS.Agent\IRIS.Agent.csproj", "{FFE22014-F150-42A1-A5C3-9E0A63F8C93F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRIS.Core.Server", "IRIS.Core.Server\IRIS.Core.Server.csproj", "{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{FFE22014-F150-42A1-A5C3-9E0A63F8C93F}.Release|x64.Build.0 = Release|Any CPU
 		{FFE22014-F150-42A1-A5C3-9E0A63F8C93F}.Release|x86.ActiveCfg = Release|Any CPU
 		{FFE22014-F150-42A1-A5C3-9E0A63F8C93F}.Release|x86.Build.0 = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|x64.Build.0 = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Debug|x86.Build.0 = Debug|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|x64.ActiveCfg = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|x64.Build.0 = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|x86.ActiveCfg = Release|Any CPU
+		{9B80B6E0-9140-47BD-A04C-CCB3B3B0BFD9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

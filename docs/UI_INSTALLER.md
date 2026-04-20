@@ -19,8 +19,7 @@ Current MSI scope:
 - Installs UI files to Program Files
 - Creates Start Menu/Desktop shortcuts
 - Registers uninstall entry in Add/Remove Programs
-- Ensures firewall rules for TCP `5091` and `5092`
-- Ensures URL ACL for `http://+:5092/`
+- Ensures firewall rules for TCP `5091`
 - Runs custom bootstrap by default
 
 Build MSI (elevated PowerShell):
@@ -63,7 +62,7 @@ Silent install:
 msiexec /i "IRIS.UI.1.0.0.msi" /qn
 ```
 
-## Appsettings Update (UI + Agent + Core)
+## Appsettings Update (UI + Agent + Core + Core Server)
 
 Use deployment helper script from repo root:
 
@@ -74,8 +73,10 @@ Use deployment helper script from repo root:
 What it updates:
 
 - `IRIS.UI\appsettings.json` -> `ConnectionStrings:IRISDatabase`
-- `IRIS.Agent\appsettings.json` -> `ConnectionStrings:IRISDatabase`, `AgentSettings:CommandServerHost`, `AgentSettings:CommandServerPort`, `AgentSettings:WallpaperServerBaseUrl`
+- `IRIS.UI\appsettings.json` -> `WallpaperService:UploadUrl`
+- `IRIS.Agent\appsettings.json` -> `ConnectionStrings:IRISDatabase`, `AgentSettings:WallpaperServerBaseUrl`
 - `IRIS.Core\appsettings.json` -> `ConnectionStrings:IRISDatabase`
+- `IRIS.Core.Server\appsettings.json` -> `WallpaperStorage:PublicBaseUrl`
 
 Why Core appsettings is included:
 
@@ -88,15 +89,14 @@ Why Core appsettings is included:
 - Publishes `IRIS.UI` in Release mode
 - Deploys files to `C:\Program Files\IRIS\UI` (default)
 - Preserves existing `appsettings.json` unless `-OverwriteConfig` is used
-- Ensures firewall rules for TCP `5091` and `5092`
-- Ensures URL ACL for `http://+:5092/` (required by wallpaper HTTP server)
+- Ensures firewall rules for TCP `5091`
 - Creates Start Menu shortcut for all users
 - Optionally creates a Public Desktop shortcut
 
 `uninstall-ui.ps1`:
 - Stops running `IRIS.UI` process
 - Removes install directory and shortcuts
-- Removes firewall rules and URL ACL by default (or keeps them with `-KeepNetworkRules`)
+- Removes firewall rules by default (or keeps them with `-KeepNetworkRules`)
 
 ## Install Command
 
@@ -156,9 +156,10 @@ cd IRIS.UI
 ## Post-Install Checklist
 
 1. Set `ConnectionStrings:IRISDatabase` in installed `appsettings.json`.
-2. Confirm host firewall allows inbound TCP `5091` and `5092`.
-3. Ensure agent PCs can reach UI host over LAN.
-4. Launch IRIS UI and verify login.
+2. Set `WallpaperService:UploadUrl` in UI appsettings to the central server upload endpoint.
+3. Confirm host firewall allows inbound TCP `5091`.
+4. Ensure agent PCs can reach the central wallpaper server over LAN.
+5. Launch IRIS UI and verify login.
 
 ## Notes
 

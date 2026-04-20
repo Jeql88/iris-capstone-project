@@ -4,7 +4,7 @@
     Installs IRIS.UI on a Windows host PC.
 .DESCRIPTION
     Publishes IRIS.UI in Release mode, deploys it to Program Files (or a custom path),
-    creates Start Menu/Desktop shortcuts, and ensures required firewall + URL ACL rules.
+    creates Start Menu/Desktop shortcuts, and ensures required firewall rules.
 .EXAMPLE
     .\install-ui.ps1
     .\install-ui.ps1 -InstallDir "C:\IRIS\UI"
@@ -19,7 +19,6 @@ param(
     [switch]$OverwriteConfig,
     [switch]$NoDesktopShortcut,
     [string]$FirewallRulePower = "IRIS UI Power Command TCP 5091",
-    [string]$FirewallRuleWallpaper = "IRIS UI Wallpaper HTTP 5092",
     [string]$FirewallRuleSnapshotOut = "IRIS UI Snapshot Outbound TCP 5057",
     [string]$FirewallRuleFileApiOut = "IRIS UI File API Outbound TCP 5065"
 )
@@ -72,22 +71,6 @@ function Ensure-OutboundFirewallRule {
     netsh advfirewall firewall add rule name="$RuleName" dir=out action=allow protocol=TCP remoteport=$Port profile=any | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to add outbound firewall rule '$RuleName' on TCP $Port."
-    }
-}
-
-function Ensure-WallpaperUrlAcl {
-    param([int]$Port = 5092)
-
-    $url = "http://+:$Port/"
-    $existing = netsh http show urlacl url=$url 2>&1
-    if (($LASTEXITCODE -eq 0) -and ($existing -match [Regex]::Escape($url))) {
-        Write-Host "  URL ACL already exists: $url" -ForegroundColor DarkGray
-        return
-    }
-
-    netsh http add urlacl url=$url user="Everyone" | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to add URL ACL for $url"
     }
 }
 
@@ -212,12 +195,10 @@ try {
         throw "Installed executable missing at $installedExe"
     }
 
-    Write-Step "Ensuring firewall + URL ACL prerequisites"
+    Write-Step "Ensuring firewall prerequisites"
     Ensure-FirewallRule -RuleName $FirewallRulePower -Port 5091
-    Ensure-FirewallRule -RuleName $FirewallRuleWallpaper -Port 5092
     Ensure-OutboundFirewallRule -RuleName $FirewallRuleSnapshotOut -Port 5057
     Ensure-OutboundFirewallRule -RuleName $FirewallRuleFileApiOut -Port 5065
-    Ensure-WallpaperUrlAcl -Port 5092
 
     Write-Step "Creating shortcuts"
     $startMenuPath = Join-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" $StartMenuFolder
@@ -240,8 +221,9 @@ try {
     Write-Host ""
     Write-Host "Post-install checklist:" -ForegroundColor Yellow
     Write-Host "  1) Edit appsettings.json connection string for your IRIS database host"
-    Write-Host "  2) Verify ports 5091/5092 are reachable from agent PCs"
-    Write-Host "  3) Launch IRIS UI and sign in"
+    Write-Host "  2) Verify command and outbound agent ports are reachable from agent PCs"
+    Write-Host "  3) Configure WallpaperService:UploadUrl to your central server endpoint"
+    Write-Host "  4) Launch IRIS UI and sign in"
 }
 finally {
     if (Test-Path $stagingDir) {

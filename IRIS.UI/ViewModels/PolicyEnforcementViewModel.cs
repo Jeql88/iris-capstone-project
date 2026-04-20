@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -12,6 +15,7 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Models;
 using IRIS.Core.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Win32;
 
 namespace IRIS.UI.ViewModels
@@ -21,6 +25,9 @@ namespace IRIS.UI.ViewModels
         private readonly IMonitoringService _monitoringService;
         private readonly IPolicyService _policyService;
         private readonly IRISDbContext _dbContext;
+        private readonly HttpClient _wallpaperHttpClient = new(new HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(30) };
+        private readonly string _wallpaperUploadUrl;
+        private readonly string _wallpaperApiToken;
         private readonly DispatcherTimer _refreshTimer;
         private readonly DispatcherTimer _messageTimer;
         private bool _wallpaperResetEnabled;
@@ -277,11 +284,17 @@ namespace IRIS.UI.ViewModels
         public ICommand BrowseWallpaperCommand { get; }
         public ICommand LoadCurrentSettingsCommand { get; }
 
-        public PolicyEnforcementViewModel(IMonitoringService monitoringService, IPolicyService policyService, IRISDbContext dbContext)
+        public PolicyEnforcementViewModel(
+            IMonitoringService monitoringService,
+            IPolicyService policyService,
+            IRISDbContext dbContext,
+            IConfiguration configuration)
         {
             _monitoringService = monitoringService;
             _policyService = policyService;
             _dbContext = dbContext;
+            _wallpaperUploadUrl = NormalizeHttpUrl(configuration["WallpaperService:UploadUrl"] ?? string.Empty);
+            _wallpaperApiToken = (configuration["WallpaperService:ApiToken"] ?? string.Empty).Trim();
             Rooms = new ObservableCollection<RoomItem>();
             SelectedRoomPolicies = new ObservableCollection<RoomPolicyDisplay>();
 
@@ -295,7 +308,7 @@ namespace IRIS.UI.ViewModels
 
             ApplyPoliciesCommand = new RelayCommand(async () => await ApplyPoliciesAsync(), CanApplyPolicies);
             ClearSelectionCommand = new RelayCommand(async () => { ClearRoomSelection(); await Task.CompletedTask; }, () => true);
-            BrowseWallpaperCommand = new RelayCommand(async () => { BrowseWallpaper(); await Task.CompletedTask; }, () => true);
+            BrowseWallpaperCommand = new RelayCommand(async () => await BrowseWallpaperAsync(), () => true);
             LoadCurrentSettingsCommand = new RelayCommand(async () => await LoadCurrentSettingsAsync(), () => Rooms?.Any(r => r.IsSelected) == true);
         }
 
@@ -564,6 +577,14 @@ namespace IRIS.UI.ViewModels
                 return false;
             }
 
+            if (WallpaperResetEnabled && !IsHttpUrl(SelectedWallpaperPath))
+            {
+                StatusMessage = "Wallpaper must be uploaded to the central server before deploying policy.";
+                StatusMessageColor = "#EF4444";
+                StartMessageTimer();
+                return false;
+            }
+
             if (!ValidateThresholdPair(CpuWarningThreshold, CpuCriticalThreshold, "CPU usage") ||
                 !ValidateThresholdPair(RamWarningThreshold, RamCriticalThreshold, "RAM usage") ||
                 !ValidateThresholdPair(DiskWarningThreshold, DiskCriticalThreshold, "Disk usage") ||
@@ -775,7 +796,7 @@ namespace IRIS.UI.ViewModels
             }
         }
 
-        private void BrowseWallpaper()
+        private async Task BrowseWallpaperAsync()
         {
             var openFileDialog = new OpenFileDialog
             {
@@ -798,26 +819,116 @@ namespace IRIS.UI.ViewModels
 
                 try
                 {
-                    var wallpaperDir = @"C:\ProgramData\IRIS\Wallpapers";
-                    Directory.CreateDirectory(wallpaperDir);
+                    if (string.IsNullOrWhiteSpace(_wallpaperUploadUrl))
+                    {
+                        StatusMessage = "Wallpaper service upload URL is not configured. Set WallpaperService:UploadUrl to an absolute http(s) URL.";
+                        StatusMessageColor = "#EF4444";
+                        StartMessageTimer();
+                        return;
+                    }
 
-                    var fileName = Path.GetFileName(sourcePath);
-                    var destinationPath = Path.Combine(wallpaperDir, fileName);
-
-                    File.Copy(sourcePath, destinationPath, true);
-
-                    SelectedWallpaperPath = destinationPath;
-                    StatusMessage = $"Wallpaper copied to {wallpaperDir}";
+                    var uploadedUrl = await UploadWallpaperToServerAsync(sourcePath);
+                    SelectedWallpaperPath = uploadedUrl;
+                    StatusMessage = "Wallpaper uploaded to central server.";
                     StatusMessageColor = "#10B981";
                     StartMessageTimer();
                 }
                 catch (Exception ex)
                 {
-                    StatusMessage = $"Failed to copy wallpaper: {ex.Message}";
+                    StatusMessage = $"Failed to upload wallpaper: {ex.Message}";
                     StatusMessageColor = "#EF4444";
                     StartMessageTimer();
                 }
             }
+        }
+
+        private async Task<string> UploadWallpaperToServerAsync(string sourcePath)
+        {
+            var fileName = Path.GetFileName(sourcePath);
+
+            await using var fileStream = File.OpenRead(sourcePath);
+            using var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetMimeType(fileName));
+
+            using var form = new MultipartFormDataContent();
+            form.Add(fileContent, "file", fileName);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, _wallpaperUploadUrl)
+            {
+                Content = form
+            };
+
+            if (!string.IsNullOrWhiteSpace(_wallpaperApiToken))
+            {
+                request.Headers.Add("X-IRIS-Wallpaper-Token", _wallpaperApiToken);
+            }
+
+            using var response = await _wallpaperHttpClient.SendAsync(request);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Wallpaper upload failed ({(int)response.StatusCode}): {responseContent}");
+            }
+
+            var payload = JsonSerializer.Deserialize<WallpaperUploadResponse>(responseContent, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            var uploadedUrl = payload?.Url?.Trim() ?? string.Empty;
+            if (!IsHttpUrl(uploadedUrl))
+            {
+                throw new InvalidOperationException("Wallpaper upload succeeded but returned URL is invalid.");
+            }
+
+            return uploadedUrl;
+        }
+
+        private static string GetMimeType(string fileName)
+        {
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            return extension switch
+            {
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".bmp" => "image/bmp",
+                _ => "application/octet-stream"
+            };
+        }
+
+        private static string NormalizeHttpUrl(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var candidate = value.Trim();
+            if (!candidate.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                && !candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = "http://" + candidate;
+            }
+
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+            {
+                return string.Empty;
+            }
+
+            return uri.ToString();
+        }
+
+        private static bool IsHttpUrl(string value)
+        {
+            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            {
+                return false;
+            }
+
+            return uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase)
+                || uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
         }
 
         private void StartMessageTimer()
@@ -922,6 +1033,11 @@ namespace IRIS.UI.ViewModels
             _refreshTimer.Stop();
             _messageTimer.Stop();
         }
+    }
+
+    internal sealed class WallpaperUploadResponse
+    {
+        public string? Url { get; set; }
     }
 
     public class RoomItem : INotifyPropertyChanged

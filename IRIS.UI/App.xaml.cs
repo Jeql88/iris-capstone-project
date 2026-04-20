@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -32,7 +31,6 @@ namespace IRIS.UI
         private const string SingleInstanceMutexName = @"Global\IRIS.UI.SingleInstance";
 
         private IServiceProvider? _serviceProvider;
-        private IWallpaperFileServer? _wallpaperFileServer;
         private DataRetentionBackgroundService? _dataRetentionService;
         private MonitoringBackgroundService? _monitoringService;
         private AutoShutdownEnforcementService? _autoShutdownService;
@@ -44,9 +42,9 @@ namespace IRIS.UI
         {
             base.OnStartup(e);
 
-            // Enforce a single machine-wide instance. Port 5092 (wallpaper HTTP server)
-            // is a machine-level resource, so two instances cannot coexist regardless of
-            // session or elevation. Global\ keeps the guard honest across RDP sessions.
+            // Enforce a single machine-wide instance so role dashboards, background polling,
+            // and command queue services do not race each other across sessions.
+            // Global\ keeps the guard honest across RDP sessions.
             _singleInstanceMutex = new Mutex(initiallyOwned: false, SingleInstanceMutexName);
             try
             {
@@ -80,13 +78,6 @@ namespace IRIS.UI
             ConfigureServices(serviceCollection);
 
             _serviceProvider = serviceCollection.BuildServiceProvider();
-
-            _wallpaperFileServer = _serviceProvider.GetRequiredService<IWallpaperFileServer>();
-            if (!TryStartWallpaperFileServer(_wallpaperFileServer))
-            {
-                Shutdown();
-                return;
-            }
 
             // Start the data retention background cleanup service
             _appCts = new CancellationTokenSource();
@@ -125,16 +116,6 @@ namespace IRIS.UI
 
             try
             {
-                var wallpaperStop = _wallpaperFileServer?.StopAsync() ?? Task.CompletedTask;
-                wallpaperStop.Wait(TimeSpan.FromSeconds(2));
-            }
-            catch
-            {
-                // Ignore shutdown errors from wallpaper file server.
-            }
-
-            try
-            {
                 if (_ownsSingleInstanceMutex)
                 {
                     _singleInstanceMutex?.ReleaseMutex();
@@ -149,41 +130,6 @@ namespace IRIS.UI
             _appCts?.Dispose();
             base.OnExit(e);
             Environment.Exit(0);
-        }
-
-        private static bool TryStartWallpaperFileServer(IWallpaperFileServer server)
-        {
-            try
-            {
-                server.Start();
-                return true;
-            }
-            catch (HttpListenerException)
-            {
-                // Defense-in-depth: the single-instance mutex should prevent this, but a
-                // previous instance may still be releasing HTTP.sys. Retry once briefly.
-                Thread.Sleep(TimeSpan.FromSeconds(1));
-            }
-
-            try
-            {
-                server.Start();
-                return true;
-            }
-            catch (HttpListenerException ex)
-            {
-                var dialog = new ConfirmationDialog(
-                    "Port 5092 is already in use",
-                    "IRIS UI could not bind the wallpaper file server on port 5092. " +
-                    "Another process is using this port. Close any other IRIS UI instance " +
-                    "(or the process holding the port) and try again.\n\nDetails: " + ex.Message,
-                    "Warning24",
-                    "OK",
-                    "Cancel",
-                    showCancelButton: false);
-                dialog.ShowDialog();
-                return false;
-            }
         }
 
         private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
@@ -242,7 +188,6 @@ namespace IRIS.UI
             services.AddScoped<IDeploymentDataService, DeploymentDataService>();
             services.AddScoped<IDataRetentionService, DataRetentionService>();
             services.AddSingleton<IPowerCommandQueueService, PowerCommandQueueService>();
-            services.AddSingleton<IWallpaperFileServer, WallpaperFileServer>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<IPCDataCacheService, PCDataCacheService>();
             services.AddSingleton<DataRetentionBackgroundService>();
