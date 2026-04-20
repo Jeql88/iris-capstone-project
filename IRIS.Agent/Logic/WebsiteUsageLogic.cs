@@ -40,9 +40,25 @@ public class WebsiteUsageLogic : IDisposable
         _ingestService = new WebsiteUsageIngestService(context);
         _bucketMinutes = Math.Max(1, bucketMinutes);
 
-        var stateDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "state");
+        var stateDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "IRIS", "Agent", "state");
         Directory.CreateDirectory(stateDirectory);
         _watermarkFilePath = Path.Combine(stateDirectory, "website_usage_watermarks.json");
+
+        try
+        {
+            var legacyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "state", "website_usage_watermarks.json");
+            if (!File.Exists(_watermarkFilePath) && File.Exists(legacyPath))
+            {
+                File.Copy(legacyPath, _watermarkFilePath);
+                Log.Information("Migrated website usage watermarks from legacy path {LegacyPath}", legacyPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to migrate legacy website usage watermarks (non-fatal)");
+        }
 
         _collectIntervalSeconds = Math.Max(15, collectIntervalSeconds);
         _syncIntervalSeconds = Math.Max(15, syncIntervalSeconds);

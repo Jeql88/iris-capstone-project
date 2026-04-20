@@ -91,19 +91,21 @@ namespace IRIS.Core.Services
             return true;
         }
 
-        public async Task<bool> DeleteUserAsync(int userId)
+        public async Task<UserDeleteResult> DeleteUserAsync(int userId)
         {
+            if (_authService.GetCurrentUser()?.Id == userId)
+                return UserDeleteResult.SelfDeleteBlocked;
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-                return false;
+                return UserDeleteResult.NotFound;
 
-            // Soft delete by deactivating
             user.IsActive = false;
             await _context.SaveChangesAsync();
 
             await _authService.LogUserActionAsync("User Deleted", $"Deactivated user {user.Username}");
 
-            return true;
+            return UserDeleteResult.Ok;
         }
 
         public async Task<User?> GetUserByIdAsync(int userId)

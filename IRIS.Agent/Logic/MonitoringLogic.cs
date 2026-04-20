@@ -286,13 +286,15 @@ namespace IRIS.Agent.Logic
                     ? pending.CommandType
                     : $"{pending.CommandType}::{pending.Payload}";
 
+                Log.Information("Dequeued pending command {CommandType} for PC {MacAddress}", pending.CommandType, _macAddress);
+
                 if (response.Equals("Shutdown", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("Received remote shutdown command for PC {MacAddress}; showing user warning dialog", _macAddress);
-                    var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                    Log.Warning("Received remote shutdown command for PC {MacAddress}", _macAddress);
+                    var wasCancelled = await PromptShutdownWarningAsync(
                         "Remote Shutdown Warning",
-                        "This PC will shut down due to a remote command in 15 seconds.\n\nClick Cancel to prevent shutdown.",
-                        15000);
+                        "This PC will shut down due to a remote command in 15 seconds.\n\nClick Cancel to prevent shutdown.");
+                    Log.Information("Shutdown prompt outcome for PC {MacAddress}: wasCancelled={WasCancelled}", _macAddress, wasCancelled);
 
                     if (!wasCancelled)
                     {
@@ -300,9 +302,17 @@ namespace IRIS.Agent.Logic
                         {
                             await _helperClient.ForceShutdownAsync(0);
                         }
+                        catch (HelperUnavailableException ex)
+                        {
+                            Log.Error(ex, "Remote shutdown failed: helper pipe unreachable for PC {MacAddress}", _macAddress);
+                        }
+                        catch (HelperOperationException ex)
+                        {
+                            Log.Error(ex, "Remote shutdown rejected by helper (likely token/auth) for PC {MacAddress}", _macAddress);
+                        }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, "Failed to execute remote shutdown via helper.");
+                            Log.Error(ex, "Remote shutdown failed with unexpected error for PC {MacAddress}", _macAddress);
                         }
                     }
 
@@ -311,11 +321,11 @@ namespace IRIS.Agent.Logic
 
                 if (response.Equals("Restart", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("Received remote restart command for PC {MacAddress}; showing user warning dialog", _macAddress);
-                    var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                    Log.Warning("Received remote restart command for PC {MacAddress}", _macAddress);
+                    var wasCancelled = await PromptShutdownWarningAsync(
                         "Remote Restart Warning",
-                        "This PC will restart due to a remote command in 15 seconds.\n\nClick Cancel to prevent restart.",
-                        15000);
+                        "This PC will restart due to a remote command in 15 seconds.\n\nClick Cancel to prevent restart.");
+                    Log.Information("Restart prompt outcome for PC {MacAddress}: wasCancelled={WasCancelled}", _macAddress, wasCancelled);
 
                     if (!wasCancelled)
                     {
@@ -323,9 +333,17 @@ namespace IRIS.Agent.Logic
                         {
                             await _helperClient.ForceRestartAsync(0);
                         }
+                        catch (HelperUnavailableException ex)
+                        {
+                            Log.Error(ex, "Remote restart failed: helper pipe unreachable for PC {MacAddress}", _macAddress);
+                        }
+                        catch (HelperOperationException ex)
+                        {
+                            Log.Error(ex, "Remote restart rejected by helper (likely token/auth) for PC {MacAddress}", _macAddress);
+                        }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, "Failed to execute remote restart via helper.");
+                            Log.Error(ex, "Remote restart failed with unexpected error for PC {MacAddress}", _macAddress);
                         }
                     }
 
@@ -378,6 +396,25 @@ namespace IRIS.Agent.Logic
                 .Where(char.IsLetterOrDigit)
                 .ToArray());
             return normalized.ToUpperInvariant();
+        }
+
+        private async Task<bool> PromptShutdownWarningAsync(string title, string message)
+        {
+            if (Process.GetCurrentProcess().SessionId == 0)
+            {
+                Log.Information("No interactive session (Session 0) — skipping {Title} dialog for PC {MacAddress}", title, _macAddress);
+                return false;
+            }
+
+            try
+            {
+                return await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(title, message, 15000);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to show {Title} dialog — proceeding without user prompt", title);
+                return false;
+            }
         }
 
         private static string? ExtractFreezeMessage(string command)

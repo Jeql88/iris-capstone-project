@@ -3,17 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="25,20">
-            <!-- Header -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
-                <TextBlock Text="Access Logs" FontSize="32" FontWeight="Bold" 
-                           Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
-            </StackPanel>
+    <Grid Margin="25,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <!-- Search and Filters Card -->
-            <ui:Card Margin="0,0,0,20">
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,25">
+            <ui:SymbolIcon Symbol="ClipboardTextLtr24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
+            <TextBlock Text="Access Logs" FontSize="32" FontWeight="Bold"
+                       Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Search and Filters Card -->
+        <ui:Card Grid.Row="1" Margin="0,0,0,20">
                 <StackPanel Margin="15">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                         <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
@@ -110,8 +115,8 @@
                 </StackPanel>
             </ui:Card>
 
-            <!-- Access Logs Table Card -->
-            <ui:Card>
+        <!-- Access Logs Table Card -->
+        <ui:Card Grid.Row="2">
                 <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -195,7 +200,6 @@
                                    Margin="10,0,0,0"/>
                     </StackPanel>
                 </Grid>
-            </ui:Card>
-        </StackPanel>
-    </ScrollViewer>
+        </ui:Card>
+    </Grid>
 </UserControl>

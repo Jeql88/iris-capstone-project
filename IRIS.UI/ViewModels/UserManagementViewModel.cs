@@ -292,7 +292,37 @@ namespace IRIS.UI.ViewModels
 
             try
             {
-                await _userManagementService.DeleteUserAsync(user.Id);
+                var result = await _userManagementService.DeleteUserAsync(user.Id);
+
+                if (result == UserDeleteResult.SelfDeleteBlocked)
+                {
+                    var blockedDialog = new ConfirmationDialog(
+                        "Cannot Delete Account",
+                        "You cannot delete your own account.",
+                        "Warning24",
+                        "OK",
+                        "Cancel",
+                        false);
+                    blockedDialog.Owner = Application.Current.MainWindow;
+                    blockedDialog.ShowDialog();
+                    return;
+                }
+
+                if (result == UserDeleteResult.NotFound)
+                {
+                    var notFoundDialog = new ConfirmationDialog(
+                        "User Not Found",
+                        $"User '{user.Username}' no longer exists.",
+                        "Warning24",
+                        "OK",
+                        "Cancel",
+                        false);
+                    notFoundDialog.Owner = Application.Current.MainWindow;
+                    notFoundDialog.ShowDialog();
+                    await LoadUsersAsync();
+                    return;
+                }
+
                 await LoadUsersAsync();
 
                 var deleteSuccessDialog = new ConfirmationDialog(

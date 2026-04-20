@@ -5,10 +5,15 @@
     
     <Grid>
         <!-- LEFT: User List Section -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="25,20">
-                <!-- Header -->
-                <Grid Margin="0,0,0,25">
+        <Grid Margin="25,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,25">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <ui:SymbolIcon Symbol="People24" FontSize="32" Foreground="{DynamicResource IRISPrimaryBrush}" Margin="0,0,12,0"/>
                         <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
@@ -22,8 +27,8 @@
                                VerticalAlignment="Center"/>
                 </Grid>
 
-                <!-- Search and Filters Card -->
-                <ui:Card Margin="0,0,0,20">
+            <!-- Search and Filters Card -->
+            <ui:Card Grid.Row="1" Margin="0,0,0,20">
                     <StackPanel Margin="15">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                             <ui:SymbolIcon Symbol="Search24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0"/>
@@ -69,8 +74,8 @@
                     </StackPanel>
                 </ui:Card>
 
-                <!-- Users Table Card -->
-                <ui:Card>
+            <!-- Users Table Card -->
+            <ui:Card Grid.Row="2">
                     <Grid Margin="15">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -171,9 +176,8 @@
                                        Margin="10,0,0,0"/>
                         </StackPanel>
                     </Grid>
-                </ui:Card>
-            </StackPanel>
-        </ScrollViewer>
+            </ui:Card>
+        </Grid>
 
         <!-- Add User Modal -->
         <Grid Background="#80000000" Visibility="{Binding IsAddModalOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
