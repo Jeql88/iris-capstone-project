@@ -3,24 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:conv="clr-namespace:IRIS.UI.Converters"
-             xmlns:local="clr-namespace:IRIS.UI.Views.Common">
+             xmlns:local="clr-namespace:IRIS.UI.Views.Common"
+             Focusable="True">
+
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="Z" Command="{Binding UndoCommand}"/>
+        <KeyBinding Modifiers="Control+Shift" Key="Z" Command="{Binding RedoCommand}"/>
+        <KeyBinding Modifiers="Control" Key="Y" Command="{Binding RedoCommand}"/>
+    </UserControl.InputBindings>
 
     <UserControl.Resources>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
         <conv:BooleanToVisibilityConverter x:Key="InvertBoolToVisConverter"/>
         <conv:InvertBoolConverter x:Key="InvertBoolConverter"/>
         <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
+        <conv:PercentOfConverter x:Key="PercentOfConverter"/>
 
-        <!-- DataGrid row hover / selection highlight styles -->
+        <!-- DataGrid row hover / selection highlight styles.
+             Selected rows use the IRIS primary accent with a visible left-edge stroke
+             so they stand out clearly against other rows. -->
         <Style x:Key="FileGridRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#18808080"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#30DC3545"/>
+                    <Setter Property="Background" Value="#268B0000"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource IRISPrimaryBrush}"/>
+                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                 </Trigger>
                 <MultiTrigger>
@@ -28,7 +42,7 @@
                         <Condition Property="IsSelected" Value="True"/>
                         <Condition Property="IsMouseOver" Value="True"/>
                     </MultiTrigger.Conditions>
-                    <Setter Property="Background" Value="#44DC3545"/>
+                    <Setter Property="Background" Value="#3A8B0000"/>
                 </MultiTrigger>
             </Style.Triggers>
         </Style>
@@ -45,6 +59,64 @@
                     <Setter Property="BorderBrush" Value="Transparent"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <!-- Flat column header with sort-direction arrow indicator.
+             Fully overrides the WPF-UI default template (which uses gradient brushes) so the
+             header paints as a solid surface with a thin divider instead of a glossy panel. -->
+        <Style x:Key="SortableColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Grid>
+                            <Border x:Name="HeaderBackground"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Border>
+                            <!-- Column-resize grippers must exist with these exact names for DataGrid behavior -->
+                            <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Width="4" Cursor="SizeWE" Opacity="0"/>
+                            <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Width="4" Cursor="SizeWE" Opacity="0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HeaderBackground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="SortArrow" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType=DataGridColumnHeader}}" Value="Ascending">
+                                <Setter TargetName="SortArrow" Property="Text" Value="&#x25B2;"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType=DataGridColumnHeader}}" Value="Descending">
+                                <Setter TargetName="SortArrow" Property="Text" Value="&#x25BC;"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
@@ -160,7 +232,8 @@
             <Border Grid.Column="0" CornerRadius="6" BorderThickness="1"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8"
-                    MinHeight="600">
+                    MinHeight="320"
+                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PercentOfConverter}, ConverterParameter=0.6}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -176,6 +249,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
@@ -188,11 +262,15 @@
                                    Command="{Binding NavigateUpLocalCommand}" Padding="6,4">
                             <ui:SymbolIcon Symbol="ArrowUp24"/>
                         </ui:Button>
-                        <ui:TextBox Grid.Column="2"
+                        <ui:Button Grid.Column="2" Margin="0,0,4,0" ToolTip="Refresh"
+                                   Command="{Binding RefreshLocalCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="ArrowSync24"/>
+                        </ui:Button>
+                        <ui:TextBox Grid.Column="3"
                                     Text="{Binding CurrentLocalPath, UpdateSourceTrigger=PropertyChanged}"
                                     PlaceholderText="Path..."
                                     KeyDown="LocalPathBox_KeyDown"/>
-                        <ui:Button Grid.Column="3" Margin="4,0,0,0" Content="Go"
+                        <ui:Button Grid.Column="4" Margin="4,0,0,0" Content="Go"
                                    Command="{Binding NavigateToLocalPathCommand}" Appearance="Secondary" Padding="10,4"/>
                     </Grid>
 
@@ -203,52 +281,64 @@
                     </ui:TextBox>
 
                     <!-- File list -->
-                    <DataGrid x:Name="LocalFilesGrid" Grid.Row="3"
-                              ItemsSource="{Binding FilteredLocalFiles}"
-                              SelectedItem="{Binding SelectedLocalFile}"
-                              AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                              CanUserSortColumns="True"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                              MouseDoubleClick="LocalFilesGrid_MouseDoubleClick"
-                              PreviewMouseLeftButtonDown="LocalFilesGrid_PreviewMouseLeftButtonDown"
-                              PreviewMouseMove="LocalFilesGrid_PreviewMouseMove"
-                              PreviewMouseRightButtonDown="LocalFilesGrid_PreviewMouseRightButtonDown"
-                              SelectionChanged="LocalFilesGrid_SelectionChanged"
-                              SelectionMode="Extended" GridLinesVisibility="None"
-                              HeadersVisibility="Column" BorderThickness="0"
-                              RowHeaderWidth="0"
-                              RowStyle="{StaticResource FileGridRowStyle}"
-                              CellStyle="{StaticResource FileGridCellStyle}">
-                        <DataGrid.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Upload to Remote"
-                                          Command="{Binding UploadLocalFileCommand}">
-                                    <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowUpload24" FontSize="14"/></MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="Open File Location"
-                                          Command="{Binding OpenFileLocationCommand}">
-                                    <MenuItem.Icon><ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/></MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="Rename"
-                                          Command="{Binding RenameLocalFileCommand}"
-                                          CommandParameter="{Binding SelectedLocalFile}">
-                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24" FontSize="14"/></MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="Delete"
-                                          Command="{Binding DeleteLocalFileCommand}">
-                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Delete24" FontSize="14"/></MenuItem.Icon>
-                                </MenuItem>
-                            </ContextMenu>
-                        </DataGrid.ContextMenu>
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80"/>
-                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="80"/>
-                            <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" Width="130"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <Grid Grid.Row="3">
+                        <DataGrid x:Name="LocalFilesGrid"
+                                  ItemsSource="{Binding FilteredLocalFiles}"
+                                  SelectedItem="{Binding SelectedLocalFile}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                  CanUserSortColumns="True"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  MouseDoubleClick="LocalFilesGrid_MouseDoubleClick"
+                                  PreviewMouseLeftButtonDown="LocalFilesGrid_PreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="LocalFilesGrid_PreviewMouseMove"
+                                  PreviewMouseRightButtonDown="LocalFilesGrid_PreviewMouseRightButtonDown"
+                                  SelectionChanged="LocalFilesGrid_SelectionChanged"
+                                  SelectionMode="Extended" GridLinesVisibility="None"
+                                  HeadersVisibility="Column" BorderThickness="0"
+                                  RowHeaderWidth="0"
+                                  RowStyle="{StaticResource FileGridRowStyle}"
+                                  CellStyle="{StaticResource FileGridCellStyle}">
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Upload to Remote"
+                                              Command="{Binding UploadLocalFileCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowUpload24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open File Location"
+                                              Command="{Binding OpenFileLocationCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="Rename"
+                                              Command="{Binding RenameLocalFileCommand}"
+                                              CommandParameter="{Binding SelectedLocalFile}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Delete"
+                                              Command="{Binding DeleteLocalFileCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Delete24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True" CanUserSort="False"/>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                                <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" SortMemberPath="Length" Width="80" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                                <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" SortMemberPath="LastWriteTimeUtc" Width="130" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Empty state when local pane returns nothing -->
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                    Visibility="{Binding FilteredLocalFiles.Count, Converter={StaticResource ZeroToVisibleConverter}}">
+                            <ui:SymbolIcon Symbol="FolderOpen24" FontSize="32" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                            <TextBlock Text="This folder is empty" FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Try a different path or clear the search filter." FontSize="11" Margin="0,2,0,0"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
 
@@ -259,7 +349,8 @@
             <Border Grid.Column="2" CornerRadius="6" BorderThickness="1"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="8"
-                    MinHeight="600"
+                    MinHeight="320"
+                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PercentOfConverter}, ConverterParameter=0.6}"
                     AllowDrop="True" Drop="RemotePane_Drop" DragOver="RemotePane_DragOver">
                 <Grid>
                 <Grid>
@@ -278,6 +369,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
@@ -290,11 +382,15 @@
                                    Command="{Binding NavigateUpRemoteCommand}" Padding="6,4">
                             <ui:SymbolIcon Symbol="ArrowUp24"/>
                         </ui:Button>
-                        <ui:TextBox Grid.Column="2"
+                        <ui:Button Grid.Column="2" Margin="0,0,4,0" ToolTip="Refresh"
+                                   Command="{Binding RefreshRemoteCommand}" Padding="6,4">
+                            <ui:SymbolIcon Symbol="ArrowSync24"/>
+                        </ui:Button>
+                        <ui:TextBox Grid.Column="3"
                                     Text="{Binding CurrentRemotePath, UpdateSourceTrigger=PropertyChanged}"
                                     PlaceholderText="Remote path..."
                                     KeyDown="RemotePathBox_KeyDown"/>
-                        <ui:Button Grid.Column="3" Margin="4,0,0,0" Content="Go"
+                        <ui:Button Grid.Column="4" Margin="4,0,0,0" Content="Go"
                                    Command="{Binding NavigateToRemotePathCommand}" Appearance="Secondary" Padding="10,4"/>
                     </Grid>
 
@@ -340,16 +436,16 @@
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80"/>
-                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="80"/>
-                            <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" Width="130"/>
+                            <DataGridTextColumn Header="" Binding="{Binding DisplayIcon}" Width="30" IsReadOnly="True" CanUserSort="False"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" SortMemberPath="Length" Width="80" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                            <DataGridTextColumn Header="Modified" Binding="{Binding DateText}" SortMemberPath="LastWriteTimeUtc" Width="130" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
                     <!-- Empty state when no PC selected -->
-                    <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -363,6 +459,16 @@
                         <ui:SymbolIcon Symbol="Desktop24" FontSize="36" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBlock Text="Select a PC to browse remote files" FontSize="12"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Empty state when a PC is selected but the remote folder is empty or filtered to nothing -->
+                    <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                Visibility="{Binding RemotePaneIsEmpty, Converter={StaticResource BoolToVisConverter}}">
+                        <ui:SymbolIcon Symbol="FolderOpen24" FontSize="32" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                        <TextBlock Text="This folder is empty" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Try a different path or clear the search filter." FontSize="11" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Grid>
                 <local:LoadingSpinner IsActive="{Binding IsBusy}" Text="Loading remote files..." Panel.ZIndex="100"/>

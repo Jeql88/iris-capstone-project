@@ -60,6 +60,12 @@ namespace IRIS.UI.ViewModels
         private bool _isBulkUploading;
         private bool _hasAvailableLaboratories;
 
+        // Undo/redo history: each stack entry is a reversible action. We cap the depth to
+        // avoid unbounded memory growth when a user hammers through hundreds of operations.
+        private const int UndoHistoryLimit = 50;
+        private readonly Stack<FileAction> _undoStack = new();
+        private readonly Stack<FileAction> _redoStack = new();
+
         public FileManagementViewModel(
             IDeploymentDataService deploymentDataService,
             IRoomService roomService,
@@ -82,11 +88,13 @@ namespace IRIS.UI.ViewModels
             NavigateUpLocalCommand = new RelayCommand(async () => await NavigateUpLocalAsync(), () => !_isAtLocalDriveRoot);
             NavigateToLocalPathCommand = new RelayCommand(async () => await BrowseLocalPathAsync(CurrentLocalPath), () => true);
             GoToLocalDrivesCommand = new RelayCommand(async () => { CurrentLocalPath = string.Empty; await LoadLocalDrivesAsync(); }, () => true);
+            RefreshLocalCommand = new RelayCommand(async () => await RefreshLocalAsync(), () => true);
 
             // Remote navigation commands
             NavigateUpRemoteCommand = new RelayCommand(async () => await NavigateUpRemoteAsync(), () => !_isAtRemoteDriveRoot && _selectedPC != null);
             NavigateToRemotePathCommand = new RelayCommand(async () => await BrowseRemotePathAsync(CurrentRemotePath), () => _selectedPC != null);
             GoToRemoteDrivesCommand = new RelayCommand(async () => { CurrentRemotePath = string.Empty; await LoadRemoteDrivesAsync(); }, () => _selectedPC != null);
+            RefreshRemoteCommand = new RelayCommand(async () => await RefreshRemoteAsync(), () => _selectedPC != null);
 
             // Context-menu / action commands
             DeleteLocalFileCommand = new RelayCommand(async () => await DeleteLocalItemsAsync(SelectedLocalFiles), () => true);
@@ -105,6 +113,9 @@ namespace IRIS.UI.ViewModels
             SelectAllPCsCommand = new RelayCommand(() => { foreach (var pc in BulkPCs) pc.IsSelected = true; OnPropertyChanged(nameof(BulkPCs)); }, () => true);
             DeselectAllPCsCommand = new RelayCommand(() => { foreach (var pc in BulkPCs) pc.IsSelected = false; OnPropertyChanged(nameof(BulkPCs)); }, () => true);
             RemoteDesktopCommand = new RelayCommand(async () => await RemoteDesktopAsync(), () => _selectedPC != null);
+
+            UndoCommand = new RelayCommand(async () => await UndoAsync(), () => CanUndo);
+            RedoCommand = new RelayCommand(async () => await RedoAsync(), () => CanRedo);
 
             LocalFiles.CollectionChanged += (_, _) => ApplyLocalFilter();
             RemoteFiles.CollectionChanged += (_, _) => ApplyRemoteFilter();
@@ -161,6 +172,7 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedPcDisplayText));
                 OnPropertyChanged(nameof(HasSelectedPC));
+                OnPropertyChanged(nameof(RemotePaneIsEmpty));
                 RaiseAllRemoteCanExecuteChanged();
                 if (_selectedPC != null)
                 {
@@ -238,6 +250,11 @@ namespace IRIS.UI.ViewModels
         }
 
         public bool HasSelectedPC => SelectedPC != null;
+
+        // Drives the "This folder is empty" placeholder in the remote pane
+        // (only shown when a PC is selected; otherwise the "Select a PC" placeholder wins).
+        public bool RemotePaneIsEmpty => HasSelectedPC && FilteredRemoteFiles.Count == 0;
+
         public bool IsFaculty => _authenticationService.GetCurrentUser()?.Role == UserRole.Faculty;
         public bool CanModifyRemoteFiles => !IsFaculty;
         public string SelectedPcDisplayText => SelectedPC?.Hostname ?? "Select a PC";
@@ -330,9 +347,11 @@ namespace IRIS.UI.ViewModels
         public ICommand NavigateUpLocalCommand { get; }
         public ICommand NavigateToLocalPathCommand { get; }
         public ICommand GoToLocalDrivesCommand { get; }
+        public ICommand RefreshLocalCommand { get; }
         public ICommand NavigateUpRemoteCommand { get; }
         public ICommand NavigateToRemotePathCommand { get; }
         public ICommand GoToRemoteDrivesCommand { get; }
+        public ICommand RefreshRemoteCommand { get; }
         public ICommand DeleteLocalFileCommand { get; }
         public ICommand DeleteRemoteFileCommand { get; }
         public ICommand RenameLocalFileCommand { get; }
@@ -346,6 +365,11 @@ namespace IRIS.UI.ViewModels
         public ICommand SelectAllPCsCommand { get; }
         public ICommand DeselectAllPCsCommand { get; }
         public ICommand RemoteDesktopCommand { get; }
+        public ICommand UndoCommand { get; }
+        public ICommand RedoCommand { get; }
+
+        public bool CanUndo => _undoStack.Count > 0;
+        public bool CanRedo => _redoStack.Count > 0;
 
         // ═══════════════════════════════════════
         // Initialization
@@ -591,6 +615,23 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private async Task RefreshLocalAsync()
+        {
+            if (_isAtLocalDriveRoot || string.IsNullOrWhiteSpace(CurrentLocalPath))
+                await LoadLocalDrivesAsync();
+            else
+                await BrowseLocalPathAsync(CurrentLocalPath);
+        }
+
+        private async Task RefreshRemoteAsync()
+        {
+            if (_selectedPC == null) return;
+            if (_isAtRemoteDriveRoot || string.IsNullOrWhiteSpace(CurrentRemotePath))
+                await LoadRemoteDrivesAsync();
+            else
+                await BrowseRemotePathAsync(CurrentRemotePath);
+        }
+
         private async Task NavigateUpLocalAsync()
         {
             if (string.IsNullOrWhiteSpace(CurrentLocalPath))
@@ -630,20 +671,16 @@ namespace IRIS.UI.ViewModels
             try
             {
                 var snapshot = items.ToList();
-                await Task.Run(() =>
+                // Move each item to the app-managed trash so Undo can restore it.
+                foreach (var item in snapshot)
                 {
-                    foreach (var item in snapshot)
-                    {
-                        if (item.IsDirectory)
-                            Directory.Delete(item.FullPath, true);
-                        else
-                            File.Delete(item.FullPath);
-                    }
-                });
+                    var (trashPath, isDir) = await RecycleLocalAsync(item.FullPath);
+                    RecordAction(new DeleteAction(Side.Local, null, item.FullPath, trashPath, isDir));
+                }
 
                 StatusMessage = snapshot.Count == 1
-                    ? $"Deleted '{snapshot[0].Name}'."
-                    : $"Deleted {snapshot.Count} items.";
+                    ? $"Moved '{snapshot[0].Name}' to trash. Ctrl+Z to undo."
+                    : $"Moved {snapshot.Count} items to trash. Ctrl+Z to undo.";
                 await BrowseLocalPathAsync(CurrentLocalPath);
             }
             catch (Exception ex)
@@ -707,7 +744,8 @@ namespace IRIS.UI.ViewModels
                         File.Move(item.FullPath, newPath);
                 });
 
-                StatusMessage = $"Renamed '{item.Name}' → '{newName}'.";
+                RecordAction(new RenameAction(Side.Local, null, dir, item.Name, newName));
+                StatusMessage = $"Renamed '{item.Name}' → '{newName}'. Ctrl+Z to undo.";
                 await BrowseLocalPathAsync(CurrentLocalPath);
             }
             catch (Exception ex)
@@ -795,6 +833,16 @@ namespace IRIS.UI.ViewModels
 
                 StatusMessage = $"Remote: {RemoteFiles.Count} drive(s) on {responsePair.Target}.";
             }
+            catch (HttpRequestException)
+            {
+                ShowAgentOfflineDialog();
+                StatusMessage = "Agent offline — could not list remote drives.";
+            }
+            catch (TaskCanceledException)
+            {
+                ShowAgentTimeoutDialog();
+                StatusMessage = "Agent timed out — could not list remote drives.";
+            }
             catch (Exception ex)
             {
                 StatusMessage = $"Remote drives failed: {ex.Message}";
@@ -812,20 +860,24 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            HttpResponseMessage? response = null;
             try
             {
                 IsBusy = true;
-                RemoteFiles.Clear();
 
                 var apiPath = $"/files/browse?path={Uri.EscapeDataString(path)}";
                 var responsePair = await SendAgentRequestWithFallbackAsync(
                     _selectedPC,
                     target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, apiPath)));
-                using var response = responsePair.Response;
+                response = responsePair.Response;
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Remote browse failed: {response.StatusCode}";
+                    // Mirror local-pane behavior: keep the existing listing visible when the
+                    // target path is missing or inaccessible; only update the status line.
+                    StatusMessage = response.StatusCode == HttpStatusCode.NotFound
+                        ? $"Remote path not found: {path}"
+                        : $"Remote browse failed: {response.StatusCode}";
                     return;
                 }
 
@@ -833,6 +885,8 @@ namespace IRIS.UI.ViewModels
                 var browse = JsonSerializer.Deserialize<AgentBrowseResponse>(json, JsonOptions());
                 var files = browse?.Entries ?? [];
 
+                // Only commit the new listing once the response is validated.
+                RemoteFiles.Clear();
                 CurrentRemotePath = browse?.CurrentPath ?? path;
                 _remoteParentPath = browse?.ParentPath;
                 IsAtRemoteDriveRoot = false;
@@ -851,11 +905,26 @@ namespace IRIS.UI.ViewModels
 
                 StatusMessage = $"Remote: {RemoteFiles.Count} item(s) at '{CurrentRemotePath}' via {responsePair.Target}.";
             }
+            catch (HttpRequestException)
+            {
+                // Agent unreachable: preserve current listing and surface a dialog.
+                ShowAgentOfflineDialog();
+                StatusMessage = $"Agent offline — kept previous listing for {CurrentRemotePath}.";
+            }
+            catch (TaskCanceledException)
+            {
+                ShowAgentTimeoutDialog();
+                StatusMessage = $"Agent timed out — kept previous listing for {CurrentRemotePath}.";
+            }
             catch (Exception ex)
             {
                 StatusMessage = $"Remote browse failed: {ex.Message}";
             }
-            finally { IsBusy = false; }
+            finally
+            {
+                response?.Dispose();
+                IsBusy = false;
+            }
         }
 
         public async Task OpenRemoteItemAsync(FileItemModel? item)
@@ -908,24 +977,21 @@ namespace IRIS.UI.ViewModels
                 IsBusy = true;
                 var snapshot = items.ToList();
                 var failCount = 0;
+                var pcId = _selectedPC.Id;
 
                 foreach (var item in snapshot)
                 {
                     try
                     {
-                        var apiPath = $"/files?path={Uri.EscapeDataString(item.FullPath)}";
-                        var responsePair = await SendAgentRequestWithFallbackAsync(
-                            _selectedPC,
-                            target => new HttpRequestMessage(HttpMethod.Delete, BuildAgentUri(target, apiPath)));
-                        using var response = responsePair.Response;
-                        if (!response.IsSuccessStatusCode) failCount++;
+                        var (trashPath, isDir) = await RecycleRemoteAsync(item.FullPath);
+                        RecordAction(new DeleteAction(Side.Remote, pcId, item.FullPath, trashPath, isDir));
                     }
                     catch { failCount++; }
                 }
 
                 StatusMessage = snapshot.Count == 1
-                    ? $"Deleted '{snapshot[0].Name}' on remote."
-                    : $"Deleted {snapshot.Count - failCount}/{snapshot.Count} items on remote.";
+                    ? $"Moved '{snapshot[0].Name}' to remote trash. Ctrl+Z to undo."
+                    : $"Moved {snapshot.Count - failCount}/{snapshot.Count} items to remote trash. Ctrl+Z to undo.";
                 await BrowseRemotePathAsync(CurrentRemotePath);
             }
             catch (Exception ex)
@@ -978,7 +1044,8 @@ namespace IRIS.UI.ViewModels
                     return;
                 }
 
-                StatusMessage = $"Renamed '{item.Name}' → '{newName}'.";
+                RecordAction(new RenameAction(Side.Remote, _selectedPC!.Id, remoteDir, item.Name, newName));
+                StatusMessage = $"Renamed '{item.Name}' → '{newName}'. Ctrl+Z to undo.";
                 await BrowseRemotePathAsync(CurrentRemotePath);
             }
             catch (Exception ex)
@@ -991,6 +1058,12 @@ namespace IRIS.UI.ViewModels
         private async Task DownloadRemoteItemAsync(FileItemModel? item)
         {
             if (item == null || _selectedPC == null) return;
+
+            if (item.IsDrive)
+            {
+                ShowDriveDownloadWarning();
+                return;
+            }
 
             try
             {
@@ -1027,6 +1100,12 @@ namespace IRIS.UI.ViewModels
         {
             if (_selectedPC == null) return;
 
+            if (item.IsDrive)
+            {
+                ShowDriveDownloadWarning();
+                return;
+            }
+
             try
             {
                 IsBusy = true;
@@ -1058,6 +1137,12 @@ namespace IRIS.UI.ViewModels
         private async Task DownloadRemoteItemsAsync(List<FileItemModel> items)
         {
             if (items.Count == 0 || _selectedPC == null) return;
+
+            if (items.Any(i => i.IsDrive))
+            {
+                ShowDriveDownloadWarning();
+                return;
+            }
 
             // Single item: delegate to the existing handler (shows SaveFileDialog)
             if (items.Count == 1)
@@ -1513,6 +1598,273 @@ namespace IRIS.UI.ViewModels
                 if (string.IsNullOrEmpty(search) || file.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
                     FilteredRemoteFiles.Add(file);
             }
+            OnPropertyChanged(nameof(RemotePaneIsEmpty));
+        }
+
+        // ═══════════════════════════════════════
+        // UNDO / REDO
+        // ═══════════════════════════════════════
+
+        // Undoable operations. Remote actions carry PcId so we can refuse to undo when the
+        // currently-selected PC is different (the target machine matters for the operation).
+        private enum Side { Local, Remote }
+        private abstract record FileAction(Side Side, int? PcId);
+        private sealed record RenameAction(Side Side, int? PcId, string ParentDir, string OriginalName, string NewName) : FileAction(Side, PcId);
+        private sealed record DeleteAction(Side Side, int? PcId, string OriginalFullPath, string TrashPath, bool IsDirectory) : FileAction(Side, PcId);
+
+        private void RecordAction(FileAction action)
+        {
+            _undoStack.Push(action);
+            _redoStack.Clear();
+            while (_undoStack.Count > UndoHistoryLimit)
+            {
+                // Drop the oldest action by rebuilding the stack sans the bottom entry.
+                var arr = _undoStack.ToArray();
+                _undoStack.Clear();
+                for (int i = arr.Length - 2; i >= 0; i--) _undoStack.Push(arr[i]);
+            }
+            NotifyHistoryChanged();
+        }
+
+        private void NotifyHistoryChanged()
+        {
+            OnPropertyChanged(nameof(CanUndo));
+            OnPropertyChanged(nameof(CanRedo));
+            (UndoCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RedoCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private async Task UndoAsync()
+        {
+            if (_undoStack.Count == 0) return;
+            var action = _undoStack.Pop();
+            if (!CheckSideMatches(action))
+            {
+                _undoStack.Push(action);
+                NotifyHistoryChanged();
+                return;
+            }
+            try
+            {
+                await UndoActionAsync(action);
+                // The action as originally recorded is still what Redo needs to re-apply.
+                _redoStack.Push(action);
+                StatusMessage = $"Undone: {DescribeAction(action)}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Undo failed: {ex.Message}";
+                _undoStack.Push(action);
+            }
+            finally { NotifyHistoryChanged(); }
+        }
+
+        private async Task RedoAsync()
+        {
+            if (_redoStack.Count == 0) return;
+            var action = _redoStack.Pop();
+            if (!CheckSideMatches(action))
+            {
+                _redoStack.Push(action);
+                NotifyHistoryChanged();
+                return;
+            }
+            try
+            {
+                // Redo returns a potentially-updated action (e.g. delete recorded a fresh trash path).
+                var updated = await RedoActionAsync(action);
+                _undoStack.Push(updated);
+                StatusMessage = $"Redone: {DescribeAction(action)}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Redo failed: {ex.Message}";
+                _redoStack.Push(action);
+            }
+            finally { NotifyHistoryChanged(); }
+        }
+
+        private bool CheckSideMatches(FileAction action)
+        {
+            if (action.Side != Side.Remote) return true;
+            if (_selectedPC != null && _selectedPC.Id == action.PcId) return true;
+
+            var dlg = new ConfirmationDialog(
+                "Select the Original PC",
+                "This undo/redo targets a different PC than the one currently selected. Select that PC and try again.",
+                "Warning24", "OK", "Cancel", false);
+            dlg.Owner = Application.Current.MainWindow;
+            dlg.ShowDialog();
+            return false;
+        }
+
+        // Undo: restore the prior state. Must not touch the redo stack; the caller handles stacking.
+        private async Task UndoActionAsync(FileAction action)
+        {
+            switch (action)
+            {
+                case RenameAction r:
+                    await PerformRenameAsync(r.Side, r.ParentDir, r.NewName, r.OriginalName);
+                    break;
+
+                case DeleteAction d:
+                    if (d.Side == Side.Local)
+                    {
+                        await Task.Run(() =>
+                        {
+                            var parent = Path.GetDirectoryName(d.OriginalFullPath);
+                            if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+                            if (Directory.Exists(d.TrashPath))
+                                Directory.Move(d.TrashPath, d.OriginalFullPath);
+                            else if (File.Exists(d.TrashPath))
+                                File.Move(d.TrashPath, d.OriginalFullPath);
+                            else
+                                throw new FileNotFoundException($"Trash entry missing: {d.TrashPath}");
+
+                            // Best-effort cleanup of the now-empty per-delete bucket.
+                            try
+                            {
+                                var bucket = Path.GetDirectoryName(d.TrashPath);
+                                if (!string.IsNullOrEmpty(bucket) && Directory.Exists(bucket) &&
+                                    !Directory.EnumerateFileSystemEntries(bucket).Any())
+                                {
+                                    Directory.Delete(bucket);
+                                }
+                            }
+                            catch { /* best-effort */ }
+                        });
+                        await BrowseLocalPathAsync(CurrentLocalPath);
+                    }
+                    else
+                    {
+                        var apiPath = $"/files/restore?trashPath={Uri.EscapeDataString(d.TrashPath)}&originalPath={Uri.EscapeDataString(d.OriginalFullPath)}";
+                        var responsePair = await SendAgentRequestWithFallbackAsync(
+                            _selectedPC!,
+                            target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath)));
+                        using var response = responsePair.Response;
+                        if (!response.IsSuccessStatusCode)
+                            throw new InvalidOperationException($"Restore failed: {response.StatusCode}");
+                        await BrowseRemotePathAsync(CurrentRemotePath);
+                    }
+                    break;
+            }
+        }
+
+        // Redo: re-perform the action. For deletes this generates a fresh trash path, so we return
+        // an updated DeleteAction carrying that path — this is what goes back onto the undo stack.
+        private async Task<FileAction> RedoActionAsync(FileAction action)
+        {
+            switch (action)
+            {
+                case RenameAction r:
+                    await PerformRenameAsync(r.Side, r.ParentDir, r.OriginalName, r.NewName);
+                    return r;
+
+                case DeleteAction d:
+                    var (trashPath, isDir) = d.Side == Side.Local
+                        ? await RecycleLocalAsync(d.OriginalFullPath)
+                        : await RecycleRemoteAsync(d.OriginalFullPath);
+                    if (d.Side == Side.Local) await BrowseLocalPathAsync(CurrentLocalPath);
+                    else await BrowseRemotePathAsync(CurrentRemotePath);
+                    return new DeleteAction(d.Side, d.PcId, d.OriginalFullPath, trashPath, isDir);
+            }
+            return action;
+        }
+
+        private async Task PerformRenameAsync(Side side, string parentDir, string fromName, string toName)
+        {
+            var fromPath = Path.Combine(parentDir, fromName);
+            var toPath = Path.Combine(parentDir, toName);
+
+            if (side == Side.Local)
+            {
+                await Task.Run(() =>
+                {
+                    if (Directory.Exists(fromPath)) Directory.Move(fromPath, toPath);
+                    else if (File.Exists(fromPath)) File.Move(fromPath, toPath);
+                    else throw new FileNotFoundException($"Path not found: {fromPath}");
+                });
+                await BrowseLocalPathAsync(CurrentLocalPath);
+            }
+            else
+            {
+                var apiPath = $"/files/rename?path={Uri.EscapeDataString(fromPath)}&newName={Uri.EscapeDataString(toName)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    _selectedPC!,
+                    target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath)));
+                using var response = responsePair.Response;
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException($"Rename failed: {response.StatusCode}");
+                await BrowseRemotePathAsync(CurrentRemotePath);
+            }
+        }
+
+        private static string DescribeAction(FileAction action) => action switch
+        {
+            RenameAction r => $"rename {r.OriginalName} → {r.NewName}",
+            DeleteAction d => $"delete {Path.GetFileName(d.OriginalFullPath)}",
+            _ => "action"
+        };
+
+        private static Task<(string trashPath, bool isDir)> RecycleLocalAsync(string sourcePath)
+        {
+            return Task.Run<(string, bool)>(() =>
+            {
+                var trashRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "IRIS", "Trash");
+                Directory.CreateDirectory(trashRoot);
+                var bucket = Path.Combine(trashRoot, Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(bucket);
+                var trashPath = Path.Combine(bucket, Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar)));
+                bool isDir = Directory.Exists(sourcePath);
+                if (isDir) Directory.Move(sourcePath, trashPath);
+                else File.Move(sourcePath, trashPath);
+                return (trashPath, isDir);
+            });
+        }
+
+        private async Task<(string trashPath, bool isDir)> RecycleRemoteAsync(string sourcePath)
+        {
+            if (_selectedPC == null) throw new InvalidOperationException("No PC selected.");
+
+            // Detect directory up-front (affects undo semantics) so we can record accurate state.
+            bool isDir = await CheckRemoteIsDirectoryAsync(_selectedPC, sourcePath);
+
+            var apiPath = $"/files/recycle?path={Uri.EscapeDataString(sourcePath)}";
+            var responsePair = await SendAgentRequestWithFallbackAsync(
+                _selectedPC,
+                target => new HttpRequestMessage(HttpMethod.Post, BuildAgentUri(target, apiPath)));
+            using var response = responsePair.Response;
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Recycle failed: {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<RecycleResponse>(json, JsonOptions());
+            return (result?.TrashPath ?? string.Empty, isDir);
+        }
+
+        private async Task<bool> CheckRemoteIsDirectoryAsync(PCModel pc, string remotePath)
+        {
+            try
+            {
+                var apiPath = $"/files/exists?path={Uri.EscapeDataString(remotePath)}";
+                var responsePair = await SendAgentRequestWithFallbackAsync(
+                    pc,
+                    target => new HttpRequestMessage(HttpMethod.Get, BuildAgentUri(target, apiPath)));
+                using var response = responsePair.Response;
+                if (!response.IsSuccessStatusCode) return false;
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ExistsResponse>(json, JsonOptions());
+                return result?.IsDirectory ?? false;
+            }
+            catch { return false; }
+        }
+
+        private sealed class RecycleResponse
+        {
+            public string? Message { get; set; }
+            public string? TrashPath { get; set; }
+            public string? OriginalPath { get; set; }
         }
 
         // ═══════════════════════════════════════
@@ -1568,6 +1920,36 @@ namespace IRIS.UI.ViewModels
             dialog.Owner = Application.Current.MainWindow;
             dialog.ShowDialog();
             return false;
+        }
+
+        private static void ShowDriveDownloadWarning()
+        {
+            var dialog = new ConfirmationDialog(
+                "Cannot Download Drive",
+                "You cannot download a drive!",
+                "Warning24", "OK", "Cancel", false);
+            dialog.Owner = Application.Current.MainWindow;
+            dialog.ShowDialog();
+        }
+
+        private static void ShowAgentOfflineDialog()
+        {
+            var dialog = new ConfirmationDialog(
+                "Agent Offline",
+                "The selected PC's agent is offline or unreachable. Check the PC's status and try again.",
+                "PlugDisconnected24", "OK", "Cancel", false);
+            dialog.Owner = Application.Current.MainWindow;
+            dialog.ShowDialog();
+        }
+
+        private static void ShowAgentTimeoutDialog()
+        {
+            var dialog = new ConfirmationDialog(
+                "Connection Timed Out",
+                "The agent on the selected PC did not respond in time. It may be busy, the network may be congested, or the PC may have gone offline.",
+                "Clock24", "OK", "Cancel", false);
+            dialog.Owner = Application.Current.MainWindow;
+            dialog.ShowDialog();
         }
 
         private static string? PromptForNewName(string currentName)
