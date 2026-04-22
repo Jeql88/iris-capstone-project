@@ -13,6 +13,7 @@ using IRIS.Core.Services.Contracts;
 using IRIS.Core.Services.ServiceModels;
 using IRIS.UI.Services;
 using IRIS.UI.Helpers;
+using IRIS.UI.Views.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using OxyPlot;
@@ -386,13 +387,10 @@ namespace IRIS.UI.ViewModels
             }
 
             OnPropertyChanged(nameof(IsCustomRange));
-            if (_isActive)
-            {
-                await LoadDataAsync();
-            }
+            await Task.CompletedTask;
         }
 
-        private async Task ExportNetworkAnalyticsAsync()
+        private async Task<string?> ExportNetworkAnalyticsAsync()
         {
             var (startUtc, endUtc) = GetRangeUtc();
             using var scope = _scopeFactory.CreateScope();
@@ -409,10 +407,12 @@ namespace IRIS.UI.ViewModels
             if (saveFileDialog.ShowDialog() == true)
             {
                 await System.IO.File.WriteAllBytesAsync(saveFileDialog.FileName, bytes);
+                return saveFileDialog.FileName;
             }
+            return null;
         }
 
-        private async Task ExportHardwareAnalyticsAsync()
+        private async Task<string?> ExportHardwareAnalyticsAsync()
         {
             var (startUtc, endUtc) = GetRangeUtc();
             using var scope = _scopeFactory.CreateScope();
@@ -429,15 +429,40 @@ namespace IRIS.UI.ViewModels
             if (saveFileDialog.ShowDialog() == true)
             {
                 await System.IO.File.WriteAllBytesAsync(saveFileDialog.FileName, bytes);
+                return saveFileDialog.FileName;
             }
+            return null;
         }
 
         private async Task ExportSelectedAsync()
         {
+            var confirm = new ConfirmationDialog(
+                "Export Dashboard Data",
+                $"Export the current {SelectedExportOption} view to CSV?",
+                "ArrowDownload24",
+                "Export",
+                "Cancel");
+            confirm.Owner = System.Windows.Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true) return;
+
+            string? savedPath;
             if (SelectedExportOption == "Hardware Analytics")
-                await ExportHardwareAnalyticsAsync();
+                savedPath = await ExportHardwareAnalyticsAsync();
             else
-                await ExportNetworkAnalyticsAsync();
+                savedPath = await ExportNetworkAnalyticsAsync();
+
+            if (!string.IsNullOrEmpty(savedPath))
+            {
+                var success = new ConfirmationDialog(
+                    "Export Complete",
+                    $"Saved to {System.IO.Path.GetFileName(savedPath)}",
+                    "Checkmark24",
+                    "OK",
+                    "Cancel",
+                    false);
+                success.Owner = System.Windows.Application.Current.MainWindow;
+                success.ShowDialog();
+            }
         }
 
         private async Task LoadRoomsAsync()
@@ -572,11 +597,14 @@ namespace IRIS.UI.ViewModels
         public string Name { get; set; } = string.Empty;
         public string Icon { get; set; } = string.Empty;
         public int Instances { get; set; }
+        public byte[]? IconBytes { get; set; }
+        public bool HasIconBytes => IconBytes != null && IconBytes.Length > 0;
     }
 
     public class LabStatus
     {
         public string Name { get; set; } = string.Empty;
         public int ActivePCs { get; set; }
+        public bool IsActive => ActivePCs > 0;
     }
 }

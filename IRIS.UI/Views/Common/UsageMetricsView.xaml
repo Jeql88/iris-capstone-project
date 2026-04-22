@@ -8,6 +8,8 @@
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </UserControl.Resources>
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="25,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -396,4 +398,5 @@
             </Grid>
         </ui:Card>
     </Grid>
+    </ScrollViewer>
 </UserControl>
