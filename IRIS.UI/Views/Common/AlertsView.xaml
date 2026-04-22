@@ -6,6 +6,64 @@
 
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <!-- Flat column header with sort-direction arrow indicator.
+             Fully overrides the WPF-UI default template (which uses gradient brushes) so the
+             header paints as a solid surface with a thin divider instead of a glossy panel. -->
+        <Style x:Key="SortableColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridColumnHeader">
+                        <Grid>
+                            <Border x:Name="HeaderBackground"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Border>
+                            <!-- Column-resize grippers must exist with these exact names for DataGrid behavior -->
+                            <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Width="4" Cursor="SizeWE" Opacity="0"/>
+                            <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Width="4" Cursor="SizeWE" Opacity="0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HeaderBackground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="SortArrow" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                       Foreground="{DynamicResource IRISPrimaryBrush}"/>
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType=DataGridColumnHeader}}" Value="Ascending">
+                                <Setter TargetName="SortArrow" Property="Text" Value="&#x25B2;"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType=DataGridColumnHeader}}" Value="Descending">
+                                <Setter TargetName="SortArrow" Property="Text" Value="&#x25BC;"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -32,13 +90,7 @@
                 <TextBlock Text="{Binding LastUpdatedText}" FontSize="12" Margin="0,4,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <ui:Button Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge Visible" Appearance="Secondary" Command="{Binding AcknowledgeVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Visible" Appearance="Secondary" Command="{Binding ResolveVisibleCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}" Content="Ack Selected" Appearance="Secondary" Command="{Binding AcknowledgeCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
-                <ui:Button Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve Selected" Appearance="Primary" Command="{Binding ResolveCommand}" Margin="0,0,6,0" Padding="10,6" FontSize="12"/>
-                <!-- Export button moved to table header for alignment with page size control -->
-            </StackPanel>
+            <!-- Action buttons moved next to System Alerts table header below -->
         </Grid>
 
         <!-- Summary cards row -->
@@ -205,8 +257,8 @@
                 <!-- Table Header -->
                 <Grid Grid.Row="0" Margin="12,12,12,8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -214,15 +266,45 @@
                         <TextBlock Text="System Alerts" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource IRISSecondaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
-                                  ItemsSource="{Binding PageSizeOptions}"
-                                  Width="70" Margin="0,0,5,0"/>
-                        <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Margin="8,0,0,0" Padding="10,6" FontSize="12"/>
-                        
-                    </StackPanel>
+                    <!-- Right side: action dropdowns + page size + export; uses WrapPanel so it flows at 125-150% DPI -->
+                    <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <ui:DropDownButton Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge" Appearance="Secondary"
+                                           ToolTip="Acknowledge visible or selected alerts"
+                                           Margin="0,0,6,4" Padding="10,6" FontSize="12">
+                            <ui:DropDownButton.Flyout>
+                                <ContextMenu>
+                                    <MenuItem Header="Visible" Command="{Binding AcknowledgeVisibleCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Eye24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Selected" Command="{Binding AcknowledgeCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="CheckmarkSquare24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ui:DropDownButton.Flyout>
+                        </ui:DropDownButton>
+                        <ui:DropDownButton Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve" Appearance="Primary"
+                                           ToolTip="Resolve visible or selected alerts"
+                                           Margin="0,0,12,4" Padding="10,6" FontSize="12">
+                            <ui:DropDownButton.Flyout>
+                                <ContextMenu>
+                                    <MenuItem Header="Visible" Command="{Binding ResolveVisibleCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Eye24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Selected" Command="{Binding ResolveCommand}">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="CheckmarkSquare24" FontSize="14"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ui:DropDownButton.Flyout>
+                        </ui:DropDownButton>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
+                            <TextBlock Text="Show " FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ComboBox SelectedValue="{Binding PageSize, Mode=TwoWay}"
+                                      ItemsSource="{Binding PageSizeOptions}"
+                                      Width="70" Margin="0,0,5,0"/>
+                            <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Margin="8,0,0,0" Padding="10,6" FontSize="12"/>
+                        </StackPanel>
+                    </WrapPanel>
                 </Grid>
 
                 <DataGrid Grid.Row="1" ItemsSource="{Binding PagedAlerts}"
@@ -251,13 +333,13 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" Width="1.4*"/>
-                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="0.9*"/>
-                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="0.9*"/>
-                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="1*"/>
-                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="1.3*"/>
-                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="1*"/>
-                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="2*"/>
+                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}" SortMemberPath="Timestamp" Width="1.4*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="0.9*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="0.9*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="1*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="1.3*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="Laboratory" Binding="{Binding RoomName}" Width="1*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="2*" HeaderStyle="{StaticResource SortableColumnHeaderStyle}"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

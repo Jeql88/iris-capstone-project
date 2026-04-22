@@ -142,6 +142,18 @@ namespace IRIS.Agent.Logic
                     return;
                 }
 
+                if (path.Equals("/api/files/recycle", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    await HandleRecycleAsync(context);
+                    return;
+                }
+
+                if (path.Equals("/api/files/restore", StringComparison.OrdinalIgnoreCase) && method == "POST")
+                {
+                    await HandleRestoreAsync(context);
+                    return;
+                }
+
                 if (path.Equals("/api/files/download", StringComparison.OrdinalIgnoreCase) && method == "GET")
                 {
                     await HandleDownloadAsync(context);
@@ -388,6 +400,112 @@ namespace IRIS.Agent.Logic
             }
 
             await WriteJsonAsync(context.Response, 404, new { error = "Path not found" });
+        }
+
+        // Trash lives alongside the agent's managed root so it's auto-sandboxed and
+        // survives agent restarts. The per-delete GUID folder avoids name collisions
+        // when the same path is deleted multiple times.
+        private string TrashRoot => Path.Combine(_rootPath, "_trash");
+
+        private async Task HandleRecycleAsync(HttpListenerContext context)
+        {
+            var inputPath = context.Request.QueryString["path"];
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "path is required" });
+                return;
+            }
+
+            string fullPath;
+            try { fullPath = ResolveFullPath(inputPath); }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
+
+            if (IsProtectedPath(fullPath))
+            {
+                await WriteJsonAsync(context.Response, 403, new { error = "Cannot modify protected system path" });
+                return;
+            }
+
+            if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
+            {
+                await WriteJsonAsync(context.Response, 404, new { error = "Path not found" });
+                return;
+            }
+
+            var trashDir = Path.Combine(TrashRoot, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(trashDir);
+            var trashPath = Path.Combine(trashDir, Path.GetFileName(fullPath.TrimEnd(Path.DirectorySeparatorChar)));
+
+            if (Directory.Exists(fullPath))
+                Directory.Move(fullPath, trashPath);
+            else
+                File.Move(fullPath, trashPath);
+
+            await WriteJsonAsync(context.Response, 200, new { message = "Recycled", trashPath, originalPath = fullPath });
+        }
+
+        private async Task HandleRestoreAsync(HttpListenerContext context)
+        {
+            var trashPath = context.Request.QueryString["trashPath"];
+            var originalPath = context.Request.QueryString["originalPath"];
+            if (string.IsNullOrWhiteSpace(trashPath) || string.IsNullOrWhiteSpace(originalPath))
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = "trashPath and originalPath are required" });
+                return;
+            }
+
+            string fullTrashPath, fullOriginalPath;
+            try
+            {
+                fullTrashPath = ResolveFullPath(trashPath);
+                fullOriginalPath = ResolveFullPath(originalPath);
+            }
+            catch (Exception ex)
+            {
+                await WriteJsonAsync(context.Response, 400, new { error = ex.Message });
+                return;
+            }
+
+            // Restoring into a protected location is still refused.
+            if (IsProtectedPath(fullOriginalPath))
+            {
+                await WriteJsonAsync(context.Response, 403, new { error = "Cannot restore into protected system path" });
+                return;
+            }
+
+            if (!File.Exists(fullTrashPath) && !Directory.Exists(fullTrashPath))
+            {
+                await WriteJsonAsync(context.Response, 404, new { error = "Trash entry not found" });
+                return;
+            }
+
+            var parent = Path.GetDirectoryName(fullOriginalPath);
+            if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+
+            if (Directory.Exists(fullTrashPath))
+                Directory.Move(fullTrashPath, fullOriginalPath);
+            else
+                File.Move(fullTrashPath, fullOriginalPath);
+
+            // Best-effort cleanup of the per-delete GUID folder.
+            try
+            {
+                var trashGuidDir = Path.GetDirectoryName(fullTrashPath);
+                if (!string.IsNullOrEmpty(trashGuidDir) &&
+                    trashGuidDir.StartsWith(TrashRoot, StringComparison.OrdinalIgnoreCase) &&
+                    Directory.Exists(trashGuidDir) &&
+                    !Directory.EnumerateFileSystemEntries(trashGuidDir).Any())
+                {
+                    Directory.Delete(trashGuidDir);
+                }
+            }
+            catch { /* cleanup is best-effort */ }
+
+            await WriteJsonAsync(context.Response, 200, new { message = "Restored", restoredPath = fullOriginalPath });
         }
 
         private async Task HandleDownloadAsync(HttpListenerContext context)

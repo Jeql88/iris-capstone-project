@@ -28,4 +28,23 @@ namespace IRIS.UI.Converters
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => throw new NotSupportedException();
     }
+
+    /// <summary>
+    /// Multiplies a double by the factor supplied via ConverterParameter (string).
+    /// Used to compute e.g. 60% of a container's ActualHeight for responsive MaxHeight.
+    /// </summary>
+    public class PercentOfConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is not double d) return DependencyProperty.UnsetValue;
+            var factor = 1.0;
+            if (parameter is string s && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                factor = parsed;
+            return Math.Max(0, d * factor);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
 }
