@@ -66,6 +66,12 @@ namespace IRIS.Agent.Logic
                     return await ApplyWallpaperAsync(policy);
                 }
 
+                if (!IsCurrentFitCompliant(policy.WallpaperFit))
+                {
+                    Log.Information("Wallpaper fit drift detected, re-enforcing policy for PC {MacAddress}", _macAddress);
+                    return await ApplyWallpaperAsync(policy);
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -122,6 +128,8 @@ namespace IRIS.Agent.Logic
                     Log.Debug("Wallpaper cache already up to date for PC {MacAddress}", _macAddress);
                 }
 
+                ApplyWallpaperFitRegistry(policy.WallpaperFit);
+
                 var result = NativeMethods.SystemParametersInfo(NativeMethods.SPI_SETDESKWALLPAPER, 0, cachedWallpaperPath,
                     NativeMethods.SPIF_UPDATEINIFILE | NativeMethods.SPIF_SENDCHANGE);
 
@@ -162,6 +170,67 @@ namespace IRIS.Agent.Logic
             await using var stream = File.OpenRead(filePath);
             var hash = await sha256.ComputeHashAsync(stream);
             return Convert.ToHexString(hash);
+        }
+
+        private static void ApplyWallpaperFitRegistry(string? fit)
+        {
+            var normalized = string.IsNullOrWhiteSpace(fit) ? "Fill" : fit.Trim();
+            (string style, string tile) = normalized.ToLowerInvariant() switch
+            {
+                "fill" => ("10", "0"),
+                "fit" => ("6", "0"),
+                "stretch" => ("2", "0"),
+                "tile" => ("0", "1"),
+                "center" => ("0", "0"),
+                "span" => ("22", "0"),
+                _ => ("10", "0")
+            };
+
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", writable: true);
+                if (key == null)
+                {
+                    Log.Warning("Unable to open HKCU Control Panel\\Desktop to set wallpaper fit");
+                    return;
+                }
+                key.SetValue("WallpaperStyle", style, Microsoft.Win32.RegistryValueKind.String);
+                key.SetValue("TileWallpaper", tile, Microsoft.Win32.RegistryValueKind.String);
+                Log.Debug("Wallpaper fit registry set: Fit={Fit} WallpaperStyle={Style} TileWallpaper={Tile}", normalized, style, tile);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to write wallpaper fit registry keys ({Fit})", normalized);
+            }
+        }
+
+        private static bool IsCurrentFitCompliant(string? fit)
+        {
+            var normalized = string.IsNullOrWhiteSpace(fit) ? "Fill" : fit.Trim();
+            (string expectedStyle, string expectedTile) = normalized.ToLowerInvariant() switch
+            {
+                "fill" => ("10", "0"),
+                "fit" => ("6", "0"),
+                "stretch" => ("2", "0"),
+                "tile" => ("0", "1"),
+                "center" => ("0", "0"),
+                "span" => ("22", "0"),
+                _ => ("10", "0")
+            };
+
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop");
+                var currentStyle = key?.GetValue("WallpaperStyle")?.ToString();
+                var currentTile = key?.GetValue("TileWallpaper")?.ToString();
+                return string.Equals(currentStyle, expectedStyle, StringComparison.Ordinal)
+                    && string.Equals(currentTile, expectedTile, StringComparison.Ordinal);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to read wallpaper fit registry keys");
+                return true;
+            }
         }
 
         private static string? GetCurrentWallpaperPath()

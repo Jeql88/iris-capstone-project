@@ -343,7 +343,7 @@ namespace IRIS.UI.ViewModels
             TotalPCs = summary.TotalPCs;
 
             LabStatuses.Clear();
-            foreach (var lab in summary.LabStatuses)
+            foreach (var lab in summary.LabStatuses.OrderBy(l => l.Key, StringComparer.OrdinalIgnoreCase))
                 LabStatuses.Add(new LabStatus { Name = lab.Key, ActivePCs = lab.Value });
             OnPropertyChanged(nameof(HasLabStatuses));
 
@@ -353,7 +353,8 @@ namespace IRIS.UI.ViewModels
                 {
                     Name = app.Name,
                     Icon = app.Icon,
-                    Instances = app.InstanceCount
+                    Instances = app.InstanceCount,
+                    IconBytes = IconExtractor.TryExtractForApplication(app.Name)
                 });
             OnPropertyChanged(nameof(HasHeavyApplications));
         }

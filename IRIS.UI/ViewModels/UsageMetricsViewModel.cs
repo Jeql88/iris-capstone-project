@@ -379,7 +379,8 @@ namespace IRIS.UI.ViewModels
                         RoomNumber = item.RoomNumber,
                         StartTime = DateTimeDisplayHelper.ToManilaFromUtc(item.StartTime),
                         EndTime = DateTimeDisplayHelper.ToManilaFromUtc(item.EndTime),
-                        Duration = item.Duration
+                        Duration = item.Duration,
+                        IconBytes = IconExtractor.TryExtractForApplication(item.ApplicationName)
                     });
                 }
 
@@ -617,6 +618,8 @@ namespace IRIS.UI.ViewModels
         public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public TimeSpan? Duration { get; set; }
+        public byte[]? IconBytes { get; set; }
+        public bool HasIconBytes => IconBytes != null && IconBytes.Length > 0;
 
         public string FormattedDuration
         {

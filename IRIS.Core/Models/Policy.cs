@@ -29,6 +29,9 @@ namespace IRIS.Core.Models
         [MaxLength(64)]
         public string? WallpaperHash { get; set; }
 
+        [MaxLength(16)]
+        public string WallpaperFit { get; set; } = "Fill";
+
         public int? AutoShutdownIdleMinutes { get; set; } = 30;
 
         // Monitoring thresholds (warning / critical)

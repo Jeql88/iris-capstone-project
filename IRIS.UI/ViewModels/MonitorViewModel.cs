@@ -1249,6 +1249,12 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            var freezeAction = SelectedPC.IsFreezeActive ? "PC Unfrozen" : "PC Frozen";
+            await _authenticationService.LogUserActionAsync(
+                freezeAction,
+                $"PC {SelectedPC.PCName} ({SelectedPC.MacAddress})",
+                SelectedPC.Id);
+
             SelectedPC.IsFreezeActive = !SelectedPC.IsFreezeActive;
             _cache.SetFreezeState(SelectedPC.Id, SelectedPC.IsFreezeActive);
         }
@@ -1311,7 +1317,16 @@ namespace IRIS.UI.ViewModels
                     false);
                 commandErrorDialog.Owner = Application.Current.MainWindow;
                 commandErrorDialog.ShowDialog();
+                return;
             }
+
+            var truncated = messageDialog.FreezeMessage.Length > 80
+                ? messageDialog.FreezeMessage.Substring(0, 80) + "…"
+                : messageDialog.FreezeMessage;
+            await _authenticationService.LogUserActionAsync(
+                "Message Sent",
+                $"PC {SelectedPC.PCName}: \"{truncated}\"",
+                SelectedPC.Id);
         }
 
         private void RemoteDesktopConnect()

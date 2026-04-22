@@ -39,8 +39,12 @@ namespace IRIS.Core.Services
             double? packetLossWarningThreshold = null,
             double? packetLossCriticalThreshold = null,
             int? warningSustainSeconds = null,
-            int? criticalSustainSeconds = null)
+            int? criticalSustainSeconds = null,
+            string? wallpaperFit = null)
         {
+            var allowedFits = new[] { "Fill", "Fit", "Stretch", "Tile", "Center", "Span" };
+            var normalizedFit = string.IsNullOrWhiteSpace(wallpaperFit) ? null :
+                allowedFits.FirstOrDefault(f => string.Equals(f, wallpaperFit, StringComparison.OrdinalIgnoreCase));
             var existingPolicy = await _context.Policies
                 .FirstOrDefaultAsync(p => p.RoomId == roomId);
 
@@ -90,6 +94,7 @@ namespace IRIS.Core.Services
                 existingPolicy.PacketLossCriticalThreshold = packetLossCriticalThreshold ?? existingPolicy.PacketLossCriticalThreshold;
                 existingPolicy.WarningSustainSeconds = warningSustainSeconds ?? existingPolicy.WarningSustainSeconds;
                 existingPolicy.CriticalSustainSeconds = criticalSustainSeconds ?? existingPolicy.CriticalSustainSeconds;
+                existingPolicy.WallpaperFit = normalizedFit ?? existingPolicy.WallpaperFit;
 
                 existingPolicy.IsActive = true; // Always keep policy active once created
                 existingPolicy.UpdatedAt = DateTime.UtcNow;
@@ -134,6 +139,7 @@ namespace IRIS.Core.Services
                     PacketLossCriticalThreshold = packetLossCriticalThreshold ?? 10,
                     WarningSustainSeconds = warningSustainSeconds ?? 30,
                     CriticalSustainSeconds = criticalSustainSeconds ?? 20,
+                    WallpaperFit = normalizedFit ?? "Fill",
                     IsActive = true, // Always active once created
                     CreatedAt = DateTime.UtcNow
                 };

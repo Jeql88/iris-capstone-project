@@ -359,6 +359,10 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Shutdown");
             if (queued)
             {
+                await _authenticationService.LogUserActionAsync(
+                    "Remote Shutdown",
+                    $"PC {PCName} ({MacAddress})",
+                    _pcId);
                 return;
             }
 
@@ -409,6 +413,10 @@ namespace IRIS.UI.ViewModels
             var queued = await _powerCommandQueueService.QueueCommandAsync(MacAddress, "Restart");
             if (queued)
             {
+                await _authenticationService.LogUserActionAsync(
+                    "Remote Restart",
+                    $"PC {PCName} ({MacAddress})",
+                    _pcId);
                 return;
             }
 
@@ -469,6 +477,12 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            var freezeAction = IsFreezeActive ? "PC Unfrozen" : "PC Frozen";
+            await _authenticationService.LogUserActionAsync(
+                freezeAction,
+                $"PC {PCName} ({MacAddress})",
+                _pcId);
+
             IsFreezeActive = !IsFreezeActive;
             _cache.SetFreezeState(_pcId, IsFreezeActive);
         }
@@ -510,7 +524,16 @@ namespace IRIS.UI.ViewModels
             if (!queued)
             {
                 ShowActionErrorDialog("Command Error", "Failed to queue message command.");
+                return;
             }
+
+            var truncated = messageDialog.FreezeMessage.Length > 80
+                ? messageDialog.FreezeMessage.Substring(0, 80) + "…"
+                : messageDialog.FreezeMessage;
+            await _authenticationService.LogUserActionAsync(
+                "Message Sent",
+                $"PC {PCName}: \"{truncated}\"",
+                _pcId);
         }
 
         private async Task RemoteDesktopAsync()

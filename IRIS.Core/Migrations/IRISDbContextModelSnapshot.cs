@@ -467,6 +467,11 @@ namespace IRIS.Core.Migrations
                         .HasMaxLength(260)
                         .HasColumnType("character varying(260)");
 
+                    b.Property<string>("WallpaperFit")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("WallpaperHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

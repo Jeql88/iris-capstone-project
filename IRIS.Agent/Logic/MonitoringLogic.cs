@@ -298,22 +298,7 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        try
-                        {
-                            await _helperClient.ForceShutdownAsync(0);
-                        }
-                        catch (HelperUnavailableException ex)
-                        {
-                            Log.Error(ex, "Remote shutdown failed: helper pipe unreachable for PC {MacAddress}", _macAddress);
-                        }
-                        catch (HelperOperationException ex)
-                        {
-                            Log.Error(ex, "Remote shutdown rejected by helper (likely token/auth) for PC {MacAddress}", _macAddress);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "Remote shutdown failed with unexpected error for PC {MacAddress}", _macAddress);
-                        }
+                        await ExecuteShutdownOrRestartAsync(isRestart: false);
                     }
 
                     return;
@@ -329,22 +314,7 @@ namespace IRIS.Agent.Logic
 
                     if (!wasCancelled)
                     {
-                        try
-                        {
-                            await _helperClient.ForceRestartAsync(0);
-                        }
-                        catch (HelperUnavailableException ex)
-                        {
-                            Log.Error(ex, "Remote restart failed: helper pipe unreachable for PC {MacAddress}", _macAddress);
-                        }
-                        catch (HelperOperationException ex)
-                        {
-                            Log.Error(ex, "Remote restart rejected by helper (likely token/auth) for PC {MacAddress}", _macAddress);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "Remote restart failed with unexpected error for PC {MacAddress}", _macAddress);
-                        }
+                        await ExecuteShutdownOrRestartAsync(isRestart: true);
                     }
 
                     return;
@@ -414,6 +384,68 @@ namespace IRIS.Agent.Logic
             {
                 Log.Warning(ex, "Failed to show {Title} dialog — proceeding without user prompt", title);
                 return false;
+            }
+        }
+
+        private async Task ExecuteShutdownOrRestartAsync(bool isRestart)
+        {
+            var verb = isRestart ? "restart" : "shutdown";
+            var args = isRestart ? "/r /f /t 0" : "/s /f /t 0";
+
+            try
+            {
+                if (isRestart)
+                    await _helperClient.ForceRestartAsync(0);
+                else
+                    await _helperClient.ForceShutdownAsync(0);
+
+                Log.Information("Remote {Verb} via helper succeeded for PC {MacAddress}", verb, _macAddress);
+                return;
+            }
+            catch (HelperUnavailableException ex)
+            {
+                Log.Warning(ex, "Helper pipe unreachable for {Verb} — falling back to direct shutdown.exe", verb);
+            }
+            catch (HelperOperationException ex)
+            {
+                Log.Warning(ex, "Helper rejected {Verb} (likely token mismatch) — falling back to direct shutdown.exe", verb);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Helper call for {Verb} failed unexpectedly — falling back to direct shutdown.exe", verb);
+            }
+
+            try
+            {
+                var psi = new ProcessStartInfo("shutdown", args)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                using var p = Process.Start(psi);
+                if (p == null)
+                {
+                    Log.Error("Fallback shutdown.exe failed to start for {Verb}", verb);
+                    return;
+                }
+
+                p.WaitForExit(5000);
+                if (p.ExitCode != 0)
+                {
+                    var stderr = p.StandardError.ReadToEnd().Trim();
+                    Log.Error("Fallback shutdown.exe exited with code {Code} for {Verb}: {Error}", p.ExitCode, verb, stderr);
+                }
+                else
+                {
+                    Log.Information("Remote {Verb} via direct shutdown.exe succeeded for PC {MacAddress}", verb, _macAddress);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Both helper and direct shutdown.exe failed for {Verb} on PC {MacAddress}", verb, _macAddress);
             }
         }
 

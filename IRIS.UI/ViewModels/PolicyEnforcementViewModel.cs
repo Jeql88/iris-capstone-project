@@ -42,6 +42,7 @@ namespace IRIS.UI.ViewModels
         private double _packetLossCriticalThreshold = 10;
         private int _warningSustainSeconds = 30;
         private int _criticalSustainSeconds = 20;
+        private string _wallpaperFit = "Fill";
         private string _selectedWallpaperPath = "No wallpaper selected";
         private byte[]? _pendingWallpaperData;
         private string? _pendingWallpaperFileName;
@@ -76,6 +77,7 @@ namespace IRIS.UI.ViewModels
         private double _originalPacketLossCriticalThreshold = 10;
         private int _originalWarningSustainSeconds = 30;
         private int _originalCriticalSustainSeconds = 20;
+        private string _originalWallpaperFit = "Fill";
 
         public ObservableCollection<RoomItem> Rooms { get; set; }
         public ObservableCollection<RoomPolicyDisplay> SelectedRoomPolicies { get; set; }
@@ -207,6 +209,20 @@ namespace IRIS.UI.ViewModels
         {
             get => _criticalSustainSeconds;
             set { _criticalSustainSeconds = value; OnPropertyChanged(); ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged(); }
+        }
+
+        public IReadOnlyList<string> WallpaperFitOptions { get; } =
+            new[] { "Fill", "Fit", "Stretch", "Tile", "Center", "Span" };
+
+        public string WallpaperFit
+        {
+            get => _wallpaperFit;
+            set
+            {
+                _wallpaperFit = string.IsNullOrWhiteSpace(value) ? "Fill" : value;
+                OnPropertyChanged();
+                ((RelayCommand)ApplyPoliciesCommand).RaiseCanExecuteChanged();
+            }
         }
 
         public string SelectedWallpaperPath
@@ -445,7 +461,8 @@ namespace IRIS.UI.ViewModels
                     PacketLossWarningThreshold,
                     PacketLossCriticalThreshold,
                     WarningSustainSeconds,
-                    CriticalSustainSeconds
+                    CriticalSustainSeconds,
+                    WallpaperFit
                 );
 
                 StatusMessage = $"Policies successfully deployed to {selectedRoom.RoomNumber}";
@@ -490,6 +507,7 @@ namespace IRIS.UI.ViewModels
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
                 _originalWarningSustainSeconds = WarningSustainSeconds;
                 _originalCriticalSustainSeconds = CriticalSustainSeconds;
+                _originalWallpaperFit = WallpaperFit;
             }
             catch (Exception ex)
             {
@@ -563,7 +581,8 @@ namespace IRIS.UI.ViewModels
                    PacketLossWarningThreshold != _originalPacketLossWarningThreshold ||
                    PacketLossCriticalThreshold != _originalPacketLossCriticalThreshold ||
                    WarningSustainSeconds != _originalWarningSustainSeconds ||
-                   CriticalSustainSeconds != _originalCriticalSustainSeconds;
+                   CriticalSustainSeconds != _originalCriticalSustainSeconds ||
+                   !string.Equals(WallpaperFit, _originalWallpaperFit, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool ValidatePolicySettings()
@@ -668,6 +687,7 @@ namespace IRIS.UI.ViewModels
                 PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
                 WarningSustainSeconds = activePolicy.WarningSustainSeconds;
                 CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
+                WallpaperFit = string.IsNullOrWhiteSpace(activePolicy.WallpaperFit) ? "Fill" : activePolicy.WallpaperFit;
 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
@@ -690,6 +710,7 @@ namespace IRIS.UI.ViewModels
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
                 _originalWarningSustainSeconds = WarningSustainSeconds;
                 _originalCriticalSustainSeconds = CriticalSustainSeconds;
+                _originalWallpaperFit = WallpaperFit;
             }
             else
             {
@@ -722,6 +743,7 @@ namespace IRIS.UI.ViewModels
                 PacketLossCriticalThreshold = 10;
                 WarningSustainSeconds = 30;
                 CriticalSustainSeconds = 20;
+                WallpaperFit = "Fill";
 
                 // Store original values for change tracking
                 _originalWallpaperResetEnabled = WallpaperResetEnabled;
@@ -744,6 +766,7 @@ namespace IRIS.UI.ViewModels
                 _originalPacketLossCriticalThreshold = PacketLossCriticalThreshold;
                 _originalWarningSustainSeconds = WarningSustainSeconds;
                 _originalCriticalSustainSeconds = CriticalSustainSeconds;
+                _originalWallpaperFit = WallpaperFit;
             }
 
             OnPropertyChanged(nameof(CurrentWallpaperStatus));
@@ -884,6 +907,7 @@ namespace IRIS.UI.ViewModels
                     PacketLossCriticalThreshold = activePolicy.PacketLossCriticalThreshold;
                     WarningSustainSeconds = activePolicy.WarningSustainSeconds;
                     CriticalSustainSeconds = activePolicy.CriticalSustainSeconds;
+                    WallpaperFit = string.IsNullOrWhiteSpace(activePolicy.WallpaperFit) ? "Fill" : activePolicy.WallpaperFit;
 
                     _pendingWallpaperData = null;
                     _pendingWallpaperFileName = null;
@@ -917,6 +941,7 @@ namespace IRIS.UI.ViewModels
                     PacketLossCriticalThreshold = 10;
                     WarningSustainSeconds = 30;
                     CriticalSustainSeconds = 20;
+                    WallpaperFit = "Fill";
                 }
             }
             catch (Exception)

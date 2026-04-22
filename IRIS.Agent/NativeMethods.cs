@@ -101,5 +101,21 @@ namespace IRIS.Agent
         public static extern bool SetProcessDpiAwarenessContext(IntPtr dpiAwarenessContext);
 
         public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
+
+        // --- PrintWindow-based screen capture fallback (used on Windows 11 24H2
+        //     where Graphics.CopyFromScreen fails with ERROR_INVALID_HANDLE).
+        //     PrintWindow routes through DWM so it survives the 24H2 GDI
+        //     session-DC regression. ---
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetDesktopWindow();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+        // PW_RENDERFULLCONTENT asks DWM for composited output (incl. UWP/hardware-
+        // accelerated surfaces). Required for modern Windows; ignored pre-8.1.
+        public const uint PW_RENDERFULLCONTENT = 0x00000002;
     }
 }

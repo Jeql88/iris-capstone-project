@@ -26,6 +26,7 @@ namespace IRIS.Core.Services.Contracts
             double? packetLossWarningThreshold = null,
             double? packetLossCriticalThreshold = null,
             int? warningSustainSeconds = null,
-            int? criticalSustainSeconds = null);
+            int? criticalSustainSeconds = null,
+            string? wallpaperFit = null);
     }
 }

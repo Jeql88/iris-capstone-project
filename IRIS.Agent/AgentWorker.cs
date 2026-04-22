@@ -158,6 +158,19 @@ namespace IRIS.Agent
                 Log.Error(ex, "File management API failed to start. Agent will continue without file API.");
             }
 
+            var helperPipeName = _configuration["HelperSettings:PipeName"] ?? "IRIS.Agent.Helper";
+            try
+            {
+                await _helperClient.PingAsync();
+                Log.Information("Privileged helper online (pipe={PipeName})", helperPipeName);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex,
+                    "Privileged helper unreachable — remote shutdown/restart will use direct shutdown.exe fallback (pipe={PipeName})",
+                    helperPipeName);
+            }
+
             var databaseStartupReady = true;
 
             try
@@ -322,25 +335,55 @@ namespace IRIS.Agent
             var idleTime = GetIdleTime();
             Log.Information($"Idle time: {idleTime.TotalMinutes:F1} minutes, threshold: {idleMinutes} minutes");
 
-            if (idleTime.TotalMinutes >= idleMinutes)
+            if (idleTime.TotalMinutes < idleMinutes)
             {
-                Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes. Showing shutdown warning...");
-                var wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
-                    "Auto-Shutdown Warning",
-                    "This PC will shut down due to idle time policy in 15 seconds.\n\nClick Cancel to prevent shutdown.",
-                    15000);
+                return;
+            }
 
-                if (!wasCancelled)
+            Log.Warning($"PC has been idle for {idleTime.TotalMinutes:F1} minutes — auto-shutdown threshold crossed");
+
+            bool wasCancelled = false;
+            if (System.Diagnostics.Process.GetCurrentProcess().SessionId == 0)
+            {
+                Log.Information("No interactive session (Session 0) — skipping Auto-Shutdown Warning dialog");
+            }
+            else
+            {
+                try
                 {
-                    try
-                    {
-                        await helperClient.ForceShutdownAsync(0);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Failed to execute idle-policy shutdown via helper.");
-                    }
+                    wasCancelled = await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                        "Auto-Shutdown Warning",
+                        "This PC will shut down due to idle time policy in 15 seconds.\n\nClick Cancel to prevent shutdown.",
+                        15000);
                 }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to show Auto-Shutdown Warning dialog — proceeding with shutdown");
+                }
+            }
+
+            if (wasCancelled)
+            {
+                Log.Information("Auto-shutdown cancelled by user");
+                return;
+            }
+
+            try
+            {
+                await helperClient.ForceShutdownAsync(0);
+                Log.Information("Auto-shutdown executed via helper");
+            }
+            catch (HelperUnavailableException ex)
+            {
+                Log.Error(ex, "Auto-shutdown failed: helper pipe unavailable");
+            }
+            catch (HelperOperationException ex)
+            {
+                Log.Error(ex, "Auto-shutdown failed: helper operation error (check pipe token)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to execute idle-policy shutdown via helper");
             }
         }
 

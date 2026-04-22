@@ -1083,5 +1083,20 @@ BEGIN
     VALUES ('20260420064041_AddWallpaperBytesToPolicy', '9.0.9');
     END IF;
 END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260422055600_AddPolicyWallpaperFit') THEN
+    ALTER TABLE "Policies" ADD "WallpaperFit" character varying(16) NOT NULL DEFAULT '';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260422055600_AddPolicyWallpaperFit') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260422055600_AddPolicyWallpaperFit', '9.0.9');
+    END IF;
+END $EF$;
 COMMIT;
 

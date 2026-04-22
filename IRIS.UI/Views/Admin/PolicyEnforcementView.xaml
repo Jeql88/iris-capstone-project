@@ -196,11 +196,16 @@
                                         </Grid.ColumnDefinitions>
                                         <ui:TextBox Grid.Column="0" Text="{Binding SelectedWallpaperPath}" 
                                                     IsReadOnly="True" PlaceholderText="No wallpaper selected"/>
-                                        <ui:Button Grid.Column="1" Content="Browse" 
+                                        <ui:Button Grid.Column="1" Content="Browse"
                                                    Icon="{ui:SymbolIcon FolderOpen24}"
-                                                   Command="{Binding BrowseWallpaperCommand}" 
+                                                   Command="{Binding BrowseWallpaperCommand}"
                                                    Appearance="Primary" Margin="8,0,0,0"/>
                                     </Grid>
+
+                                    <TextBlock Text="Fit Mode:" FontSize="12" Margin="0,12,0,6"/>
+                                    <ComboBox ItemsSource="{Binding WallpaperFitOptions}"
+                                              SelectedItem="{Binding WallpaperFit}"
+                                              Width="180" HorizontalAlignment="Left"/>
                                 </StackPanel>
                             </Grid>
                         </ui:Card>

@@ -101,6 +101,15 @@ namespace IRIS.Agent.Logic
 
             _serverTask = Task.Run(() => ListenLoopAsync(_cts.Token));
             Log.Information("Screen snapshot server started on port {Port}", _port);
+
+            // Pre-render the "Screen unavailable" placeholder now, while we
+            // still have a healthy desktop context. If capture later breaks
+            // (e.g. the 24H2 CopyFromScreen regression), serving the placeholder
+            // becomes a pure byte-buffer write — no GDI, no GetHdc, no risk of
+            // the fallback path itself throwing.
+            try { _placeholderFrame = BuildPlaceholderBytes(); }
+            catch (Exception ex) { Log.Warning(ex, "Failed to pre-render placeholder JPEG"); }
+
             _ = Task.Run(LogUrlAclDiagnosticAsync);
             return Task.CompletedTask;
         }
@@ -164,7 +173,29 @@ namespace IRIS.Agent.Logic
                 try
                 {
                     context = await _listener.GetContextAsync();
-                    _ = Task.Run(() => HandleRequestAsync(context), cancellationToken);
+                    var ctx = context;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await HandleRequestAsync(ctx);
+                        }
+                        catch (HttpListenerException hle) when (IsClientDisconnect(hle))
+                        {
+                            // Client went away mid-response (timeout, navigated away,
+                            // poll superseded by a fresher one). Expected, not an error.
+                            Log.Debug("Snapshot client {Ip} disconnected before response completed (Win32={Code}).",
+                                ctx.Request.RemoteEndPoint?.Address, hle.ErrorCode);
+                            try { ctx.Response.Abort(); } catch { }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Snapshot handler threw for {Ip}",
+                                ctx.Request.RemoteEndPoint?.Address);
+                            try { ctx.Response.StatusCode = 500; ctx.Response.Close(); }
+                            catch { try { ctx.Response.Abort(); } catch { } }
+                        }
+                    }, cancellationToken);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -497,39 +528,7 @@ namespace IRIS.Agent.Logic
 
             try
             {
-                var width = Math.Max(320, Math.Min(_maxWidth, 1280));
-                var height = (int)Math.Round(width * 9.0 / 16.0);
-                using var bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
-                using (var g = Graphics.FromImage(bmp))
-                {
-                    g.Clear(Color.FromArgb(25, 28, 36));
-                    using var titleFont = new Font("Segoe UI", Math.Max(12f, width / 40f), FontStyle.Bold);
-                    using var subFont = new Font("Segoe UI", Math.Max(9f, width / 70f));
-                    using var brush = new SolidBrush(Color.FromArgb(235, 235, 240));
-                    using var subBrush = new SolidBrush(Color.FromArgb(160, 165, 175));
-                    var title = "Screen unavailable";
-                    var sub = "Agent session is not interactive (locked or not signed in).";
-                    var titleSize = g.MeasureString(title, titleFont);
-                    var subSize = g.MeasureString(sub, subFont);
-                    g.DrawString(title, titleFont, brush,
-                        (width - titleSize.Width) / 2f, (height - titleSize.Height) / 2f - subSize.Height);
-                    g.DrawString(sub, subFont, subBrush,
-                        (width - subSize.Width) / 2f, (height - titleSize.Height) / 2f + titleSize.Height / 2f);
-                }
-
-                using var ms = new MemoryStream();
-                var encoder = ImageCodecInfo.GetImageDecoders().FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
-                if (encoder != null)
-                {
-                    using var encoderParams = new EncoderParameters(1);
-                    encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 70L);
-                    bmp.Save(ms, encoder, encoderParams);
-                }
-                else
-                {
-                    bmp.Save(ms, ImageFormat.Jpeg);
-                }
-                var bytes = ms.ToArray();
+                var bytes = BuildPlaceholderBytes();
                 _placeholderFrame = bytes;
                 return bytes;
             }
@@ -538,6 +537,43 @@ namespace IRIS.Agent.Logic
                 Log.Warning(ex, "Failed to build placeholder JPEG");
                 return null;
             }
+        }
+
+        private byte[] BuildPlaceholderBytes()
+        {
+            var width = Math.Max(320, Math.Min(_maxWidth, 1280));
+            var height = (int)Math.Round(width * 9.0 / 16.0);
+            using var bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.FromArgb(25, 28, 36));
+                using var titleFont = new Font("Segoe UI", Math.Max(12f, width / 40f), FontStyle.Bold);
+                using var subFont = new Font("Segoe UI", Math.Max(9f, width / 70f));
+                using var brush = new SolidBrush(Color.FromArgb(235, 235, 240));
+                using var subBrush = new SolidBrush(Color.FromArgb(160, 165, 175));
+                var title = "Screen unavailable";
+                var sub = "Agent cannot capture the desktop right now.";
+                var titleSize = g.MeasureString(title, titleFont);
+                var subSize = g.MeasureString(sub, subFont);
+                g.DrawString(title, titleFont, brush,
+                    (width - titleSize.Width) / 2f, (height - titleSize.Height) / 2f - subSize.Height);
+                g.DrawString(sub, subFont, subBrush,
+                    (width - subSize.Width) / 2f, (height - titleSize.Height) / 2f + titleSize.Height / 2f);
+            }
+
+            using var ms = new MemoryStream();
+            var encoder = ImageCodecInfo.GetImageDecoders().FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+            if (encoder != null)
+            {
+                using var encoderParams = new EncoderParameters(1);
+                encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 70L);
+                bmp.Save(ms, encoder, encoderParams);
+            }
+            else
+            {
+                bmp.Save(ms, ImageFormat.Jpeg);
+            }
+            return ms.ToArray();
         }
 
         private DateTime _lastCaptureErrorLogUtc = DateTime.MinValue;
@@ -566,35 +602,13 @@ namespace IRIS.Agent.Logic
                 }
 
                 var bounds = primaryScreen.Bounds;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 using var full = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
-                using (var graphics = Graphics.FromImage(full))
+                if (!TryCaptureDesktopInto(full, bounds))
                 {
-                    graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-                    
-                    // Draw cursor
-                    try
-                    {
-                        var cursorInfo = new NativeMethods.CURSORINFO { cbSize = Marshal.SizeOf(typeof(NativeMethods.CURSORINFO)) };
-                        if (NativeMethods.GetCursorInfo(out cursorInfo) && cursorInfo.flags == NativeMethods.CURSOR_SHOWING)
-                        {
-                            var hdc = graphics.GetHdc();
-                            try
-                            {
-                                if (NativeMethods.GetIconInfo(cursorInfo.hCursor, out var iconInfo))
-                                {
-                                    var x = cursorInfo.ptScreenPos.x - iconInfo.xHotspot - bounds.Left;
-                                    var y = cursorInfo.ptScreenPos.y - iconInfo.yHotspot - bounds.Top;
-                                    NativeMethods.DrawIcon(hdc, x, y, cursorInfo.hCursor);
-                                }
-                            }
-                            finally
-                            {
-                                graphics.ReleaseHdc(hdc);
-                            }
-                        }
-                    }
-                    catch { /* Cursor capture failed, continue without it */ }
+                    return null;
                 }
+                LogCaptureTiming(sw.ElapsedMilliseconds);
 
                 var targetWidth = Math.Min(_maxWidth, full.Width);
                 var targetHeight = Math.Max(1, (int)Math.Round(full.Height * (targetWidth / (double)full.Width)));
@@ -628,6 +642,133 @@ namespace IRIS.Agent.Logic
                 LogCaptureFailure(ex);
                 return null;
             }
+        }
+
+        // http.sys surfaces client-disconnect conditions through a handful of
+        // Win32 error codes on the response-write path. None of them indicate a
+        // bug in the agent — the remote peer simply went away.
+        private static bool IsClientDisconnect(HttpListenerException ex) => ex.ErrorCode switch
+        {
+            5     => true,  // ERROR_ACCESS_DENIED — raised on write when http.sys has
+                            // torn down the request because the client closed.
+            64    => true,  // ERROR_NETNAME_DELETED
+            1229  => true,  // ERROR_CONNECTION_INVALID
+            1236  => true,  // ERROR_CONNECTION_ABORTED
+            _     => false
+        };
+
+        // True when PrintWindow has been confirmed necessary on this host (e.g.
+        // Windows 11 24H2 where CopyFromScreen returns ERROR_INVALID_HANDLE).
+        // We sticky-flip to the fallback after the first confirmed failure to
+        // avoid burning a GDI exception on every capture call.
+        private volatile bool _preferPrintWindowPath;
+
+        private bool TryCaptureDesktopInto(Bitmap target, Rectangle bounds)
+        {
+            if (!_preferPrintWindowPath)
+            {
+                try
+                {
+                    using var graphics = Graphics.FromImage(target);
+                    graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+                    DrawCursorOnto(graphics, bounds);
+                    return true;
+                }
+                catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 6)
+                {
+                    // ERROR_INVALID_HANDLE — the 24H2 regression. Stop trying
+                    // CopyFromScreen on this process; it won't recover without
+                    // a logout. Fall through to PrintWindow.
+                    _preferPrintWindowPath = true;
+                    Log.Information("CopyFromScreen failed with invalid-handle; switching this process to PrintWindow capture path.");
+                }
+                catch (Exception ex)
+                {
+                    LogCaptureFailure(ex);
+                    return false;
+                }
+            }
+
+            return TryCaptureViaPrintWindow(target, bounds);
+        }
+
+        private bool TryCaptureViaPrintWindow(Bitmap target, Rectangle bounds)
+        {
+            // Ask DWM (via the desktop window) to composite its output into
+            // our bitmap's DC. PW_RENDERFULLCONTENT includes UWP / hardware-
+            // accelerated surfaces. Works on 24H2 where CopyFromScreen fails.
+            try
+            {
+                using var graphics = Graphics.FromImage(target);
+                var hdc = graphics.GetHdc();
+                try
+                {
+                    var desktop = NativeMethods.GetDesktopWindow();
+                    if (!NativeMethods.PrintWindow(desktop, hdc, NativeMethods.PW_RENDERFULLCONTENT))
+                    {
+                        LogCaptureFailure($"PrintWindow returned false (LastError={Marshal.GetLastWin32Error()}).");
+                        return false;
+                    }
+                }
+                finally
+                {
+                    graphics.ReleaseHdc(hdc);
+                }
+
+                // PrintWindow on the desktop HWND doesn't draw the cursor
+                // (the cursor isn't part of the DWM-composited tree), so
+                // overlay it ourselves — same code path as CopyFromScreen.
+                using (var cursorGraphics = Graphics.FromImage(target))
+                {
+                    DrawCursorOnto(cursorGraphics, bounds);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogCaptureFailure(ex);
+                return false;
+            }
+        }
+
+        private static void DrawCursorOnto(Graphics graphics, Rectangle bounds)
+        {
+            try
+            {
+                var cursorInfo = new NativeMethods.CURSORINFO { cbSize = Marshal.SizeOf(typeof(NativeMethods.CURSORINFO)) };
+                if (!NativeMethods.GetCursorInfo(out cursorInfo) || cursorInfo.flags != NativeMethods.CURSOR_SHOWING)
+                {
+                    return;
+                }
+
+                var hdc = graphics.GetHdc();
+                try
+                {
+                    if (NativeMethods.GetIconInfo(cursorInfo.hCursor, out var iconInfo))
+                    {
+                        var x = cursorInfo.ptScreenPos.x - iconInfo.xHotspot - bounds.Left;
+                        var y = cursorInfo.ptScreenPos.y - iconInfo.yHotspot - bounds.Top;
+                        NativeMethods.DrawIcon(hdc, x, y, cursorInfo.hCursor);
+                    }
+                }
+                finally
+                {
+                    graphics.ReleaseHdc(hdc);
+                }
+            }
+            catch { /* cursor overlay is best-effort */ }
+        }
+
+        private DateTime _lastCaptureTimingLogUtc = DateTime.MinValue;
+        private void LogCaptureTiming(long elapsedMs)
+        {
+            // Throttle to one line per 10s so we don't flood the log under normal polling,
+            // but still know at a glance which path is active and roughly how fast it is.
+            var now = DateTime.UtcNow;
+            if ((now - _lastCaptureTimingLogUtc).TotalSeconds < 10) return;
+            _lastCaptureTimingLogUtc = now;
+            var path = _preferPrintWindowPath ? "PrintWindow" : "CopyFromScreen";
+            Log.Information("Snapshot capture via {Path} took {Elapsed} ms.", path, elapsedMs);
         }
 
         private void LogCaptureFailure(Exception ex)
