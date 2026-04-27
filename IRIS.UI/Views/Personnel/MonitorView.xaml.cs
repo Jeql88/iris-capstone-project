@@ -20,10 +20,21 @@ namespace IRIS.UI.Views.Personnel
             if (e.OriginalSource is DependencyObject source && FindParent<Button>(source) != null)
                 return;
 
+            // Don't intercept clicks on the bulk-mode checkbox itself —
+            // its IsChecked binding handles selection.
+            if (e.OriginalSource is DependencyObject src2 && FindParent<System.Windows.Controls.CheckBox>(src2) != null)
+                return;
+
             if (sender is FrameworkElement element && element.Tag is PCDisplayModel pc)
             {
                 if (DataContext is MonitorViewModel vm)
                 {
+                    if (vm.IsBulkActionMode)
+                    {
+                        // In bulk mode, clicking anywhere on the tile toggles selection.
+                        pc.IsSelected = !pc.IsSelected;
+                        return;
+                    }
                     vm.ToggleCardDetailsCommand.Execute(pc);
                 }
             }

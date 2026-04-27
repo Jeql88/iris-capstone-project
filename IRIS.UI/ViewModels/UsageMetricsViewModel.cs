@@ -83,9 +83,33 @@ namespace IRIS.UI.ViewModels
         }
 
         public ObservableCollection<AppUsageRow> FilteredApplicationUsage { get; } = new();
+        public ObservableCollection<AppAggregatedRow> GroupedApplicationRows { get; } = new();
+        public ObservableCollection<PCAggregatedRow> GroupedPCRows { get; } = new();
         public ObservableCollection<WebUsageRow> FilteredWebsiteUsage { get; } = new();
         public ObservableCollection<string> AppLaboratoryOptions { get; } = new() { "All Laboratories" };
         public ObservableCollection<string> WebLaboratoryOptions { get; } = new() { "All Laboratories" };
+
+        public string[] GroupingOptions { get; } = new[] { "Application", "PC", "None" };
+
+        private string _selectedGrouping = "Application";
+        public string SelectedGrouping
+        {
+            get => _selectedGrouping;
+            set
+            {
+                if (_selectedGrouping == value) return;
+                _selectedGrouping = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsGroupedByApplication));
+                OnPropertyChanged(nameof(IsGroupedByPC));
+                OnPropertyChanged(nameof(IsUngrouped));
+                _ = LoadAppPageAsync(1);
+            }
+        }
+
+        public bool IsGroupedByApplication => _selectedGrouping == "Application";
+        public bool IsGroupedByPC => _selectedGrouping == "PC";
+        public bool IsUngrouped => _selectedGrouping == "None";
 
         public DateTime? StartDate
         {
@@ -360,14 +384,70 @@ namespace IRIS.UI.ViewModels
 
                 var startUtc = DateTime.SpecifyKind(_appliedStartDate ?? DateTime.UnixEpoch, DateTimeKind.Utc);
                 var endUtc = DateTime.SpecifyKind((_appliedEndDate?.AddDays(1).AddSeconds(-1)) ?? DateTime.UtcNow, DateTimeKind.Utc);
+                var roomFilter = _appliedAppLaboratory == "All Laboratories" ? null : _appliedAppLaboratory;
 
+                if (IsGroupedByApplication)
+                {
+                    var rows = await _usageMetricsService.GetApplicationUsageGroupedByApplicationAsync(
+                        startUtc, endUtc, _appliedAppSearchText, roomFilter);
+
+                    GroupedApplicationRows.Clear();
+                    foreach (var r in rows)
+                    {
+                        GroupedApplicationRows.Add(new AppAggregatedRow
+                        {
+                            ApplicationName = r.ApplicationName,
+                            TotalDuration = r.TotalDuration,
+                            SessionCount = r.SessionCount,
+                            UniquePCCount = r.UniquePCCount,
+                            FirstSeen = DateTimeDisplayHelper.ToManilaFromUtc(r.FirstSeen),
+                            LastSeen = DateTimeDisplayHelper.ToManilaFromUtc(r.LastSeen),
+                            IconBytes = IconExtractor.TryExtractForApplication(r.ApplicationName)
+                        });
+                    }
+                    GroupedPCRows.Clear();
+                    FilteredApplicationUsage.Clear();
+                    AppCurrentPage = 1;
+                    AppTotalPages = 1;
+                    AppTotalCount = rows.Count;
+                    return;
+                }
+
+                if (IsGroupedByPC)
+                {
+                    var rows = await _usageMetricsService.GetApplicationUsageGroupedByPCAsync(
+                        startUtc, endUtc, _appliedAppSearchText, roomFilter);
+
+                    GroupedPCRows.Clear();
+                    foreach (var r in rows)
+                    {
+                        GroupedPCRows.Add(new PCAggregatedRow
+                        {
+                            PCName = r.PCName,
+                            RoomNumber = r.RoomNumber,
+                            TotalDuration = r.TotalDuration,
+                            SessionCount = r.SessionCount,
+                            UniqueApplicationCount = r.UniqueApplicationCount,
+                            FirstSeen = DateTimeDisplayHelper.ToManilaFromUtc(r.FirstSeen),
+                            LastSeen = DateTimeDisplayHelper.ToManilaFromUtc(r.LastSeen)
+                        });
+                    }
+                    GroupedApplicationRows.Clear();
+                    FilteredApplicationUsage.Clear();
+                    AppCurrentPage = 1;
+                    AppTotalPages = 1;
+                    AppTotalCount = rows.Count;
+                    return;
+                }
+
+                // Ungrouped (per-record) view — original behavior.
                 var result = await _usageMetricsService.GetApplicationUsageDetailsPaginatedAsync(
                     startUtc,
                     endUtc,
                     pageNumber,
                     _pageSize,
                     _appliedAppSearchText,
-                    _appliedAppLaboratory == "All Laboratories" ? null : _appliedAppLaboratory);
+                    roomFilter);
 
                 FilteredApplicationUsage.Clear();
                 foreach (var item in result.Items)
@@ -383,6 +463,8 @@ namespace IRIS.UI.ViewModels
                         IconBytes = IconExtractor.TryExtractForApplication(item.ApplicationName)
                     });
                 }
+                GroupedApplicationRows.Clear();
+                GroupedPCRows.Clear();
 
                 AppCurrentPage = result.PageNumber;
                 AppTotalPages = result.TotalPages;
@@ -608,6 +690,51 @@ namespace IRIS.UI.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    public class AppAggregatedRow
+    {
+        public string ApplicationName { get; set; } = string.Empty;
+        public TimeSpan TotalDuration { get; set; }
+        public int SessionCount { get; set; }
+        public int UniquePCCount { get; set; }
+        public DateTime FirstSeen { get; set; }
+        public DateTime LastSeen { get; set; }
+        public byte[]? IconBytes { get; set; }
+        public bool HasIconBytes => IconBytes != null && IconBytes.Length > 0;
+
+        public string FormattedTotalDuration
+        {
+            get
+            {
+                var d = TotalDuration;
+                if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+                if (d.TotalMinutes >= 1) return $"{d.Minutes}m {d.Seconds}s";
+                return $"{d.Seconds}s";
+            }
+        }
+    }
+
+    public class PCAggregatedRow
+    {
+        public string PCName { get; set; } = string.Empty;
+        public string RoomNumber { get; set; } = string.Empty;
+        public TimeSpan TotalDuration { get; set; }
+        public int SessionCount { get; set; }
+        public int UniqueApplicationCount { get; set; }
+        public DateTime FirstSeen { get; set; }
+        public DateTime LastSeen { get; set; }
+
+        public string FormattedTotalDuration
+        {
+            get
+            {
+                var d = TotalDuration;
+                if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+                if (d.TotalMinutes >= 1) return $"{d.Minutes}m {d.Seconds}s";
+                return $"{d.Seconds}s";
+            }
+        }
     }
 
     public class AppUsageRow : INotifyPropertyChanged

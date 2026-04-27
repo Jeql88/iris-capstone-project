@@ -27,3 +27,27 @@ public class UsageMetricsSummaryDto
     public int TotalApplications { get; set; }
     public int TotalWebsites { get; set; }
 }
+
+// Aggregated row when Usage Metrics is grouped by application:
+// one row per distinct ApplicationName across the filtered range.
+public class ApplicationUsageAggregatedDto
+{
+    public string ApplicationName { get; set; } = string.Empty;
+    public TimeSpan TotalDuration { get; set; }
+    public int SessionCount { get; set; }
+    public int UniquePCCount { get; set; }
+    public DateTime FirstSeen { get; set; }
+    public DateTime LastSeen { get; set; }
+}
+
+// Aggregated row when grouped by PC: one row per PC.
+public class PCUsageAggregatedDto
+{
+    public string PCName { get; set; } = string.Empty;
+    public string RoomNumber { get; set; } = string.Empty;
+    public TimeSpan TotalDuration { get; set; }
+    public int SessionCount { get; set; }
+    public int UniqueApplicationCount { get; set; }
+    public DateTime FirstSeen { get; set; }
+    public DateTime LastSeen { get; set; }
+}

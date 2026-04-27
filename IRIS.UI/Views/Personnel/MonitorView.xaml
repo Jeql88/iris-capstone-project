@@ -32,6 +32,38 @@
                     <TextBlock Text="PC Monitoring" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
+                <!-- Bulk-actions toolbar -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Bulk-mode-only buttons -->
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsBulkActionMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding SelectedBulkCount, StringFormat={}{0} selected}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <ui:Button Content="Select All Online" Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                                   Command="{Binding SelectAllOnlineCommand}"
+                                   Margin="0,0,8,0"/>
+                        <ui:Button Content="Send Message" Icon="{ui:SymbolIcon Comment24}"
+                                   Command="{Binding BulkSendMessageCommand}"
+                                   Margin="0,0,8,0"/>
+                        <ui:Button Content="Freeze" Icon="{ui:SymbolIcon Snowflake24}" Appearance="Caution"
+                                   Command="{Binding BulkFreezeCommand}"
+                                   Margin="0,0,8,0"/>
+                    </StackPanel>
+                    <ui:Button Icon="{ui:SymbolIcon CheckboxChecked24}"
+                               Content="Bulk Actions"
+                               Command="{Binding ToggleBulkActionsCommand}">
+                        <ui:Button.Style>
+                            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBulkActionMode}" Value="True">
+                                        <Setter Property="Appearance" Value="Primary"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:Button.Style>
+                    </ui:Button>
+                </StackPanel>
+
             </Grid>
 
             <!-- Stats cards -->
@@ -220,6 +252,14 @@
                                     </Border.Style>
 
                                     <Grid Margin="10">
+                                        <!-- Bulk-action checkbox overlay (top-left, only in bulk mode).
+                                             ZIndex pushes it above the tile content so the checkbox
+                                             toggles selection without hitting the PCCard_Click handler. -->
+                                        <CheckBox HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                  Margin="-4,-4,0,0" Panel.ZIndex="100"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  Visibility="{Binding DataContext.IsBulkActionMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
                                         <!-- Front face -->
                                         <Grid>
                                             <Grid.Style>

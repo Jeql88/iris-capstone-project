@@ -20,7 +20,11 @@ public class ProcessMonitor
         "SgrmBroker", "spoolsv", "WmiPrvSE", "audiodg", "dasHost",
         "TextInputHost", "StartMenuExperienceHost", "SearchHost", "ShellExperienceHost",
         "ApplicationFrameHost", "SystemSettings", "LockApp", "UserOOBEBroker",
-        "MusNotification", "MusNotifyIcon", "WUDFHost", "CompPkgSrv", "explorer"
+        "MusNotification", "MusNotifyIcon", "WUDFHost", "CompPkgSrv", "explorer",
+        // Don't record the agent itself as a tracked application — it's
+        // operational noise. The dashboard (IRIS.UI) is intentionally NOT
+        // listed here, since admins want to see UI usage in metrics.
+        "iris.agent"
     };
     private readonly HashSet<string> _multiProcessApps = new() { "brave", "chrome", "msedge", "firefox", "msedgewebview2" };
 

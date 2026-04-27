@@ -353,6 +353,28 @@ namespace IRIS.Agent.Logic
                         await RemoteMessageDialog.ShowInfoAsync("Message from IRIS", decodedMessage);
                     }
                 }
+
+                if (response.Equals("RDPWarn", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("Showing Remote Desktop incoming warning for PC {MacAddress}", _macAddress);
+                    if (Process.GetCurrentProcess().SessionId == 0)
+                    {
+                        Log.Information("No interactive session — skipping Remote Desktop warning dialog for PC {MacAddress}", _macAddress);
+                        return;
+                    }
+                    try
+                    {
+                        await ShutdownWarningDialog.ShowCancelOnlyWarningAsync(
+                            "Remote Desktop incoming",
+                            "An IT/Admin operator is about to connect to this PC in {0} seconds.\n\nClick Cancel if you do not want to be observed (the operator will see your refusal).",
+                            15000);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to show RDP incoming warning dialog");
+                    }
+                    return;
+                }
             }
             catch (Exception ex)
             {

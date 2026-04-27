@@ -82,7 +82,7 @@ namespace IRIS.Agent
                 options,
                 freezeAutoUnfreezeMinutes,
                 _helperClient);
-            _monitoringController = new MonitoringController(monitoringLogic, _configuration);
+            _monitoringController = new MonitoringController(monitoringLogic, _configuration, pcLogic);
             var screenStreamPort = int.TryParse(_configuration["AgentSettings:ScreenStreamPort"], out var ssp) ? ssp : 5057;
             var snapshotMaxWidth = int.TryParse(_configuration["AgentSettings:SnapshotMaxWidth"], out var smw) ? smw : 1280;
             snapshotMaxWidth = Math.Clamp(snapshotMaxWidth, 640, 1920);
@@ -225,6 +225,12 @@ namespace IRIS.Agent
             {
                 databaseStartupReady = false;
                 Log.Error(ex, "Database-dependent startup failed. Agent will continue running snapshot/file endpoints and command polling in degraded mode.");
+                // The monitoring loop will retry RegisterOrUpdatePCAsync on the
+                // first successful heartbeat instead of leaving the PC's
+                // hardware/OS info stale until the next reboot or the hourly
+                // tick (which itself wouldn't happen if monitoring never
+                // started).
+                _monitoringController?.MarkRegisterPending();
             }
 
             // Start monitoring loop

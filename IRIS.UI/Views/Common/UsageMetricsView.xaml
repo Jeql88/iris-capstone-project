@@ -53,6 +53,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
@@ -172,8 +173,24 @@
                         </StackPanel>
                     </ui:Card>
 
-                    <Grid Grid.Row="2" Margin="10,0,10,0" MinHeight="280">
-                        <ui:DataGrid ItemsSource="{Binding FilteredApplicationUsage}"
+                    <!-- Grouping toolbar — sits above the data grid so the
+                         user can flip between Application, PC, and per-record
+                         (None) views without re-running filters. -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="10,0,10,8" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="GroupList24" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,8,0"/>
+                        <TextBlock Text="Group by:" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <ComboBox Width="160" ItemsSource="{Binding GroupingOptions}"
+                                  SelectedItem="{Binding SelectedGrouping}"/>
+                        <TextBlock VerticalAlignment="Center" Margin="16,0,0,0"
+                                   Text="{Binding AppTotalCount, StringFormat={}{0} rows}"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="3" Margin="10,0,10,0" MinHeight="280">
+                        <!-- Per-record DataGrid (default Ungrouped view) -->
+                        <ui:DataGrid Visibility="{Binding IsUngrouped, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                     ItemsSource="{Binding FilteredApplicationUsage}"
                                      AutoGenerateColumns="False"
                                      IsReadOnly="True"
                                      CanUserAddRows="False"
@@ -257,9 +274,61 @@
                                 <TextBlock Text="Try adjusting the filters or date range" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- Aggregated DataGrid: Group by Application -->
+                        <ui:DataGrid Visibility="{Binding IsGroupedByApplication, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                     ItemsSource="{Binding GroupedApplicationRows}"
+                                     AutoGenerateColumns="False"
+                                     IsReadOnly="True"
+                                     CanUserAddRows="False"
+                                     CanUserDeleteRows="False"
+                                     SelectionMode="Single">
+                            <ui:DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Application" Width="*" SortMemberPath="ApplicationName">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="6,4">
+                                                <Image Source="{Binding IconBytes, Converter={StaticResource ByteArrayToImageSourceConverter}}"
+                                                       Width="20" Height="20" Margin="0,0,8,0"
+                                                       Visibility="{Binding HasIconBytes, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                <TextBlock Text="{Binding ApplicationName}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Total Time" Binding="{Binding FormattedTotalDuration}" Width="120" SortMemberPath="TotalDuration"/>
+                                <DataGridTextColumn Header="Sessions" Binding="{Binding SessionCount}" Width="90"/>
+                                <DataGridTextColumn Header="PCs" Binding="{Binding UniquePCCount}" Width="70"/>
+                                <DataGridTextColumn Header="First Seen" Binding="{Binding FirstSeen, StringFormat=g}" Width="140"/>
+                                <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeen, StringFormat=g}" Width="140"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
+
+                        <!-- Aggregated DataGrid: Group by PC -->
+                        <ui:DataGrid Visibility="{Binding IsGroupedByPC, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                     ItemsSource="{Binding GroupedPCRows}"
+                                     AutoGenerateColumns="False"
+                                     IsReadOnly="True"
+                                     CanUserAddRows="False"
+                                     CanUserDeleteRows="False"
+                                     SelectionMode="Single">
+                            <ui:DataGrid.Columns>
+                                <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="*"/>
+                                <DataGridTextColumn Header="Lab" Binding="{Binding RoomNumber}" Width="100"/>
+                                <DataGridTextColumn Header="Total Time" Binding="{Binding FormattedTotalDuration}" Width="120" SortMemberPath="TotalDuration"/>
+                                <DataGridTextColumn Header="Sessions" Binding="{Binding SessionCount}" Width="90"/>
+                                <DataGridTextColumn Header="Apps" Binding="{Binding UniqueApplicationCount}" Width="70"/>
+                                <DataGridTextColumn Header="First Seen" Binding="{Binding FirstSeen, StringFormat=g}" Width="140"/>
+                                <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeen, StringFormat=g}" Width="140"/>
+                            </ui:DataGrid.Columns>
+                        </ui:DataGrid>
                     </Grid>
 
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <!-- Pagination only applies to the per-record (Ungrouped) view.
+                         Hidden when grouped because the aggregations are returned in
+                         full and don't paginate. -->
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0"
+                                Visibility="{Binding IsUngrouped, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:Button Command="{Binding AppPreviousPageCommand}"
                                    Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"

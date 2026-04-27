@@ -24,9 +24,12 @@ namespace IRIS.Agent.Logic
         private readonly List<(IPAddress Network, IPAddress Mask)> _localSubnets;
         private readonly HashSet<string> _controllerIps = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _controllerLock = new();
-        private readonly HttpListener _listener = new();
-        private CancellationTokenSource? _cts;
-        private Task? _serverTask;
+        // Raw TCP HTTP server sidesteps http.sys entirely. Windows 11 24H2
+        // introduced a regression in http.sys response-write teardown under
+        // concurrent short-lived Connection: close clients, which is exactly
+        // what the UI's snapshot poller looks like. TcpListener + manual
+        // HTTP framing is immune to that regression by construction.
+        private RawHttpServer? _server;
 
         private readonly SemaphoreSlim _captureGate = new(1, 1);
         private byte[]? _cachedFrame;
@@ -70,36 +73,12 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        public Task StartAsync()
+        public async Task StartAsync()
         {
-            if (_listener.IsListening)
-            {
-                return Task.CompletedTask;
-            }
+            if (_server != null) return;
 
-            _cts = new CancellationTokenSource();
-            foreach (var prefix in GetListenerPrefixes())
-            {
-                _listener.Prefixes.Add(prefix);
-            }
-
-            try
-            {
-                _listener.Start();
-            }
-            catch (HttpListenerException ex) when (ex.ErrorCode == 5)
-            {
-                var currentUser = Environment.UserDomainName + "\\" + Environment.UserName;
-                Log.Error(ex,
-                    "Access denied while starting snapshot listener on port {Port}. " +
-                    "Run the agent as Administrator once or reserve URL ACL with: netsh http add urlacl url=http://+:{UrlAclPort}/ user={CurrentUser}",
-                    _port,
-                    _port,
-                    currentUser);
-                throw;
-            }
-
-            _serverTask = Task.Run(() => ListenLoopAsync(_cts.Token));
+            _server = new RawHttpServer(_port, HandleRequestAsync);
+            await _server.StartAsync();
             Log.Information("Screen snapshot server started on port {Port}", _port);
 
             // Pre-render the "Screen unavailable" placeholder now, while we
@@ -109,124 +88,27 @@ namespace IRIS.Agent.Logic
             // the fallback path itself throwing.
             try { _placeholderFrame = BuildPlaceholderBytes(); }
             catch (Exception ex) { Log.Warning(ex, "Failed to pre-render placeholder JPEG"); }
-
-            _ = Task.Run(LogUrlAclDiagnosticAsync);
-            return Task.CompletedTask;
-        }
-
-        private async Task LogUrlAclDiagnosticAsync()
-        {
-            try
-            {
-                var psi = new System.Diagnostics.ProcessStartInfo("netsh",
-                    $"http show urlacl url=http://+:{_port}/")
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using var proc = System.Diagnostics.Process.Start(psi);
-                if (proc == null) return;
-                var stdout = await proc.StandardOutput.ReadToEndAsync();
-                await proc.WaitForExitAsync();
-                var oneLine = stdout.Replace('\r', ' ').Replace('\n', ' ').Trim();
-                Log.Information("URL ACL for port {Port}: {Acl}", _port,
-                    string.IsNullOrWhiteSpace(oneLine) ? "(no reservation)" : oneLine);
-            }
-            catch (Exception ex)
-            {
-                Log.Debug(ex, "Failed to query URL ACL diagnostic");
-            }
-        }
-
-        private IEnumerable<string> GetListenerPrefixes()
-        {
-            // Wildcard prefix accepts requests on any NIC/IP.
-            // Requires URL ACL: netsh http add urlacl url=http://+:{port}/ user=Everyone
-            // (registered by the MSI installer)
-            return [$"http://+:{_port}/"];
         }
 
         public async Task StopAsync()
         {
-            if (!_listener.IsListening)
-            {
-                return;
-            }
-
-            _cts?.Cancel();
-            _listener.Stop();
-            _listener.Close();
-            if (_serverTask != null)
-            {
-                await _serverTask;
-            }
+            if (_server == null) return;
+            await _server.StopAsync();
+            _server = null;
             Log.Information("Screen snapshot server stopped");
         }
 
-        private async Task ListenLoopAsync(CancellationToken cancellationToken)
+        private async Task HandleRequestAsync(RawHttpContext context, CancellationToken ct)
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                HttpListenerContext? context = null;
-                try
-                {
-                    context = await _listener.GetContextAsync();
-                    var ctx = context;
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await HandleRequestAsync(ctx);
-                        }
-                        catch (HttpListenerException hle) when (IsClientDisconnect(hle))
-                        {
-                            // Client went away mid-response (timeout, navigated away,
-                            // poll superseded by a fresher one). Expected, not an error.
-                            Log.Debug("Snapshot client {Ip} disconnected before response completed (Win32={Code}).",
-                                ctx.Request.RemoteEndPoint?.Address, hle.ErrorCode);
-                            try { ctx.Response.Abort(); } catch { }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "Snapshot handler threw for {Ip}",
-                                ctx.Request.RemoteEndPoint?.Address);
-                            try { ctx.Response.StatusCode = 500; ctx.Response.Close(); }
-                            catch { try { ctx.Response.Abort(); } catch { } }
-                        }
-                    }, cancellationToken);
-                }
-                catch (ObjectDisposedException)
-                {
-                    break;
-                }
-                catch (HttpListenerException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Screen snapshot listener error");
-                    if (context != null)
-                    {
-                        try { context.Response.StatusCode = 500; context.Response.Close(); } catch { }
-                    }
-                }
-            }
-        }
-
-        private async Task HandleRequestAsync(HttpListenerContext context)
-        {
-            var path = context.Request.Url?.AbsolutePath?.ToLowerInvariant() ?? "/";
-            var remoteIp = context.Request.RemoteEndPoint?.Address?.ToString() ?? "?";
+            var path = (context.Request.Path ?? "/").ToLowerInvariant();
+            var remoteIp = context.RemoteEndPoint?.Address?.ToString() ?? "?";
             int status;
 
             if (path == "/health")
             {
                 context.Response.StatusCode = 200;
-                await context.Response.OutputStream.WriteAsync("ok"u8.ToArray());
-                context.Response.Close();
+                context.Response.ContentType = "text/plain";
+                context.Response.SetBody("ok"u8.ToArray());
                 LogRequestOutcome(path, remoteIp, 200, null);
                 return;
             }
@@ -234,7 +116,6 @@ namespace IRIS.Agent.Logic
             if (path != "/snapshot")
             {
                 context.Response.StatusCode = status = 404;
-                context.Response.Close();
                 LogRequestOutcome(path, remoteIp, status, "unknown path");
                 return;
             }
@@ -242,7 +123,6 @@ namespace IRIS.Agent.Logic
             if (!HasValidToken(context))
             {
                 context.Response.StatusCode = status = 401;
-                context.Response.Close();
                 var hasHeader = !string.IsNullOrWhiteSpace(context.Request.Headers["X-IRIS-Snapshot-Token"]);
                 var hasQuery = !string.IsNullOrWhiteSpace(context.Request.QueryString["token"]);
                 LogRequestOutcome(path, remoteIp, status,
@@ -255,7 +135,6 @@ namespace IRIS.Agent.Logic
             if (!IsAllowedSource(context))
             {
                 context.Response.StatusCode = status = 403;
-                context.Response.Close();
                 LogRequestOutcome(path, remoteIp, status, "source not allowed");
                 return;
             }
@@ -269,7 +148,6 @@ namespace IRIS.Agent.Logic
                 if (frame == null || frame.Length == 0)
                 {
                     context.Response.StatusCode = status = 204;
-                    context.Response.Close();
                     LogEmptyResponse();
                     LogRequestOutcome(path, remoteIp, status, "empty frame");
                     return;
@@ -278,9 +156,7 @@ namespace IRIS.Agent.Logic
 
             context.Response.StatusCode = status = 200;
             context.Response.ContentType = "image/jpeg";
-            context.Response.ContentLength64 = frame.Length;
-            await context.Response.OutputStream.WriteAsync(frame, 0, frame.Length);
-            context.Response.Close();
+            context.Response.SetBody(frame);
             LogRequestOutcome(path, remoteIp, status, $"{frame.Length} bytes");
         }
 
@@ -311,14 +187,14 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        private bool IsAllowedSource(HttpListenerContext context)
+        private bool IsAllowedSource(RawHttpContext context)
         {
             if (_allowedSourceIps.Count == 0 && !_allowLocalSubnet && !_controllerDiscoveryMode)
             {
                 return true;
             }
 
-            var remoteAddress = context.Request.RemoteEndPoint?.Address;
+            var remoteAddress = context.RemoteEndPoint?.Address;
             if (remoteAddress == null)
             {
                 return false;
@@ -361,14 +237,14 @@ namespace IRIS.Agent.Logic
             return false;
         }
 
-        private void RegisterControllerIpIfNeeded(HttpListenerContext context)
+        private void RegisterControllerIpIfNeeded(RawHttpContext context)
         {
             if (!_controllerDiscoveryMode)
             {
                 return;
             }
 
-            var remoteAddress = context.Request.RemoteEndPoint?.Address;
+            var remoteAddress = context.RemoteEndPoint?.Address;
             if (remoteAddress == null)
             {
                 return;
@@ -454,7 +330,7 @@ namespace IRIS.Agent.Logic
             return new IPAddress(networkBytes);
         }
 
-        private bool HasValidToken(HttpListenerContext context)
+        private bool HasValidToken(RawHttpContext context)
         {
             if (string.IsNullOrWhiteSpace(_accessToken))
             {
@@ -644,27 +520,31 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        // http.sys surfaces client-disconnect conditions through a handful of
-        // Win32 error codes on the response-write path. None of them indicate a
-        // bug in the agent — the remote peer simply went away.
-        private static bool IsClientDisconnect(HttpListenerException ex) => ex.ErrorCode switch
-        {
-            5     => true,  // ERROR_ACCESS_DENIED — raised on write when http.sys has
-                            // torn down the request because the client closed.
-            64    => true,  // ERROR_NETNAME_DELETED
-            1229  => true,  // ERROR_CONNECTION_INVALID
-            1236  => true,  // ERROR_CONNECTION_ABORTED
-            _     => false
-        };
-
         // True when PrintWindow has been confirmed necessary on this host (e.g.
         // Windows 11 24H2 where CopyFromScreen returns ERROR_INVALID_HANDLE).
         // We sticky-flip to the fallback after the first confirmed failure to
         // avoid burning a GDI exception on every capture call.
         private volatile bool _preferPrintWindowPath;
 
+        // True when even PrintWindow has failed and we've switched to the WinRT
+        // Windows.Graphics.Capture path (final rung of the fallback ladder).
+        private volatile bool _preferGraphicsCapturePath;
+        private GraphicsCaptureLogic? _graphicsCapture;
+        private readonly object _graphicsCaptureInitLock = new();
+        // PrintWindow-too-slow detection: if consecutive captures run over this
+        // budget, sticky-flip to the WinRT path. The UI's per-request budget
+        // is 7s, and concurrent polls compound queueing delays, so a 2s ceiling
+        // keeps headroom.
+        private const int PrintWindowSlowBudgetMs = 2000;
+        private int _printWindowSlowStreak;
+
         private bool TryCaptureDesktopInto(Bitmap target, Rectangle bounds)
         {
+            if (_preferGraphicsCapturePath)
+            {
+                return TryCaptureViaGraphicsCapture(target, bounds);
+            }
+
             if (!_preferPrintWindowPath)
             {
                 try
@@ -689,7 +569,91 @@ namespace IRIS.Agent.Logic
                 }
             }
 
-            return TryCaptureViaPrintWindow(target, bounds);
+            // Measure PrintWindow specifically so we can escalate to WinRT if
+            // it's functional but too slow for the UI's request budget.
+            var pwWatch = System.Diagnostics.Stopwatch.StartNew();
+            var pwOk = TryCaptureViaPrintWindow(target, bounds);
+            pwWatch.Stop();
+
+            if (!pwOk)
+            {
+                Log.Warning("PrintWindow capture failed; escalating to Windows.Graphics.Capture (WinRT) path.");
+                _preferGraphicsCapturePath = true;
+                return TryCaptureViaGraphicsCapture(target, bounds);
+            }
+
+            if (pwWatch.ElapsedMilliseconds > PrintWindowSlowBudgetMs)
+            {
+                _printWindowSlowStreak++;
+                if (_printWindowSlowStreak >= 3)
+                {
+                    Log.Warning("PrintWindow averaged >{Budget}ms for {Count} captures; escalating to Windows.Graphics.Capture.",
+                        PrintWindowSlowBudgetMs, _printWindowSlowStreak);
+                    _preferGraphicsCapturePath = true;
+                }
+            }
+            else
+            {
+                _printWindowSlowStreak = 0;
+            }
+
+            return true;
+        }
+
+        private bool TryCaptureViaGraphicsCapture(Bitmap target, Rectangle bounds)
+        {
+            var capture = EnsureGraphicsCapture();
+            if (capture == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                var jpeg = capture.CaptureFrame();
+                if (jpeg == null || jpeg.Length == 0)
+                {
+                    return false;
+                }
+
+                // The rest of the pipeline (resize + final JPEG encode) expects
+                // a raw Bitmap in the `target` buffer, not JPEG bytes. Decode
+                // the captured JPEG into the target's backing store.
+                using var ms = new MemoryStream(jpeg);
+                using var decoded = new Bitmap(ms);
+                using (var graphics = Graphics.FromImage(target))
+                {
+                    graphics.Clear(Color.Black);
+                    graphics.DrawImage(decoded, 0, 0, target.Width, target.Height);
+                    DrawCursorOnto(graphics, bounds);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogCaptureFailure(ex);
+                return false;
+            }
+        }
+
+        private GraphicsCaptureLogic? EnsureGraphicsCapture()
+        {
+            if (_graphicsCapture != null) return _graphicsCapture;
+
+            lock (_graphicsCaptureInitLock)
+            {
+                if (_graphicsCapture != null) return _graphicsCapture;
+
+                var candidate = new GraphicsCaptureLogic();
+                if (!candidate.Initialize())
+                {
+                    candidate.Dispose();
+                    return null;
+                }
+
+                _graphicsCapture = candidate;
+                return _graphicsCapture;
+            }
         }
 
         private bool TryCaptureViaPrintWindow(Bitmap target, Rectangle bounds)
@@ -767,7 +731,9 @@ namespace IRIS.Agent.Logic
             var now = DateTime.UtcNow;
             if ((now - _lastCaptureTimingLogUtc).TotalSeconds < 10) return;
             _lastCaptureTimingLogUtc = now;
-            var path = _preferPrintWindowPath ? "PrintWindow" : "CopyFromScreen";
+            var path = _preferGraphicsCapturePath ? "GraphicsCapture"
+                : _preferPrintWindowPath ? "PrintWindow"
+                : "CopyFromScreen";
             Log.Information("Snapshot capture via {Path} took {Elapsed} ms.", path, elapsedMs);
         }
 
@@ -791,13 +757,9 @@ namespace IRIS.Agent.Logic
 
         public void Dispose()
         {
-            _cts?.Cancel();
-            if (_listener.IsListening)
-            {
-                _listener.Stop();
-            }
-            _listener.Close();
-            _cts?.Dispose();
+            _server?.Dispose();
+            _server = null;
+            _graphicsCapture?.Dispose();
         }
     }
 }

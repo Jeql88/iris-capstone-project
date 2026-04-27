@@ -117,5 +117,36 @@ namespace IRIS.Agent
         // PW_RENDERFULLCONTENT asks DWM for composited output (incl. UWP/hardware-
         // accelerated surfaces). Required for modern Windows; ignored pre-8.1.
         public const uint PW_RENDERFULLCONTENT = 0x00000002;
+
+        // --- Primary-monitor lookup and D3D11 interop for Windows.Graphics.Capture.
+        //     Used by GraphicsCaptureLogic (final fallback path on Win11 24H2). ---
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        public const uint MONITOR_DEFAULTTOPRIMARY = 0x00000001;
+
+        [DllImport("d3d11.dll", ExactSpelling = true, SetLastError = false)]
+        public static extern int D3D11CreateDevice(
+            IntPtr pAdapter,
+            int DriverType,
+            IntPtr Software,
+            uint Flags,
+            IntPtr pFeatureLevels,
+            uint FeatureLevels,
+            uint SDKVersion,
+            out IntPtr ppDevice,
+            out int pFeatureLevel,
+            out IntPtr ppImmediateContext);
+
+        public const int D3D_DRIVER_TYPE_HARDWARE = 1;
+        public const int D3D_DRIVER_TYPE_WARP = 5;
+        public const uint D3D11_CREATE_DEVICE_BGRA_SUPPORT = 0x20;
+        public const uint D3D11_SDK_VERSION = 7;
+
+        [DllImport("d3d11.dll", ExactSpelling = true, SetLastError = false)]
+        public static extern int CreateDirect3D11DeviceFromDXGIDevice(
+            IntPtr dxgiDevice,
+            out IntPtr graphicsDevice);
     }
 }

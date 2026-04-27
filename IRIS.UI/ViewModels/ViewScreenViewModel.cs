@@ -538,8 +538,6 @@ namespace IRIS.UI.ViewModels
 
         private async Task RemoteDesktopAsync()
         {
-            await Task.CompletedTask;
-
             if (!IsConnected || IsDisconnected)
             {
                 ShowOfflineActionDialog("open Remote Desktop");
@@ -554,14 +552,28 @@ namespace IRIS.UI.ViewModels
 
             var confirmationDialog = new ConfirmationDialog(
                 "Open Remote Desktop",
-                $"Open Remote Desktop connection to {PCName}?",
-                "Desktop24");
+                $"Notify {PCName} and connect via Remote Desktop in 15 seconds?\nThe lab user will see a 15-second warning before mstsc opens.",
+                "Desktop24", "Connect", "Cancel");
             confirmationDialog.Owner = Application.Current.MainWindow;
 
             if (confirmationDialog.ShowDialog() != true)
             {
                 return;
             }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(MacAddress))
+                {
+                    await _powerCommandQueueService.QueueCommandAsync(MacAddress.Trim(), "RDPWarn");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"RDPWarn queue failed: {ex.Message}");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(15));
 
             try
             {

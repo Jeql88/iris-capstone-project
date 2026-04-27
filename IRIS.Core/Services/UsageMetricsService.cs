@@ -12,6 +12,22 @@ public class UsageMetricsService : IUsageMetricsService
     private readonly IRISDbContext _context;
     private readonly IAuthenticationService _authService;
 
+    // Application names to hide from Usage Metrics. Only IRIS.Agent is
+    // filtered — the dashboard's own usage (IRIS.UI) is left visible, since
+    // admins want to see how staff are interacting with the dashboard. The
+    // agent itself, however, is operational noise (it runs continuously on
+    // every lab PC and would dominate the totals).
+    // Match is case-insensitive on the bare name; depending on Windows path
+    // the recorded ApplicationName may include the .exe suffix or not.
+    private static readonly string[] ExcludedApplicationNames = new[]
+    {
+        "IRIS.Agent",
+        "IRIS.Agent.exe"
+    };
+
+    private static IQueryable<SoftwareUsageHistory> ExcludeSystemApplications(IQueryable<SoftwareUsageHistory> query) =>
+        query.Where(s => !ExcludedApplicationNames.Contains(s.ApplicationName));
+
     public UsageMetricsService(IRISDbContext context, IAuthenticationService authService)
     {
         _context = context;
@@ -22,14 +38,14 @@ public class UsageMetricsService : IUsageMetricsService
     {
         var cutoffDate = DateTime.UtcNow.AddDays(-days);
 
-        var totalCount = await _context.SoftwareUsageHistory
+        var totalCount = await ExcludeSystemApplications(_context.SoftwareUsageHistory)
             .Where(s => s.CreatedAt >= cutoffDate)
             .CountAsync();
 
         if (totalCount == 0)
             return new List<ApplicationUsageDto>();
 
-        var results = await _context.SoftwareUsageHistory
+        var results = await ExcludeSystemApplications(_context.SoftwareUsageHistory)
             .Where(s => s.CreatedAt >= cutoffDate)
             .GroupBy(s => s.ApplicationName)
             .Select(g => new ApplicationUsageDto
@@ -53,9 +69,10 @@ public class UsageMetricsService : IUsageMetricsService
     public async Task<PaginatedResult<ApplicationUsageDetailDto>> GetApplicationUsageDetailsPaginatedAsync(
         DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null)
     {
-        var query = _context.SoftwareUsageHistory
-            .Include(s => s.PC)
-                .ThenInclude(p => p.Room)
+        var query = ExcludeSystemApplications(
+                _context.SoftwareUsageHistory
+                    .Include(s => s.PC)
+                        .ThenInclude(p => p.Room))
             .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
 
         if (!string.IsNullOrEmpty(searchText))
@@ -98,6 +115,104 @@ public class UsageMetricsService : IUsageMetricsService
         };
     }
 
+    public async Task<List<ApplicationUsageAggregatedDto>> GetApplicationUsageGroupedByApplicationAsync(
+        DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null)
+    {
+        var query = ExcludeSystemApplications(
+                _context.SoftwareUsageHistory
+                    .Include(s => s.PC)
+                        .ThenInclude(p => p.Room))
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            var normalizedSearch = searchText.Trim().ToLower();
+            query = query.Where(s =>
+                s.ApplicationName.ToLower().Contains(normalizedSearch) ||
+                (s.PC.Hostname != null && s.PC.Hostname.ToLower().Contains(normalizedSearch)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomFilter))
+        {
+            query = query.Where(s => s.PC.Room != null && s.PC.Room.RoomNumber == roomFilter);
+        }
+
+        // Aggregate in memory after pulling minimal columns; TimeSpan
+        // sums aren't translatable cleanly across all EF providers.
+        var rows = await query
+            .Select(s => new
+            {
+                s.ApplicationName,
+                s.PCId,
+                s.StartTime,
+                s.Duration
+            })
+            .ToListAsync();
+
+        return rows
+            .GroupBy(r => r.ApplicationName)
+            .Select(g => new ApplicationUsageAggregatedDto
+            {
+                ApplicationName = g.Key,
+                TotalDuration = TimeSpan.FromTicks(g.Sum(r => (r.Duration ?? TimeSpan.Zero).Ticks)),
+                SessionCount = g.Count(),
+                UniquePCCount = g.Select(r => r.PCId).Distinct().Count(),
+                FirstSeen = g.Min(r => r.StartTime),
+                LastSeen = g.Max(r => r.StartTime)
+            })
+            .OrderByDescending(a => a.TotalDuration)
+            .ToList();
+    }
+
+    public async Task<List<PCUsageAggregatedDto>> GetApplicationUsageGroupedByPCAsync(
+        DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null)
+    {
+        var query = ExcludeSystemApplications(
+                _context.SoftwareUsageHistory
+                    .Include(s => s.PC)
+                        .ThenInclude(p => p.Room))
+            .Where(s => s.StartTime >= startDate && s.StartTime <= endDate);
+
+        if (!string.IsNullOrEmpty(searchText))
+        {
+            var normalizedSearch = searchText.Trim().ToLower();
+            query = query.Where(s =>
+                s.ApplicationName.ToLower().Contains(normalizedSearch) ||
+                (s.PC.Hostname != null && s.PC.Hostname.ToLower().Contains(normalizedSearch)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomFilter))
+        {
+            query = query.Where(s => s.PC.Room != null && s.PC.Room.RoomNumber == roomFilter);
+        }
+
+        var rows = await query
+            .Select(s => new
+            {
+                PCName = s.PC.Hostname ?? "Unknown",
+                RoomNumber = s.PC.Room != null ? s.PC.Room.RoomNumber : "Unassigned",
+                s.ApplicationName,
+                s.StartTime,
+                s.Duration
+            })
+            .ToListAsync();
+
+        return rows
+            .GroupBy(r => new { r.PCName, r.RoomNumber })
+            .Select(g => new PCUsageAggregatedDto
+            {
+                PCName = g.Key.PCName,
+                RoomNumber = g.Key.RoomNumber,
+                TotalDuration = TimeSpan.FromTicks(g.Sum(r => (r.Duration ?? TimeSpan.Zero).Ticks)),
+                SessionCount = g.Count(),
+                UniqueApplicationCount = g.Select(r => r.ApplicationName).Distinct().Count(),
+                FirstSeen = g.Min(r => r.StartTime),
+                LastSeen = g.Max(r => r.StartTime)
+            })
+            .OrderByDescending(p => p.TotalDuration)
+            .ToList();
+    }
+
     public async Task<List<string>> GetApplicationUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)
     {
         return await _context.Rooms
@@ -109,9 +224,10 @@ public class UsageMetricsService : IUsageMetricsService
 
     public async Task<List<ApplicationUsageDetailDto>> GetApplicationUsageDetailsAsync(DateTime startDate, DateTime endDate)
     {
-        return await _context.SoftwareUsageHistory
-            .Include(s => s.PC)
-                .ThenInclude(p => p.Room)
+        return await ExcludeSystemApplications(
+                _context.SoftwareUsageHistory
+                    .Include(s => s.PC)
+                        .ThenInclude(p => p.Room))
             .Where(s => s.StartTime >= startDate && s.StartTime <= endDate)
             .OrderByDescending(s => s.StartTime)
             .Select(s => new ApplicationUsageDetailDto

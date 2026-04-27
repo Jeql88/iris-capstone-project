@@ -49,12 +49,9 @@
                   Return="ignore"
                   ExeCommand='schtasks.exe /Delete /TN "IRISAgentWakeCheck" /F' />
 
-    <CustomAction Id="RemoveSnapshotUrlAcl"
-            Directory="SystemFolder"
-            Execute="deferred"
-            Impersonate="no"
-            Return="ignore"
-            ExeCommand='netsh.exe http delete urlacl url=http://+:5057/' />
+    <!-- Snapshot server now uses a raw TcpListener (not HttpListener / http.sys)
+         to avoid the Windows 11 24H2 http.sys response-write regression.
+         No URL ACL reservation is required or created for port 5057. -->
 
     <CustomAction Id="RemoveFileApiUrlAcl"
             Directory="SystemFolder"
@@ -112,12 +109,7 @@
             Return="ignore"
             ExeCommand='sc.exe delete "IRISAgent"' />
 
-        <CustomAction Id="AddSnapshotUrlAclBeforeInstall"
-          Directory="SystemFolder"
-          Execute="deferred"
-          Impersonate="no"
-          Return="ignore"
-          ExeCommand='netsh.exe http add urlacl url=http://+:5057/ user=Everyone' />
+        <!-- No URL ACL needed for port 5057; see RawHttpServer in IRIS.Agent. -->
 
         <CustomAction Id="AddFileApiUrlAclBeforeInstall"
           Directory="SystemFolder"
@@ -159,8 +151,7 @@
       <Custom Action="DeleteAgentTask" After="InstallInitialize" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteAgentHelperTask" After="DeleteAgentTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteAgentWakeTask" After="DeleteAgentHelperTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="RemoveSnapshotUrlAcl" After="DeleteAgentWakeTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="RemoveFileApiUrlAcl" After="RemoveSnapshotUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="RemoveFileApiUrlAcl" After="DeleteAgentWakeTask" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveSnapshotFirewallRule" After="RemoveFileApiUrlAcl" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="RemoveFileApiFirewallRule" After="RemoveSnapshotFirewallRule" Condition="REMOVE~=&quot;ALL&quot; AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
 
@@ -170,8 +161,7 @@
       <Custom Action="DeleteAgentWakeTaskBeforeInstall" After="DeleteAgentHelperTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="StopLegacyAgentServiceBeforeInstall" After="DeleteAgentWakeTaskBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="DeleteLegacyAgentServiceBeforeInstall" After="StopLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="AddSnapshotUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
-      <Custom Action="AddFileApiUrlAclBeforeInstall" After="AddSnapshotUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
+      <Custom Action="AddFileApiUrlAclBeforeInstall" After="DeleteLegacyAgentServiceBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddSnapshotFirewallRuleBeforeInstall" After="AddFileApiUrlAclBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="AddFileApiFirewallRuleBeforeInstall" After="AddSnapshotFirewallRuleBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />
       <Custom Action="ConfigurePipeToken" After="AddFileApiFirewallRuleBeforeInstall" Condition="NOT REMOVE AND ENABLE_CUSTOM_BOOTSTRAP = &quot;1&quot;" />

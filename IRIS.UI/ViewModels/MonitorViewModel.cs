@@ -105,6 +105,10 @@ namespace IRIS.UI.ViewModels
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
+            ToggleBulkActionsCommand = new RelayCommand(() => IsBulkActionMode = !IsBulkActionMode, () => true);
+            BulkSendMessageCommand = new RelayCommand(async () => await BulkSendMessageAsync(), () => SelectedBulkCount > 0);
+            BulkFreezeCommand = new RelayCommand(async () => await BulkFreezeAsync(), () => SelectedBulkCount > 0);
+            SelectAllOnlineCommand = new RelayCommand(SelectAllOnline, () => true);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
             _cache.DataChanged += OnCacheDataChanged;
@@ -271,6 +275,43 @@ namespace IRIS.UI.ViewModels
         public ICommand OpenPcAlertsForPCCommand { get; }
         public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand DismissAllAlertsCommand { get; }
+        public ICommand ToggleBulkActionsCommand { get; }
+        public ICommand BulkSendMessageCommand { get; }
+        public ICommand BulkFreezeCommand { get; }
+        public ICommand SelectAllOnlineCommand { get; }
+
+        private bool _isBulkActionMode;
+        public bool IsBulkActionMode
+        {
+            get => _isBulkActionMode;
+            set
+            {
+                if (_isBulkActionMode == value) return;
+                _isBulkActionMode = value;
+                OnPropertyChanged();
+                if (!value)
+                {
+                    // Leaving bulk mode clears any pending selections so the next
+                    // entry starts clean.
+                    foreach (var pc in PCs) pc.IsSelected = false;
+                }
+                RefreshBulkSelection();
+            }
+        }
+
+        private int _selectedBulkCount;
+        public int SelectedBulkCount
+        {
+            get => _selectedBulkCount;
+            private set { _selectedBulkCount = value; OnPropertyChanged(); }
+        }
+
+        public void RefreshBulkSelection()
+        {
+            SelectedBulkCount = PCs.Count(p => p.IsSelected);
+            (BulkSendMessageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (BulkFreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
         public ICommand FreezeCommand { get; }
@@ -479,6 +520,7 @@ namespace IRIS.UI.ViewModels
                         display.SnapshotImageBase64 = cachedSnapshot;
                     }
 
+                    display.PropertyChanged += OnPCDisplayPropertyChanged;
                     PCs.Add(display);
                 }
             }
@@ -488,6 +530,7 @@ namespace IRIS.UI.ViewModels
             {
                 if (!incomingIds.Contains(PCs[i].Id))
                 {
+                    PCs[i].PropertyChanged -= OnPCDisplayPropertyChanged;
                     PCs.RemoveAt(i);
                 }
             }
@@ -1020,6 +1063,125 @@ namespace IRIS.UI.ViewModels
             }
         }
 
+        private void OnPCDisplayPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PCDisplayModel.IsSelected))
+            {
+                RefreshBulkSelection();
+            }
+        }
+
+        private void SelectAllOnline()
+        {
+            foreach (var pc in PCs)
+            {
+                pc.IsSelected = string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase);
+            }
+            RefreshBulkSelection();
+        }
+
+        private async Task BulkSendMessageAsync()
+        {
+            var targets = PCs.Where(p => p.IsSelected
+                                          && string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase)
+                                          && !string.IsNullOrWhiteSpace(p.MacAddress))
+                             .ToList();
+            if (targets.Count == 0)
+            {
+                ShowOfflineActionDialog("send a message");
+                return;
+            }
+
+            var dialog = new FreezeMessageDialog(
+                "Send Message",
+                $"Message to send to {targets.Count} selected PC(s):",
+                "")
+            { Owner = Application.Current.MainWindow };
+
+            if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FreezeMessage)) return;
+
+            var messageBytes = System.Text.Encoding.UTF8.GetBytes(dialog.FreezeMessage);
+            var encodedMessage = Convert.ToBase64String(messageBytes);
+            var payload = $"Message::{encodedMessage}";
+
+            int sent = 0;
+            foreach (var pc in targets)
+            {
+                try
+                {
+                    var ok = await _powerCommandQueueService.QueueCommandAsync(pc.MacAddress!.Trim(), payload);
+                    if (ok) sent++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine($"Bulk message: failed to queue for {pc.MacAddress}: {ex.Message}");
+                }
+            }
+
+            var truncated = dialog.FreezeMessage.Length > 80
+                ? dialog.FreezeMessage.Substring(0, 80) + "…"
+                : dialog.FreezeMessage;
+            await _authenticationService.LogUserActionAsync(
+                "Bulk Message Sent",
+                $"{sent}/{targets.Count} PCs received: \"{truncated}\"",
+                null);
+        }
+
+        private async Task BulkFreezeAsync()
+        {
+            var targets = PCs.Where(p => p.IsSelected
+                                          && string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase)
+                                          && !string.IsNullOrWhiteSpace(p.MacAddress))
+                             .ToList();
+            if (targets.Count == 0)
+            {
+                ShowOfflineActionDialog("change freeze state");
+                return;
+            }
+
+            var dialog = new FreezeMessageDialog(
+                "Freeze PCs",
+                $"Freeze message for {targets.Count} selected PC(s) (leave blank for default):",
+                "")
+            { Owner = Application.Current.MainWindow };
+
+            if (dialog.ShowDialog() != true) return;
+
+            string payload;
+            if (string.IsNullOrWhiteSpace(dialog.FreezeMessage))
+            {
+                payload = "FreezeOn";
+            }
+            else
+            {
+                var msgBytes = System.Text.Encoding.UTF8.GetBytes(dialog.FreezeMessage);
+                payload = $"FreezeOn::{Convert.ToBase64String(msgBytes)}";
+            }
+
+            int frozen = 0;
+            foreach (var pc in targets)
+            {
+                try
+                {
+                    var ok = await _powerCommandQueueService.QueueCommandAsync(pc.MacAddress!.Trim(), payload);
+                    if (ok)
+                    {
+                        frozen++;
+                        pc.IsFreezeActive = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine($"Bulk freeze: failed to queue for {pc.MacAddress}: {ex.Message}");
+                }
+            }
+
+            await _authenticationService.LogUserActionAsync(
+                "Bulk Freeze",
+                $"{frozen}/{targets.Count} PCs frozen",
+                null);
+        }
+
         private async Task DismissAllAlertsForSelectedPcAsync()
         {
             if (SelectedPC == null || SelectedPcAlerts.Count == 0)
@@ -1033,23 +1195,49 @@ namespace IRIS.UI.ViewModels
             if (dialog.ShowDialog() != true)
                 return;
 
+            // Snapshot the targets before any await — SelectedPC and the alert
+            // list can change while the DB/cache round-trip is in flight.
+            var targetPc = SelectedPC;
+            var alertsToResolve = SelectedPcAlerts.ToList();
+
+            // Optimistic, synchronous UI update so the dismissal is visible
+            // immediately. Without this, the tile badge and header counters
+            // wait for `_cache.RefreshLiveAlertsAsync` -> `LoadLiveAlertsFromCache`
+            // to complete, which can be 1-2s if the cache refresh races with
+            // a periodic alert sync, and the user perceives "nothing happened".
+            var expiry = DateTime.UtcNow.Add(DismissSuppressionWindow);
+            foreach (var a in alertsToResolve)
+            {
+                _dismissedAlertKeys[$"{a.PCId}|{a.AlertKey}"] = expiry;
+            }
+
+            targetPc.TopAlertSeverity = "None";
+            targetPc.TopAlertMessage = "No active alerts";
+            targetPc.AlertCount = 0;
+            SelectedPcAlerts.Clear();
+
+            foreach (var a in alertsToResolve)
+            {
+                var match = ActiveAlerts.FirstOrDefault(x => x.PCId == a.PCId && x.AlertKey == a.AlertKey);
+                if (match != null) ActiveAlerts.Remove(match);
+            }
+            CriticalAlertCount = ActiveAlerts.Count(a => a.Severity == "Critical");
+            HighAlertCount = ActiveAlerts.Count(a => a.Severity == "High");
+            AlertHeaderText = CriticalAlertCount == 0 && HighAlertCount == 0
+                ? "All clear"
+                : $"Critical {CriticalAlertCount} • High {HighAlertCount}";
+
+            IsPcAlertsPanelOpen = false;
+
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
                 var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
 
-                // Suppress locally first so dismiss is reflected even if the condition
-                // still exceeds thresholds when the cache next recomputes live alerts.
-                var expiry = DateTime.UtcNow.Add(DismissSuppressionWindow);
-                foreach (var a in SelectedPcAlerts)
-                {
-                    _dismissedAlertKeys[$"{a.PCId}|{a.AlertKey}"] = expiry;
-                }
-
                 var feed = await service.GetAlertFeedAsync(maxItems: 200);
                 var pcAlertIds = feed
-                    .Where(a => a.PCId == SelectedPC.Id && !a.IsResolved)
+                    .Where(a => a.PCId == targetPc.Id && !a.IsResolved)
                     .Select(a => a.AlertId)
                     .ToList();
 
@@ -1058,10 +1246,11 @@ namespace IRIS.UI.ViewModels
                     await service.ResolveAlertsAsync(pcAlertIds, userId);
                 }
 
+                // Reconcile against the authoritative cache. Optimistic UI may
+                // have been wrong if a new alert came in between dialog confirm
+                // and now; this corrects it.
                 await _cache.RefreshLiveAlertsAsync(forceWait: true);
                 LoadLiveAlertsFromCache();
-
-                IsPcAlertsPanelOpen = false;
             }
             catch (Exception ex)
             {
@@ -1329,7 +1518,7 @@ namespace IRIS.UI.ViewModels
                 SelectedPC.Id);
         }
 
-        private void RemoteDesktopConnect()
+        private async void RemoteDesktopConnect()
         {
             if (IsFaculty)
             {
@@ -1370,6 +1559,32 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            // Confirm with the operator that we're going to warn the lab user
+            // and connect after 15s. The operator can cancel before mstsc launches.
+            var confirm = new ConfirmationDialog(
+                "Open Remote Desktop",
+                $"Notify {SelectedPC.PCName} and connect via Remote Desktop in 15 seconds?\nThe lab user will see a 15-second warning and may dismiss it.",
+                "Desktop24", "Connect", "Cancel");
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true) return;
+
+            // Queue the RDPWarn pending command so the agent shows its
+            // countdown on the lab PC at the same time we wait here.
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(SelectedPC.MacAddress))
+                {
+                    await _powerCommandQueueService.QueueCommandAsync(SelectedPC.MacAddress.Trim(), "RDPWarn");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"RDPWarn queue failed: {ex.Message}");
+            }
+
+            // Match the agent-side dialog timeout (15s).
+            await Task.Delay(TimeSpan.FromSeconds(15));
+
             try
             {
                 Process.Start(new ProcessStartInfo
@@ -1378,6 +1593,10 @@ namespace IRIS.UI.ViewModels
                     Arguments = $"/v:{SelectedPC.IPAddress}:{_remoteDesktopPort}",
                     UseShellExecute = true
                 });
+                await _authenticationService.LogUserActionAsync(
+                    "Remote Desktop",
+                    $"Opened RDP to {SelectedPC.PCName} ({SelectedPC.IPAddress})",
+                    SelectedPC.Id);
             }
             catch (Exception ex)
             {

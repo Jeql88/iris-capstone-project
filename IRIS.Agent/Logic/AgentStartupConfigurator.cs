@@ -40,11 +40,9 @@ namespace IRIS.Agent.Logic
 
             var missing = new List<string>();
 
-            if (!UrlAclExists($"http://+:{screenPort}/"))
-            {
-                missing.Add($"URL ACL http://+:{screenPort}/");
-            }
-
+            // Snapshot server uses a raw TcpListener (RawHttpServer) and does
+            // NOT require a URL ACL. Only check the file-API URL ACL, which
+            // still rides http.sys via HttpListener.
             if (!UrlAclExists($"http://+:{fileApiPort}/"))
             {
                 missing.Add($"URL ACL http://+:{fileApiPort}/");
