@@ -115,8 +115,8 @@ public class UsageMetricsService : IUsageMetricsService
         };
     }
 
-    public async Task<List<ApplicationUsageAggregatedDto>> GetApplicationUsageGroupedByApplicationAsync(
-        DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null)
+    public async Task<PaginatedResult<ApplicationUsageAggregatedDto>> GetApplicationUsageGroupedByApplicationAsync(
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null)
     {
         var query = ExcludeSystemApplications(
                 _context.SoftwareUsageHistory
@@ -149,7 +149,7 @@ public class UsageMetricsService : IUsageMetricsService
             })
             .ToListAsync();
 
-        return rows
+        var aggregated = rows
             .GroupBy(r => r.ApplicationName)
             .Select(g => new ApplicationUsageAggregatedDto
             {
@@ -162,10 +162,24 @@ public class UsageMetricsService : IUsageMetricsService
             })
             .OrderByDescending(a => a.TotalDuration)
             .ToList();
+
+        var totalCount = aggregated.Count;
+        var paged = aggregated
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PaginatedResult<ApplicationUsageAggregatedDto>
+        {
+            Items = paged,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 
-    public async Task<List<PCUsageAggregatedDto>> GetApplicationUsageGroupedByPCAsync(
-        DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null)
+    public async Task<PaginatedResult<PCUsageAggregatedDto>> GetApplicationUsageGroupedByPCAsync(
+        DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null)
     {
         var query = ExcludeSystemApplications(
                 _context.SoftwareUsageHistory
@@ -197,7 +211,7 @@ public class UsageMetricsService : IUsageMetricsService
             })
             .ToListAsync();
 
-        return rows
+        var aggregated = rows
             .GroupBy(r => new { r.PCName, r.RoomNumber })
             .Select(g => new PCUsageAggregatedDto
             {
@@ -211,6 +225,20 @@ public class UsageMetricsService : IUsageMetricsService
             })
             .OrderByDescending(p => p.TotalDuration)
             .ToList();
+
+        var totalCount = aggregated.Count;
+        var paged = aggregated
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PaginatedResult<PCUsageAggregatedDto>
+        {
+            Items = paged,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 
     public async Task<List<string>> GetApplicationUsageLaboratoriesAsync(DateTime startDate, DateTime endDate)

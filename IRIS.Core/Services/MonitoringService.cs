@@ -445,6 +445,8 @@ namespace IRIS.Core.Services
                     Name = pc.Hostname ?? "Unknown",
                     IpAddress = pc.IpAddress ?? "N/A",
                     MacAddress = pc.MacAddress ?? "",
+                    SubnetMask = pc.SubnetMask ?? "",
+                    DefaultGateway = pc.DefaultGateway ?? "",
                     RoomName = ToRoomDisplayName(pc.Room?.RoomNumber),
                     OperatingSystem = pc.OperatingSystem ?? "Unknown",
                     Status = isOnline ? Models.PCStatus.Online.ToString() : Models.PCStatus.Offline.ToString(),

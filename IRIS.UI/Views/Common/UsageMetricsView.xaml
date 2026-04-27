@@ -324,11 +324,9 @@
                         </ui:DataGrid>
                     </Grid>
 
-                    <!-- Pagination only applies to the per-record (Ungrouped) view.
-                         Hidden when grouped because the aggregations are returned in
-                         full and don't paginate. -->
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0"
-                                Visibility="{Binding IsUngrouped, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!-- Pagination applies to all grouping modes — pages through
+                         the aggregated rows just like the flat view. -->
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
                         <ui:Button Command="{Binding AppPreviousPageCommand}"
                                    Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"

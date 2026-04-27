@@ -177,6 +177,10 @@ namespace IRIS.UI.ViewModels
             RoomName = pc.RoomName;
             IP = pc.IPAddress;
             MacAddress = pc.MacAddress;
+            // Subnet/Gateway flow from the agent's heartbeat -> PC entity ->
+            // PCMonitorInfo -> PCDisplayModel; populate them here so the View
+            // PC page's Subnet Mask field actually renders.
+            Subnet = string.IsNullOrWhiteSpace(pc.SubnetMask) ? "—" : pc.SubnetMask;
             Network = $"{pc.NetworkDownload} / {pc.NetworkUpload}";
             OS = pc.OS;
             CPU = pc.CPU;
@@ -552,7 +556,7 @@ namespace IRIS.UI.ViewModels
 
             var confirmationDialog = new ConfirmationDialog(
                 "Open Remote Desktop",
-                $"Notify {PCName} and connect via Remote Desktop in 15 seconds?\nThe lab user will see a 15-second warning before mstsc opens.",
+                $"Notify {PCName} and open Remote Desktop?\nThe lab user will see a 15-second warning before your connection is fully established.",
                 "Desktop24", "Connect", "Cancel");
             confirmationDialog.Owner = Application.Current.MainWindow;
 
@@ -561,6 +565,8 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
+            // Queue the lab-side warning concurrently — don't block the
+            // operator on the countdown (it would freeze the live snapshot).
             try
             {
                 if (!string.IsNullOrWhiteSpace(MacAddress))
@@ -572,8 +578,6 @@ namespace IRIS.UI.ViewModels
             {
                 System.Diagnostics.Trace.WriteLine($"RDPWarn queue failed: {ex.Message}");
             }
-
-            await Task.Delay(TimeSpan.FromSeconds(15));
 
             try
             {

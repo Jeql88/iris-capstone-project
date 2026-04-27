@@ -58,6 +58,8 @@ namespace IRIS.Core.Services.ServiceModels
         public string Name { get; set; } = string.Empty;
         public string IpAddress { get; set; } = string.Empty;
         public string MacAddress { get; set; } = string.Empty;
+        public string SubnetMask { get; set; } = string.Empty;
+        public string DefaultGateway { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;
         public string OperatingSystem { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;

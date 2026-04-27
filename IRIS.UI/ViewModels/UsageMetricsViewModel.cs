@@ -388,11 +388,11 @@ namespace IRIS.UI.ViewModels
 
                 if (IsGroupedByApplication)
                 {
-                    var rows = await _usageMetricsService.GetApplicationUsageGroupedByApplicationAsync(
-                        startUtc, endUtc, _appliedAppSearchText, roomFilter);
+                    var groupedAppResult = await _usageMetricsService.GetApplicationUsageGroupedByApplicationAsync(
+                        startUtc, endUtc, pageNumber, _pageSize, _appliedAppSearchText, roomFilter);
 
                     GroupedApplicationRows.Clear();
-                    foreach (var r in rows)
+                    foreach (var r in groupedAppResult.Items)
                     {
                         GroupedApplicationRows.Add(new AppAggregatedRow
                         {
@@ -407,19 +407,19 @@ namespace IRIS.UI.ViewModels
                     }
                     GroupedPCRows.Clear();
                     FilteredApplicationUsage.Clear();
-                    AppCurrentPage = 1;
-                    AppTotalPages = 1;
-                    AppTotalCount = rows.Count;
+                    AppCurrentPage = groupedAppResult.PageNumber;
+                    AppTotalPages = groupedAppResult.TotalPages;
+                    AppTotalCount = groupedAppResult.TotalCount;
                     return;
                 }
 
                 if (IsGroupedByPC)
                 {
-                    var rows = await _usageMetricsService.GetApplicationUsageGroupedByPCAsync(
-                        startUtc, endUtc, _appliedAppSearchText, roomFilter);
+                    var groupedPCResult = await _usageMetricsService.GetApplicationUsageGroupedByPCAsync(
+                        startUtc, endUtc, pageNumber, _pageSize, _appliedAppSearchText, roomFilter);
 
                     GroupedPCRows.Clear();
-                    foreach (var r in rows)
+                    foreach (var r in groupedPCResult.Items)
                     {
                         GroupedPCRows.Add(new PCAggregatedRow
                         {
@@ -434,9 +434,9 @@ namespace IRIS.UI.ViewModels
                     }
                     GroupedApplicationRows.Clear();
                     FilteredApplicationUsage.Clear();
-                    AppCurrentPage = 1;
-                    AppTotalPages = 1;
-                    AppTotalCount = rows.Count;
+                    AppCurrentPage = groupedPCResult.PageNumber;
+                    AppTotalPages = groupedPCResult.TotalPages;
+                    AppTotalCount = groupedPCResult.TotalCount;
                     return;
                 }
 

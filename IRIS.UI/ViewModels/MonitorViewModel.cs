@@ -548,6 +548,8 @@ namespace IRIS.UI.ViewModels
                 PCName = pc.Name,
                 IPAddress = pc.IpAddress,
                 MacAddress = pc.MacAddress,
+                SubnetMask = pc.SubnetMask,
+                DefaultGateway = pc.DefaultGateway,
                 RoomName = pc.RoomName,
                 Status = pc.Status,
                 OS = pc.OperatingSystem,
@@ -583,6 +585,8 @@ namespace IRIS.UI.ViewModels
             display.PCName = pc.Name;
             display.IPAddress = pc.IpAddress;
             display.MacAddress = pc.MacAddress;
+            display.SubnetMask = pc.SubnetMask;
+            display.DefaultGateway = pc.DefaultGateway;
             display.RoomName = pc.RoomName;
             display.Status = pc.Status;
             display.OS = pc.OperatingSystem;
@@ -1559,17 +1563,21 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            // Confirm with the operator that we're going to warn the lab user
-            // and connect after 15s. The operator can cancel before mstsc launches.
+            // Confirm with the operator. The lab user gets a 15-second warning
+            // dialog on their PC concurrently with mstsc establishing — we
+            // don't block the operator on that countdown. (Doing so would
+            // freeze the dashboard's per-tile snapshot polling for 15s and
+            // make the dashboard look broken.)
             var confirm = new ConfirmationDialog(
                 "Open Remote Desktop",
-                $"Notify {SelectedPC.PCName} and connect via Remote Desktop in 15 seconds?\nThe lab user will see a 15-second warning and may dismiss it.",
+                $"Notify {SelectedPC.PCName} and open Remote Desktop?\nThe lab user will see a 15-second warning before your connection is fully established.",
                 "Desktop24", "Connect", "Cancel");
             confirm.Owner = Application.Current.MainWindow;
             if (confirm.ShowDialog() != true) return;
 
             // Queue the RDPWarn pending command so the agent shows its
-            // countdown on the lab PC at the same time we wait here.
+            // countdown on the lab PC. The agent polls for pending commands
+            // every 5 seconds, so the dialog appears within ~5s.
             try
             {
                 if (!string.IsNullOrWhiteSpace(SelectedPC.MacAddress))
@@ -1581,9 +1589,6 @@ namespace IRIS.UI.ViewModels
             {
                 System.Diagnostics.Trace.WriteLine($"RDPWarn queue failed: {ex.Message}");
             }
-
-            // Match the agent-side dialog timeout (15s).
-            await Task.Delay(TimeSpan.FromSeconds(15));
 
             try
             {
@@ -1774,6 +1779,20 @@ namespace IRIS.UI.ViewModels
         {
             get => _macAddress;
             set { _macAddress = value; OnPropertyChanged(); }
+        }
+
+        private string _subnetMask = string.Empty;
+        public string SubnetMask
+        {
+            get => _subnetMask;
+            set { _subnetMask = value; OnPropertyChanged(); }
+        }
+
+        private string _defaultGateway = string.Empty;
+        public string DefaultGateway
+        {
+            get => _defaultGateway;
+            set { _defaultGateway = value; OnPropertyChanged(); }
         }
 
         public string RoomName

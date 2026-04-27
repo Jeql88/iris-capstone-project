@@ -39,17 +39,17 @@
                         <TextBlock Text="{Binding SelectedBulkCount, StringFormat={}{0} selected}"
                                    VerticalAlignment="Center" Margin="0,0,12,0"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <ui:Button Content="Select All Online" Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                        <ui:Button Content="Select All Online" Icon="{ui:SymbolIcon CheckmarkSquare24}"
                                    Command="{Binding SelectAllOnlineCommand}"
                                    Margin="0,0,8,0"/>
-                        <ui:Button Content="Send Message" Icon="{ui:SymbolIcon Comment24}"
+                        <ui:Button Content="Send Message" Icon="{ui:SymbolIcon Chat24}"
                                    Command="{Binding BulkSendMessageCommand}"
                                    Margin="0,0,8,0"/>
-                        <ui:Button Content="Freeze" Icon="{ui:SymbolIcon Snowflake24}" Appearance="Caution"
+                        <ui:Button Content="Freeze" Icon="{ui:SymbolIcon LockClosed24}"
                                    Command="{Binding BulkFreezeCommand}"
                                    Margin="0,0,8,0"/>
                     </StackPanel>
-                    <ui:Button Icon="{ui:SymbolIcon CheckboxChecked24}"
+                    <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}"
                                Content="Bulk Actions"
                                Command="{Binding ToggleBulkActionsCommand}">
                         <ui:Button.Style>

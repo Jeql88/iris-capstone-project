@@ -13,7 +13,7 @@ namespace IRIS.Core.Services.Contracts
         Task<List<string>> GetWebsiteUsageLaboratoriesAsync(DateTime startDate, DateTime endDate);
         Task<byte[]> ExportUsageMetricsToExcelAsync(DateTime startDate, DateTime endDate, string? appSearchText = null, string? webSearchText = null, string? appRoomFilter = null, string? webRoomFilter = null);
         Task<UsageMetricsSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate);
-        Task<List<ApplicationUsageAggregatedDto>> GetApplicationUsageGroupedByApplicationAsync(DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null);
-        Task<List<PCUsageAggregatedDto>> GetApplicationUsageGroupedByPCAsync(DateTime startDate, DateTime endDate, string? searchText = null, string? roomFilter = null);
+        Task<PaginatedResult<ApplicationUsageAggregatedDto>> GetApplicationUsageGroupedByApplicationAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null);
+        Task<PaginatedResult<PCUsageAggregatedDto>> GetApplicationUsageGroupedByPCAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize, string? searchText = null, string? roomFilter = null);
     }
 }
