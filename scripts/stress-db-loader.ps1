@@ -121,7 +121,7 @@ $results = 1..$AgentCount | ForEach-Object -ThrottleLimit $AgentCount -Parallel 
     $hb.Prepare()
 
     $poll = $conn.CreateCommand()
-    $poll.CommandText = 'SELECT "Id" FROM "PendingCommands" WHERE "MacAddress" = @mac AND "Status" = 0'
+    $poll.CommandText = 'SELECT "Id" FROM "PendingCommands" WHERE "MacAddress" = @mac AND "Status" = ''Pending'''
     [void]$poll.Parameters.AddWithValue("mac", $mac)
     $poll.Prepare()
 
@@ -155,7 +155,7 @@ VALUES (@pc, now() AT TIME ZONE 'UTC', @dl, @ul, @lat, @loss, true)
     $latencies = New-Object System.Collections.Generic.List[double]
     $errors    = 0
     $heartbeats= 0
-    $rng       = New-Object System.Random ($agentIndex + [int](Get-Date).Ticks)
+    $rng       = New-Object System.Random ([int](([long]$agentIndex + (Get-Date).Ticks) % [int]::MaxValue))
 
     # Stagger startup so 80+ clients don't all fire at once.
     Start-Sleep -Milliseconds ($rng.Next(0, 5000))

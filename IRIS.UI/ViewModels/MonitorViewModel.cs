@@ -110,7 +110,7 @@ namespace IRIS.UI.ViewModels
             BulkRestartCommand = new RelayCommand(async () => await BulkPowerCommandAsync("Restart"), () => SelectedBulkCount > 0);
             BulkShutdownCommand = new RelayCommand(async () => await BulkPowerCommandAsync("Shutdown"), () => SelectedBulkCount > 0);
             SelectAllOnlineCommand = new RelayCommand(SelectAllOnline, () => true);
-            UnselectAllCommand = new RelayCommand(UnselectAll, () => true);
+            UnselectAllCommand = new RelayCommand(UnselectAll, () => SelectedBulkCount > 0);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
             _cache.DataChanged += OnCacheDataChanged;
@@ -330,6 +330,7 @@ namespace IRIS.UI.ViewModels
             (BulkToggleFreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BulkRestartCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BulkShutdownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (UnselectAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
             OnPropertyChanged(nameof(BulkFreezeLabel));
         }
         public ICommand ShowTimelineForPCCommand { get; }

@@ -15,10 +15,13 @@
   \set room 1
 \endif
 
+SET iris.seed_count = :count;
+SET iris.seed_room  = :room;
+
 DO $$
 DECLARE
-    target_count int := :count;
-    target_room  int := :room;
+    target_count int := current_setting('iris.seed_count')::int;
+    target_room  int := current_setting('iris.seed_room')::int;
     i int;
     mac text;
     host text;
