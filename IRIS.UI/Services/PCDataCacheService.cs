@@ -167,6 +167,15 @@ namespace IRIS.UI.Services
             }
         }
 
+        public void PurgeCachedAlertsForPc(int pcId)
+        {
+            if (pcId <= 0) return;
+            var current = _cachedLiveAlerts;
+            if (current == null || current.Count == 0) return;
+            _cachedLiveAlerts = current.Where(a => a.PCId != pcId).ToList();
+            DataChanged?.Invoke();
+        }
+
         public async Task RefreshRoomsAsync()
         {
             try

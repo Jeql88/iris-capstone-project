@@ -520,17 +520,33 @@ namespace IRIS.Agent.Logic
             }
         }
 
-        // True when PrintWindow has been confirmed necessary on this host (e.g.
-        // Windows 11 24H2 where CopyFromScreen returns ERROR_INVALID_HANDLE).
-        // We sticky-flip to the fallback after the first confirmed failure to
-        // avoid burning a GDI exception on every capture call.
-        private volatile bool _preferPrintWindowPath;
+        // Path-flip state. After a confirmed failure of CopyFromScreen / PrintWindow
+        // we drop to the next rung, but only for a window of time — RDP detach
+        // invalidates GDI session handles temporarily, and the cheaper paths
+        // typically recover once the session reattaches to the console. Without
+        // a retry, the agent stays stuck on the placeholder until the process
+        // restarts (which is what was happening after RDP logoff).
+        private long _preferPrintWindowUntilTicks;
+        private long _preferGraphicsCaptureUntilTicks;
+        private static readonly TimeSpan PathFlipTtl = TimeSpan.FromSeconds(30);
 
-        // True when even PrintWindow has failed and we've switched to the WinRT
-        // Windows.Graphics.Capture path (final rung of the fallback ladder).
-        private volatile bool _preferGraphicsCapturePath;
+        private bool PreferPrintWindowPath =>
+            DateTime.UtcNow.Ticks < Interlocked.Read(ref _preferPrintWindowUntilTicks);
+        private bool PreferGraphicsCapturePath =>
+            DateTime.UtcNow.Ticks < Interlocked.Read(ref _preferGraphicsCaptureUntilTicks);
+
+        private void StickyFlipPrintWindow() =>
+            Interlocked.Exchange(ref _preferPrintWindowUntilTicks, DateTime.UtcNow.Add(PathFlipTtl).Ticks);
+        private void StickyFlipGraphicsCapture() =>
+            Interlocked.Exchange(ref _preferGraphicsCaptureUntilTicks, DateTime.UtcNow.Add(PathFlipTtl).Ticks);
+
         private GraphicsCaptureLogic? _graphicsCapture;
         private readonly object _graphicsCaptureInitLock = new();
+        // WinRT init throws 0x80070424 ("service does not exist") when the
+        // agent's session has no RuntimeBroker (post-RDP-logoff is a common
+        // trigger). Back off init attempts so we don't log-spam every poll.
+        private DateTime _graphicsCaptureInitFailedUntilUtc = DateTime.MinValue;
+        private static readonly TimeSpan GraphicsCaptureInitBackoff = TimeSpan.FromSeconds(60);
         // PrintWindow-too-slow detection: if consecutive captures run over this
         // budget, sticky-flip to the WinRT path. The UI's per-request budget
         // is 7s, and concurrent polls compound queueing delays, so a 2s ceiling
@@ -540,12 +556,14 @@ namespace IRIS.Agent.Logic
 
         private bool TryCaptureDesktopInto(Bitmap target, Rectangle bounds)
         {
-            if (_preferGraphicsCapturePath)
+            if (PreferGraphicsCapturePath)
             {
-                return TryCaptureViaGraphicsCapture(target, bounds);
+                if (TryCaptureViaGraphicsCapture(target, bounds)) return true;
+                // WinRT failed too — fall through and retry CopyFromScreen /
+                // PrintWindow rather than staying stuck on a dead path.
             }
 
-            if (!_preferPrintWindowPath)
+            if (!PreferPrintWindowPath)
             {
                 try
                 {
@@ -556,11 +574,13 @@ namespace IRIS.Agent.Logic
                 }
                 catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 6)
                 {
-                    // ERROR_INVALID_HANDLE — the 24H2 regression. Stop trying
-                    // CopyFromScreen on this process; it won't recover without
-                    // a logout. Fall through to PrintWindow.
-                    _preferPrintWindowPath = true;
-                    Log.Information("CopyFromScreen failed with invalid-handle; switching this process to PrintWindow capture path.");
+                    // ERROR_INVALID_HANDLE — typically the 24H2 regression, or
+                    // a session-DC invalidated by RDP detach. Drop to PrintWindow
+                    // for a window of time, then retry CopyFromScreen — it
+                    // usually recovers when the session reattaches to console.
+                    StickyFlipPrintWindow();
+                    Log.Information("CopyFromScreen failed with invalid-handle; switching to PrintWindow capture path for {Ttl}s.",
+                        (int)PathFlipTtl.TotalSeconds);
                 }
                 catch (Exception ex)
                 {
@@ -577,8 +597,9 @@ namespace IRIS.Agent.Logic
 
             if (!pwOk)
             {
-                Log.Warning("PrintWindow capture failed; escalating to Windows.Graphics.Capture (WinRT) path.");
-                _preferGraphicsCapturePath = true;
+                Log.Warning("PrintWindow capture failed; escalating to Windows.Graphics.Capture (WinRT) path for {Ttl}s.",
+                    (int)PathFlipTtl.TotalSeconds);
+                StickyFlipGraphicsCapture();
                 return TryCaptureViaGraphicsCapture(target, bounds);
             }
 
@@ -587,9 +608,9 @@ namespace IRIS.Agent.Logic
                 _printWindowSlowStreak++;
                 if (_printWindowSlowStreak >= 3)
                 {
-                    Log.Warning("PrintWindow averaged >{Budget}ms for {Count} captures; escalating to Windows.Graphics.Capture.",
-                        PrintWindowSlowBudgetMs, _printWindowSlowStreak);
-                    _preferGraphicsCapturePath = true;
+                    Log.Warning("PrintWindow averaged >{Budget}ms for {Count} captures; escalating to Windows.Graphics.Capture for {Ttl}s.",
+                        PrintWindowSlowBudgetMs, _printWindowSlowStreak, (int)PathFlipTtl.TotalSeconds);
+                    StickyFlipGraphicsCapture();
                 }
             }
             else
@@ -640,14 +661,21 @@ namespace IRIS.Agent.Logic
         {
             if (_graphicsCapture != null) return _graphicsCapture;
 
+            if (DateTime.UtcNow < _graphicsCaptureInitFailedUntilUtc)
+            {
+                return null;
+            }
+
             lock (_graphicsCaptureInitLock)
             {
                 if (_graphicsCapture != null) return _graphicsCapture;
+                if (DateTime.UtcNow < _graphicsCaptureInitFailedUntilUtc) return null;
 
                 var candidate = new GraphicsCaptureLogic();
                 if (!candidate.Initialize())
                 {
                     candidate.Dispose();
+                    _graphicsCaptureInitFailedUntilUtc = DateTime.UtcNow.Add(GraphicsCaptureInitBackoff);
                     return null;
                 }
 
@@ -731,8 +759,8 @@ namespace IRIS.Agent.Logic
             var now = DateTime.UtcNow;
             if ((now - _lastCaptureTimingLogUtc).TotalSeconds < 10) return;
             _lastCaptureTimingLogUtc = now;
-            var path = _preferGraphicsCapturePath ? "GraphicsCapture"
-                : _preferPrintWindowPath ? "PrintWindow"
+            var path = PreferGraphicsCapturePath ? "GraphicsCapture"
+                : PreferPrintWindowPath ? "PrintWindow"
                 : "CopyFromScreen";
             Log.Information("Snapshot capture via {Path} took {Elapsed} ms.", path, elapsedMs);
         }

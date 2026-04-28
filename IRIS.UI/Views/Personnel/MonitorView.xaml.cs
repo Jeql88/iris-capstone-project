@@ -45,6 +45,15 @@ namespace IRIS.UI.Views.Personnel
             if (DataContext is not MonitorViewModel vm || vm.SelectedPC == null)
                 return;
 
+            // The alerts and timeline overlays are regular Borders, not <Popup>
+            // controls, so the visual-tree walk below cannot detect them. If
+            // either is open, clicks are part of that overlay's flow (e.g.
+            // pressing "Dismiss All") and must NOT null out SelectedPC —
+            // doing so causes the bound command to early-return because it
+            // depends on SelectedPC.
+            if (vm.IsPcAlertsPanelOpen || vm.IsTimelinePanelOpen)
+                return;
+
             // Walk visual tree — if click is inside a card or a popup, don't deselect
             if (e.OriginalSource is DependencyObject source)
             {

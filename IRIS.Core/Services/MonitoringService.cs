@@ -844,6 +844,16 @@ namespace IRIS.Core.Services
             return alerts.Count;
         }
 
+        public async Task<List<int>> GetUnresolvedAlertIdsForPcAsync(int pcId)
+        {
+            if (pcId <= 0) return new List<int>();
+            return await _context.Alerts
+                .AsNoTracking()
+                .Where(a => a.PCId == pcId && !a.IsResolved)
+                .Select(a => a.Id)
+                .ToListAsync();
+        }
+
         public async Task<List<PcHealthTimelineEvent>> GetPcHealthTimelineAsync(int pcId, int hours = 24, int maxItems = 120)
         {
             if (pcId <= 0)

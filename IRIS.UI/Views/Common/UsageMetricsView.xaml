@@ -261,7 +261,7 @@
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding FilteredApplicationUsage.Count}" Value="0">
+                                        <DataTrigger Binding="{Binding IsAppViewEmpty}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>

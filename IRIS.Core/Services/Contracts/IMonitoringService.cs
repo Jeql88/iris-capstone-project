@@ -24,6 +24,7 @@ namespace IRIS.Core.Services.Contracts
         Task<bool> ResolveAlertAsync(int alertId, int userId);
         Task<int> AcknowledgeAlertsAsync(IEnumerable<int> alertIds, int userId);
         Task<int> ResolveAlertsAsync(IEnumerable<int> alertIds, int userId);
+        Task<List<int>> GetUnresolvedAlertIdsForPcAsync(int pcId);
         Task<List<PcHealthTimelineEvent>> GetPcHealthTimelineAsync(int pcId, int hours = 24, int maxItems = 120);
         Task<byte[]> ExportNetworkAnalyticsCsvAsync(DateTime startUtc, DateTime endUtc, int? roomId = null);
         Task<byte[]> ExportHardwareAnalyticsCsvAsync(DateTime startUtc, DateTime endUtc, int? roomId = null);

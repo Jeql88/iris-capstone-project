@@ -34,34 +34,45 @@
 
                 <!-- Bulk-actions toolbar -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <!-- Bulk-mode-only buttons -->
-                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsBulkActionMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="{Binding SelectedBulkCount, StringFormat={}{0} selected}"
-                                   VerticalAlignment="Center" Margin="0,0,12,0"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <ui:Button Content="Select All Online" Icon="{ui:SymbolIcon CheckmarkSquare24}"
-                                   Command="{Binding SelectAllOnlineCommand}"
-                                   Margin="0,0,8,0"/>
-                        <ui:Button Content="Send Message" Icon="{ui:SymbolIcon Chat24}"
-                                   Command="{Binding BulkSendMessageCommand}"
-                                   Margin="0,0,8,0"/>
-                        <ui:Button Content="Freeze" Icon="{ui:SymbolIcon LockClosed24}"
-                                   Command="{Binding BulkFreezeCommand}"
-                                   Margin="0,0,8,0"/>
-                    </StackPanel>
-                    <ui:Button Icon="{ui:SymbolIcon CheckmarkSquare24}"
-                               Content="Bulk Actions"
-                               Command="{Binding ToggleBulkActionsCommand}">
-                        <ui:Button.Style>
-                            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                    <TextBlock Text="{Binding SelectedBulkCount, StringFormat={}{0} selected}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding IsBulkActionMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <ui:DropDownButton Content="Bulk Actions"
+                                       Icon="{ui:SymbolIcon CheckmarkSquare24}">
+                        <ui:DropDownButton.Style>
+                            <Style TargetType="ui:DropDownButton" BasedOn="{StaticResource {x:Type ui:DropDownButton}}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsBulkActionMode}" Value="True">
                                         <Setter Property="Appearance" Value="Primary"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </ui:Button.Style>
-                    </ui:Button>
+                        </ui:DropDownButton.Style>
+                        <ui:DropDownButton.Flyout>
+                            <ContextMenu>
+                                <MenuItem Header="Select All Online" Command="{Binding SelectAllOnlineCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="CheckmarkSquare24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Unselect All" Command="{Binding UnselectAllCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Square24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Send Message" Command="{Binding BulkSendMessageCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Chat24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{Binding BulkFreezeLabel}" Command="{Binding BulkToggleFreezeCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="LockClosed24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Restart" Command="{Binding BulkRestartCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Shutdown" Command="{Binding BulkShutdownCommand}">
+                                    <MenuItem.Icon><ui:SymbolIcon Symbol="Power24" FontSize="14"/></MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ui:DropDownButton.Flyout>
+                    </ui:DropDownButton>
                 </StackPanel>
 
             </Grid>
@@ -252,13 +263,30 @@
                                     </Border.Style>
 
                                     <Grid Margin="10">
-                                        <!-- Bulk-action checkbox overlay (top-left, only in bulk mode).
-                                             ZIndex pushes it above the tile content so the checkbox
-                                             toggles selection without hitting the PCCard_Click handler. -->
+                                        <!-- Bulk-action checkbox overlay (top-left, only in bulk mode and only
+                                             on Online PCs). ZIndex pushes it above the tile content so the
+                                             checkbox toggles selection without hitting the PCCard_Click handler.
+                                             Light-gray Background fills the box when unchecked so it's visible
+                                             against the card on both light and dark themes. -->
                                         <CheckBox HorizontalAlignment="Left" VerticalAlignment="Top"
                                                   Margin="-4,-4,0,0" Panel.ZIndex="100"
-                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                  Visibility="{Binding DataContext.IsBulkActionMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                  Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}">
+                                            <CheckBox.Style>
+                                                <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsBulkActionMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                                                <Condition Binding="{Binding Status}" Value="Online"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </CheckBox.Style>
+                                        </CheckBox>
 
                                         <!-- Front face -->
                                         <Grid>

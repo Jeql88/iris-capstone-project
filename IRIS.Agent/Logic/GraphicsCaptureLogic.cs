@@ -31,11 +31,24 @@ namespace IRIS.Agent.Logic
             IntPtr CreateForMonitor([In] IntPtr monitor, [In] ref Guid iid);
         }
 
+        // RoGetActivationFactory takes an HSTRING, not a wide string. .NET's
+        // P/Invoke marshaller rejects [MarshalAs(UnmanagedType.HString)] on
+        // a string parameter (MarshalDirectiveException), so we construct
+        // the HSTRING manually via WindowsCreateString and pass the handle.
         [DllImport("combase.dll", ExactSpelling = true, PreserveSig = true)]
-        private static extern unsafe int RoGetActivationFactory(
-            [MarshalAs(UnmanagedType.HString)] string activatableClassId,
+        private static extern int RoGetActivationFactory(
+            IntPtr activatableClassId,
             [In] ref Guid iid,
             out IntPtr factory);
+
+        [DllImport("combase.dll", ExactSpelling = true, PreserveSig = true)]
+        private static extern int WindowsCreateString(
+            [MarshalAs(UnmanagedType.LPWStr)] string sourceString,
+            int length,
+            out IntPtr hstring);
+
+        [DllImport("combase.dll", ExactSpelling = true, PreserveSig = true)]
+        private static extern int WindowsDeleteString(IntPtr hstring);
 
         public bool Initialize()
         {
@@ -146,41 +159,56 @@ namespace IRIS.Agent.Logic
                 // is the supported path on all CsWinRT versions.
                 var classId = "Windows.Graphics.Capture.GraphicsCaptureItem";
                 var interopIid = typeof(IGraphicsCaptureItemInterop).GUID;
-                int roHr;
-                unsafe
+
+                var hsHr = WindowsCreateString(classId, classId.Length, out var hstring);
+                if (hsHr < 0 || hstring == IntPtr.Zero)
                 {
-                    roHr = RoGetActivationFactory(classId, ref interopIid, out var factoryPtr);
-                    if (roHr < 0 || factoryPtr == IntPtr.Zero)
-                    {
-                        Log.Error("RoGetActivationFactory for {Class} failed (HRESULT 0x{Hr:X8}).", classId, roHr);
-                        return null;
-                    }
-                    IGraphicsCaptureItemInterop interop;
-                    try
-                    {
-                        interop = (IGraphicsCaptureItemInterop)Marshal.GetObjectForIUnknown(factoryPtr);
-                    }
-                    finally
-                    {
-                        Marshal.Release(factoryPtr);
-                    }
+                    Log.Error("WindowsCreateString for {Class} failed (HRESULT 0x{Hr:X8}).", classId, hsHr);
+                    return null;
+                }
 
-                    var iid = GuidGenerator.CreateIID(typeof(GraphicsCaptureItem));
-                    var itemPtr = interop.CreateForMonitor(hmonitor, ref iid);
-                    if (itemPtr == IntPtr.Zero)
-                    {
-                        Log.Warning("IGraphicsCaptureItemInterop.CreateForMonitor returned NULL.");
-                        return null;
-                    }
+                IntPtr factoryPtr;
+                int roHr;
+                try
+                {
+                    roHr = RoGetActivationFactory(hstring, ref interopIid, out factoryPtr);
+                }
+                finally
+                {
+                    WindowsDeleteString(hstring);
+                }
 
-                    try
-                    {
-                        item = MarshalInspectable<GraphicsCaptureItem>.FromAbi(itemPtr);
-                    }
-                    finally
-                    {
-                        Marshal.Release(itemPtr);
-                    }
+                if (roHr < 0 || factoryPtr == IntPtr.Zero)
+                {
+                    Log.Error("RoGetActivationFactory for {Class} failed (HRESULT 0x{Hr:X8}).", classId, roHr);
+                    return null;
+                }
+
+                IGraphicsCaptureItemInterop interop;
+                try
+                {
+                    interop = (IGraphicsCaptureItemInterop)Marshal.GetObjectForIUnknown(factoryPtr);
+                }
+                finally
+                {
+                    Marshal.Release(factoryPtr);
+                }
+
+                var iid = GuidGenerator.CreateIID(typeof(GraphicsCaptureItem));
+                var itemPtr = interop.CreateForMonitor(hmonitor, ref iid);
+                if (itemPtr == IntPtr.Zero)
+                {
+                    Log.Warning("IGraphicsCaptureItemInterop.CreateForMonitor returned NULL.");
+                    return null;
+                }
+
+                try
+                {
+                    item = MarshalInspectable<GraphicsCaptureItem>.FromAbi(itemPtr);
+                }
+                finally
+                {
+                    Marshal.Release(itemPtr);
                 }
             }
             catch (Exception ex)

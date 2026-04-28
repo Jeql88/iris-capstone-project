@@ -103,6 +103,7 @@ namespace IRIS.UI.ViewModels
                 OnPropertyChanged(nameof(IsGroupedByApplication));
                 OnPropertyChanged(nameof(IsGroupedByPC));
                 OnPropertyChanged(nameof(IsUngrouped));
+                OnPropertyChanged(nameof(IsAppViewEmpty));
                 _ = LoadAppPageAsync(1);
             }
         }
@@ -110,6 +111,16 @@ namespace IRIS.UI.ViewModels
         public bool IsGroupedByApplication => _selectedGrouping == "Application";
         public bool IsGroupedByPC => _selectedGrouping == "PC";
         public bool IsUngrouped => _selectedGrouping == "None";
+
+        // The empty-state overlay must reflect whichever collection is actually
+        // bound to the visible DataGrid. The non-active collections are cleared
+        // when grouping changes, so checking only FilteredApplicationUsage made
+        // the overlay falsely appear over a populated grouped grid.
+        public bool IsAppViewEmpty => IsGroupedByApplication
+            ? GroupedApplicationRows.Count == 0
+            : IsGroupedByPC
+                ? GroupedPCRows.Count == 0
+                : FilteredApplicationUsage.Count == 0;
 
         public DateTime? StartDate
         {
@@ -410,6 +421,7 @@ namespace IRIS.UI.ViewModels
                     AppCurrentPage = groupedAppResult.PageNumber;
                     AppTotalPages = groupedAppResult.TotalPages;
                     AppTotalCount = groupedAppResult.TotalCount;
+                    OnPropertyChanged(nameof(IsAppViewEmpty));
                     return;
                 }
 
@@ -437,6 +449,7 @@ namespace IRIS.UI.ViewModels
                     AppCurrentPage = groupedPCResult.PageNumber;
                     AppTotalPages = groupedPCResult.TotalPages;
                     AppTotalCount = groupedPCResult.TotalCount;
+                    OnPropertyChanged(nameof(IsAppViewEmpty));
                     return;
                 }
 
@@ -469,6 +482,7 @@ namespace IRIS.UI.ViewModels
                 AppCurrentPage = result.PageNumber;
                 AppTotalPages = result.TotalPages;
                 AppTotalCount = result.TotalCount;
+                OnPropertyChanged(nameof(IsAppViewEmpty));
             }
             catch { }
             finally

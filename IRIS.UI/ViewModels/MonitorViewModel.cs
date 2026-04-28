@@ -105,10 +105,12 @@ namespace IRIS.UI.ViewModels
             RefreshSelectedPcTimelineCommand = new RelayCommand(async () => await RefreshSelectedPcTimelineAsync(), () => SelectedPC != null);
             ApplyFiltersCommand = new RelayCommand(async () => await ApplyFiltersAsync(), () => true);
             ResetFiltersCommand = new RelayCommand(async () => await ResetFiltersAsync(), () => true);
-            ToggleBulkActionsCommand = new RelayCommand(() => IsBulkActionMode = !IsBulkActionMode, () => true);
             BulkSendMessageCommand = new RelayCommand(async () => await BulkSendMessageAsync(), () => SelectedBulkCount > 0);
-            BulkFreezeCommand = new RelayCommand(async () => await BulkFreezeAsync(), () => SelectedBulkCount > 0);
+            BulkToggleFreezeCommand = new RelayCommand(async () => await BulkToggleFreezeAsync(), () => SelectedBulkCount > 0);
+            BulkRestartCommand = new RelayCommand(async () => await BulkPowerCommandAsync("Restart"), () => SelectedBulkCount > 0);
+            BulkShutdownCommand = new RelayCommand(async () => await BulkPowerCommandAsync("Shutdown"), () => SelectedBulkCount > 0);
             SelectAllOnlineCommand = new RelayCommand(SelectAllOnline, () => true);
+            UnselectAllCommand = new RelayCommand(UnselectAll, () => true);
 
             SelectedPcTimeline.CollectionChanged += OnSelectedPcTimelineCollectionChanged;
             _cache.DataChanged += OnCacheDataChanged;
@@ -275,10 +277,25 @@ namespace IRIS.UI.ViewModels
         public ICommand OpenPcAlertsForPCCommand { get; }
         public ICommand ClosePcAlertsPanelCommand { get; }
         public ICommand DismissAllAlertsCommand { get; }
-        public ICommand ToggleBulkActionsCommand { get; }
         public ICommand BulkSendMessageCommand { get; }
-        public ICommand BulkFreezeCommand { get; }
+        public ICommand BulkToggleFreezeCommand { get; }
+        public ICommand BulkRestartCommand { get; }
+        public ICommand BulkShutdownCommand { get; }
         public ICommand SelectAllOnlineCommand { get; }
+        public ICommand UnselectAllCommand { get; }
+
+        public string BulkFreezeLabel
+        {
+            get
+            {
+                var selectedOnline = PCs
+                    .Where(p => p.IsSelected
+                                && string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (selectedOnline.Count == 0) return "Freeze";
+                return selectedOnline.All(p => p.IsFreezeActive) ? "Unfreeze" : "Freeze";
+            }
+        }
 
         private bool _isBulkActionMode;
         public bool IsBulkActionMode
@@ -310,7 +327,10 @@ namespace IRIS.UI.ViewModels
         {
             SelectedBulkCount = PCs.Count(p => p.IsSelected);
             (BulkSendMessageCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (BulkFreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (BulkToggleFreezeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (BulkRestartCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (BulkShutdownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(BulkFreezeLabel));
         }
         public ICommand ShowTimelineForPCCommand { get; }
         public ICommand CloseTimelinePanelCommand { get; }
@@ -1073,15 +1093,33 @@ namespace IRIS.UI.ViewModels
             {
                 RefreshBulkSelection();
             }
+            else if (e.PropertyName == nameof(PCDisplayModel.IsFreezeActive)
+                     && sender is PCDisplayModel pc && pc.IsSelected)
+            {
+                // Selected PC's freeze state changed externally (e.g. single-PC
+                // toggle while bulk mode is on) — re-evaluate the dropdown label.
+                OnPropertyChanged(nameof(BulkFreezeLabel));
+            }
         }
 
         private void SelectAllOnline()
         {
+            // Selecting implicitly enters bulk mode so per-card checkboxes
+            // become visible. Setting IsBulkActionMode also clears selections
+            // when toggled off, so we set it BEFORE assigning IsSelected.
+            IsBulkActionMode = true;
             foreach (var pc in PCs)
             {
                 pc.IsSelected = string.Equals(pc.Status, "Online", StringComparison.OrdinalIgnoreCase);
             }
             RefreshBulkSelection();
+        }
+
+        private void UnselectAll()
+        {
+            // Exiting bulk mode clears IsSelected for every PC and hides
+            // the per-card checkboxes — same end-state as toggling off.
+            IsBulkActionMode = false;
         }
 
         private async Task BulkSendMessageAsync()
@@ -1131,7 +1169,7 @@ namespace IRIS.UI.ViewModels
                 null);
         }
 
-        private async Task BulkFreezeAsync()
+        private async Task BulkToggleFreezeAsync()
         {
             var targets = PCs.Where(p => p.IsSelected
                                           && string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase)
@@ -1143,26 +1181,44 @@ namespace IRIS.UI.ViewModels
                 return;
             }
 
-            var dialog = new FreezeMessageDialog(
-                "Freeze PCs",
-                $"Freeze message for {targets.Count} selected PC(s) (leave blank for default):",
-                "")
-            { Owner = Application.Current.MainWindow };
-
-            if (dialog.ShowDialog() != true) return;
+            // Smart toggle: if every selected online PC is currently frozen,
+            // unfreeze all; otherwise freeze (and freeze any already-frozen
+            // ones is a no-op for the agent).
+            bool unfreeze = targets.All(p => p.IsFreezeActive);
 
             string payload;
-            if (string.IsNullOrWhiteSpace(dialog.FreezeMessage))
+            if (unfreeze)
             {
-                payload = "FreezeOn";
+                var confirm = new ConfirmationDialog(
+                    "Confirm Unfreeze",
+                    $"Unfreeze {targets.Count} selected PC(s)?",
+                    "LockClosed24");
+                confirm.Owner = Application.Current.MainWindow;
+                if (confirm.ShowDialog() != true) return;
+                payload = "FreezeOff";
             }
             else
             {
-                var msgBytes = System.Text.Encoding.UTF8.GetBytes(dialog.FreezeMessage);
-                payload = $"FreezeOn::{Convert.ToBase64String(msgBytes)}";
+                var dialog = new FreezeMessageDialog(
+                    "Freeze PCs",
+                    $"Freeze message for {targets.Count} selected PC(s) (leave blank for default):",
+                    "")
+                { Owner = Application.Current.MainWindow };
+
+                if (dialog.ShowDialog() != true) return;
+
+                if (string.IsNullOrWhiteSpace(dialog.FreezeMessage))
+                {
+                    payload = "FreezeOn";
+                }
+                else
+                {
+                    var msgBytes = System.Text.Encoding.UTF8.GetBytes(dialog.FreezeMessage);
+                    payload = $"FreezeOn::{Convert.ToBase64String(msgBytes)}";
+                }
             }
 
-            int frozen = 0;
+            int updated = 0;
             foreach (var pc in targets)
             {
                 try
@@ -1170,19 +1226,67 @@ namespace IRIS.UI.ViewModels
                     var ok = await _powerCommandQueueService.QueueCommandAsync(pc.MacAddress!.Trim(), payload);
                     if (ok)
                     {
-                        frozen++;
-                        pc.IsFreezeActive = true;
+                        updated++;
+                        pc.IsFreezeActive = !unfreeze;
+                        // Persist to cache so the next refresh tick does not
+                        // clobber per-card state. The single-PC freeze path
+                        // does the same — without this, only the first card
+                        // visually reflects the new state after a bulk op.
+                        _cache.SetFreezeState(pc.Id, pc.IsFreezeActive);
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Trace.WriteLine($"Bulk freeze: failed to queue for {pc.MacAddress}: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"Bulk freeze toggle: failed to queue for {pc.MacAddress}: {ex.Message}");
+                }
+            }
+
+            OnPropertyChanged(nameof(BulkFreezeLabel));
+
+            await _authenticationService.LogUserActionAsync(
+                unfreeze ? "Bulk Unfreeze" : "Bulk Freeze",
+                $"{updated}/{targets.Count} PCs {(unfreeze ? "unfrozen" : "frozen")}",
+                null);
+        }
+
+        private async Task BulkPowerCommandAsync(string command)
+        {
+            var targets = PCs.Where(p => p.IsSelected
+                                          && string.Equals(p.Status, "Online", StringComparison.OrdinalIgnoreCase)
+                                          && !string.IsNullOrWhiteSpace(p.MacAddress))
+                             .ToList();
+            if (targets.Count == 0)
+            {
+                ShowOfflineActionDialog(command.ToLowerInvariant());
+                return;
+            }
+
+            var verb = command.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) ? "shut down" : "restart";
+            var icon = command.Equals("Shutdown", StringComparison.OrdinalIgnoreCase) ? "Power24" : "ArrowClockwise24";
+            var confirm = new ConfirmationDialog(
+                $"Confirm {command}",
+                $"Are you sure you want to {verb} {targets.Count} selected PC(s)?",
+                icon);
+            confirm.Owner = Application.Current.MainWindow;
+            if (confirm.ShowDialog() != true) return;
+
+            int sent = 0;
+            foreach (var pc in targets)
+            {
+                try
+                {
+                    var ok = await _powerCommandQueueService.QueueCommandAsync(pc.MacAddress!.Trim(), command);
+                    if (ok) sent++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine($"Bulk {command}: failed to queue for {pc.MacAddress}: {ex.Message}");
                 }
             }
 
             await _authenticationService.LogUserActionAsync(
-                "Bulk Freeze",
-                $"{frozen}/{targets.Count} PCs frozen",
+                $"Bulk {command}",
+                $"{sent}/{targets.Count} PCs queued for {verb}",
                 null);
         }
 
@@ -1220,6 +1324,11 @@ namespace IRIS.UI.ViewModels
             targetPc.AlertCount = 0;
             SelectedPcAlerts.Clear();
 
+            // Strip cached alert items for this PC so the next background tick
+            // (which fires every 5s) cannot re-render the dismissed alerts in
+            // the brief window before the server refresh round-trip lands.
+            _cache.PurgeCachedAlertsForPc(targetPc.Id);
+
             foreach (var a in alertsToResolve)
             {
                 var match = ActiveAlerts.FirstOrDefault(x => x.PCId == a.PCId && x.AlertKey == a.AlertKey);
@@ -1237,24 +1346,47 @@ namespace IRIS.UI.ViewModels
             {
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
-                var userId = _authenticationService.GetCurrentUser()?.Id ?? 0;
+                var userId = _authenticationService.GetCurrentUser()?.Id ?? 1;
 
-                var feed = await service.GetAlertFeedAsync(maxItems: 200);
-                var pcAlertIds = feed
-                    .Where(a => a.PCId == targetPc.Id && !a.IsResolved)
-                    .Select(a => a.AlertId)
-                    .ToList();
-
+                // Mirror AlertsView's working pattern exactly: pull every
+                // unresolved alert ID for this PC straight from the DB, then
+                // run them through the same ResolveAlertsAsync(ids, userId)
+                // call AlertsView uses successfully.
+                var pcAlertIds = await service.GetUnresolvedAlertIdsForPcAsync(targetPc.Id);
+                int resolved = 0;
                 if (pcAlertIds.Count > 0)
                 {
-                    await service.ResolveAlertsAsync(pcAlertIds, userId);
+                    resolved = await service.ResolveAlertsAsync(pcAlertIds, userId);
                 }
 
-                // Reconcile against the authoritative cache. Optimistic UI may
-                // have been wrong if a new alert came in between dialog confirm
-                // and now; this corrects it.
+                // Reconcile against the authoritative cache.
                 await _cache.RefreshLiveAlertsAsync(forceWait: true);
+
+                // Defensive: the metric-driven sync inside RefreshLiveAlertsAsync
+                // can re-add alerts for the same PC if its readings are still
+                // over threshold. Server-side suppression usually catches that,
+                // but timing races (especially under load) can let one slip
+                // through, which is what made the badge "persist". Strip
+                // anything for this PC out of the cache one more time so the
+                // immediate post-dismiss render is guaranteed clean — the
+                // 15-min client/server suppression window then keeps it clean.
+                _cache.PurgeCachedAlertsForPc(targetPc.Id);
                 LoadLiveAlertsFromCache();
+
+                // Re-apply optimistic clear after the cache reload in case
+                // LoadLiveAlertsFromCache repopulated the badge from a fresh
+                // re-synced alert that hadn't yet been suppressed.
+                targetPc.TopAlertSeverity = "None";
+                targetPc.TopAlertMessage = "No active alerts";
+                targetPc.AlertCount = 0;
+
+                if (resolved > 0)
+                {
+                    await _authenticationService.LogUserActionAsync(
+                        "Alerts Dismissed",
+                        $"{resolved} alert(s) resolved for {targetPc.PCName}",
+                        targetPc.Id);
+                }
             }
             catch (Exception ex)
             {

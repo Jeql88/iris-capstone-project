@@ -33,6 +33,13 @@ namespace IRIS.UI.Services
         /// <summary>Refresh live alerts. Creates its own scope.</summary>
         Task RefreshLiveAlertsAsync(bool forceWait = false);
 
+        /// <summary>
+        /// Strip every cached alert for a PC immediately. Used after Dismiss
+        /// All so the UI cannot re-render those alerts on a tick that fires
+        /// before the next server refresh lands.
+        /// </summary>
+        void PurgeCachedAlertsForPc(int pcId);
+
         /// <summary>Refresh rooms list. Creates its own scope.</summary>
         Task RefreshRoomsAsync();
 
