@@ -350,7 +350,10 @@ namespace IRIS.Agent.Logic
                     if (!string.IsNullOrWhiteSpace(decodedMessage))
                     {
                         Log.Information("Displaying remote message dialog for PC {MacAddress}", _macAddress);
-                        await RemoteMessageDialog.ShowInfoAsync("Message from IRIS", decodedMessage);
+                        // Fire-and-forget: the dialog runs on its own STA thread.
+                        // Awaiting here would block the monitoring timer until the
+                        // user closes the dialog, halting heartbeats and command polling.
+                        _ = RemoteMessageDialog.ShowInfoAsync("Message from IRIS", decodedMessage);
                     }
                 }
 

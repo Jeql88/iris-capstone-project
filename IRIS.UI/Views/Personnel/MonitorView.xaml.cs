@@ -15,6 +15,12 @@ namespace IRIS.UI.Views.Personnel
             DataContext = viewModel;
         }
 
+        private void MonitorModeToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MonitorViewModel vm)
+                vm.IsMonitorMode = !vm.IsMonitorMode;
+        }
+
         private void PCCard_Click(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is DependencyObject source && FindParent<Button>(source) != null)

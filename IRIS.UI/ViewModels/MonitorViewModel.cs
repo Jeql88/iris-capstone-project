@@ -323,6 +323,46 @@ namespace IRIS.UI.ViewModels
             private set { _selectedBulkCount = value; OnPropertyChanged(); }
         }
 
+        // Per-session view-mode toggles. Reset on each navigation to the page;
+        // no persistence to settings.
+        private bool _isMonitorMode;
+        public bool IsMonitorMode
+        {
+            get => _isMonitorMode;
+            set
+            {
+                if (_isMonitorMode == value) return;
+                _isMonitorMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        // Card-size multiplier for the PC grid. 1.0 = baseline (220 px card,
+        // 196x110 thumbnail). The view binds card/thumbnail dimensions to the
+        // computed properties below.
+        private const double BaseCardWidth = 220d;
+        private const double BaseThumbnailWidth = 196d;
+        private const double BaseThumbnailHeight = 110d;
+
+        private double _cardScale = 1.0;
+        public double CardScale
+        {
+            get => _cardScale;
+            set
+            {
+                if (Math.Abs(_cardScale - value) < 0.001) return;
+                _cardScale = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CardWidth));
+                OnPropertyChanged(nameof(ThumbnailWidth));
+                OnPropertyChanged(nameof(ThumbnailHeight));
+            }
+        }
+
+        public double CardWidth => BaseCardWidth * _cardScale;
+        public double ThumbnailWidth => BaseThumbnailWidth * _cardScale;
+        public double ThumbnailHeight => BaseThumbnailHeight * _cardScale;
+
         public void RefreshBulkSelection()
         {
             SelectedBulkCount = PCs.Count(p => p.IsSelected);

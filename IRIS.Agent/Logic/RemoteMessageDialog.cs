@@ -41,6 +41,15 @@ namespace IRIS.Agent.Logic
                 Application.ExitThread();
             };
 
+            // TopMost is set in AgentDialogBase, but the freeze overlay is also
+            // TopMost — explicitly bringing the message dialog forward after Show
+            // ensures it lands above peers in the same Z band.
+            form.Shown += (_, _) =>
+            {
+                form.Activate();
+                form.BringToFront();
+            };
+
             Application.Run(form);
         }
 

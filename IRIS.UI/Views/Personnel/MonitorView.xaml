@@ -38,6 +38,36 @@
                                VerticalAlignment="Center" Margin="0,0,12,0"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                Visibility="{Binding IsBulkActionMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <!-- Resize slider -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <ui:SymbolIcon Symbol="ZoomOut24" FontSize="14" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,4,0"/>
+                        <Slider Width="120" VerticalAlignment="Center"
+                                Minimum="0.7" Maximum="1.6"
+                                Value="{Binding CardScale, Mode=TwoWay}"
+                                TickFrequency="0.05" IsSnapToTickEnabled="False"
+                                ToolTip="Resize PC cards"/>
+                        <ui:SymbolIcon Symbol="ZoomIn24" FontSize="14" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="4,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Monitor Mode toggle -->
+                    <ui:Button Content="Monitor Mode"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Click="MonitorModeToggle_Click"
+                               Margin="0,0,8,0">
+                        <ui:Button.Style>
+                            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMonitorMode}" Value="True">
+                                        <Setter Property="Appearance" Value="Primary"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:Button.Style>
+                    </ui:Button>
+
                     <ui:DropDownButton Content="Bulk Actions"
                                        Icon="{ui:SymbolIcon CheckmarkSquare24}">
                         <ui:DropDownButton.Style>
@@ -172,7 +202,8 @@
             </Grid>
 
             <!-- Filters -->
-            <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,12">
+            <ui:Card Grid.Row="2" Padding="15" Margin="0,0,0,12"
+                     Visibility="{Binding IsMonitorMode, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <ui:SymbolIcon Symbol="Filter24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -240,7 +271,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="220" Margin="0,0,10,10" CornerRadius="10" Cursor="Hand"
+                                <Border Width="{Binding DataContext.CardWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Margin="0,0,10,10" CornerRadius="10" Cursor="Hand"
                                         MouseLeftButtonDown="PCCard_Click" Tag="{Binding}">
                                     <Border.ToolTip>
                                         <ToolTip>
@@ -317,7 +349,9 @@
 
                                             <!-- Thumbnail -->
                                             <Grid Grid.Row="0" Margin="0,0,0,8">
-                                                <Border Width="196" Height="110" CornerRadius="8"
+                                                <Border Width="{Binding DataContext.ThumbnailWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Height="{Binding DataContext.ThumbnailHeight, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CornerRadius="8"
                                                         Background="{DynamicResource ControlFillColorTertiaryBrush}"
                                                         HorizontalAlignment="Center" ClipToBounds="True">
                                                     <Grid>
@@ -329,10 +363,11 @@
                                                     </Grid>
                                                 </Border>
 
-                                                <!-- Status dot -->
+                                                <!-- Status dot (hidden in Monitor Mode) -->
                                                 <Ellipse Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
                                                          Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
-                                                         Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}" StrokeThickness="2"/>
+                                                         Stroke="{DynamicResource SolidBackgroundFillColorBaseBrush}" StrokeThickness="2"
+                                                         Visibility="{Binding DataContext.IsMonitorMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"/>
 
                                                 <!-- Alert overlays (hidden for Faculty) -->
                                                 <Grid Visibility="{Binding DataContext.ShowAlertsUi, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -389,8 +424,9 @@
                                                        HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                                            <!-- Stats chips -->
-                                            <Grid Grid.Row="2" Margin="0,6,0,0">
+                                            <!-- Stats chips (hidden in Monitor Mode) -->
+                                            <Grid Grid.Row="2" Margin="0,6,0,0"
+                                                  Visibility="{Binding DataContext.IsMonitorMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="4"/>
@@ -409,8 +445,9 @@
                                                 </Border>
                                             </Grid>
 
-                                            <!-- Status badge -->
-                                            <ui:Badge Grid.Row="3" Margin="0,6,0,0" HorizontalAlignment="Center">
+                                            <!-- Status badge (hidden in Monitor Mode) -->
+                                            <ui:Badge Grid.Row="3" Margin="0,6,0,0" HorizontalAlignment="Center"
+                                                      Visibility="{Binding DataContext.IsMonitorMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                                                 <ui:Badge.Style>
                                                     <Style TargetType="ui:Badge">
                                                         <Style.Triggers>
