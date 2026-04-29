@@ -102,10 +102,10 @@
                         <ui:Button Content="Apply Filters"
                                    Command="{Binding ApplyFiltersCommand}"
                                    Appearance="Primary"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0" Cursor="Hand"/>
                         <ui:Button Content="Reset"
                                    Command="{Binding ResetFiltersCommand}"
-                                   Appearance="Secondary"/>
+                                   Appearance="Secondary" Cursor="Hand"/>
                     </StackPanel>
                 </StackPanel>
             </ui:Card>
@@ -136,7 +136,7 @@
                                        Content="Export"
                                        Command="{Binding ExportCommand}"
                                        Appearance="Secondary"
-                                       Margin="12,0,0,0"/>
+                                       Margin="12,0,0,0" Cursor="Hand"/>
                         </StackPanel>
                     </Grid>
 
@@ -179,20 +179,20 @@
 
                     <!-- Pagination Controls -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                        <ui:Button Command="{Binding PreviousPageCommand}" 
-                                   Content="Previous" 
+                        <ui:Button Command="{Binding PreviousPageCommand}"
+                                   Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"
                                    Appearance="Primary"
-                                   Margin="0,0,10,0"/>
-                        
-                        <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                   Margin="0,0,10,0" Cursor="Hand"/>
+
+                        <TextBlock Text="{Binding PageInfo}" FontSize="13"
                                    VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        
-                        <ui:Button Command="{Binding NextPageCommand}" 
-                                   Content="Next" 
+
+                        <ui:Button Command="{Binding NextPageCommand}"
+                                   Content="Next"
                                    Icon="{ui:SymbolIcon ChevronRight24}"
                                    Appearance="Primary"
-                                   Margin="10,0,0,0"/>
+                                   Margin="10,0,0,0" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>

@@ -80,6 +80,18 @@ Write-Section 'Operating System'
 try {
     $os = Get-CimInstance Win32_OperatingSystem
     $cv = Get-ItemProperty 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion'
+
+    $installDateUtc = $null
+    try {
+        if ($os.InstallDate -is [datetime]) {
+            $installDateUtc = $os.InstallDate.ToUniversalTime().ToString('o')
+        } elseif ($os.InstallDate) {
+            $installDateUtc = ([Management.ManagementDateTimeConverter]::ToDateTime([string]$os.InstallDate)).ToUniversalTime().ToString('o')
+        }
+    } catch {
+        Write-Warning "InstallDate parse failed (non-fatal): $_"
+    }
+
     $report.OS = [ordered]@{
         Caption        = $os.Caption
         Version        = $os.Version
@@ -87,7 +99,7 @@ try {
         DisplayVersion = $cv.DisplayVersion
         UBR            = $cv.UBR
         Architecture   = $os.OSArchitecture
-        InstallDateUtc = ([Management.ManagementDateTimeConverter]::ToDateTime($os.InstallDate)).ToUniversalTime().ToString('o')
+        InstallDateUtc = $installDateUtc
     }
     $report.OS | Format-Table -AutoSize | Out-Host
 } catch {

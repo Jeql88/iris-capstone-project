@@ -249,6 +249,7 @@ namespace IRIS.Agent.Logic
             private static readonly IntPtr HWND_TOPMOST = new(-1);
             private const uint SWP_NOMOVE = 0x0002;
             private const uint SWP_NOSIZE = 0x0001;
+            private const uint SWP_NOACTIVATE = 0x0010;
 
             private const int WS_EX_TOPMOST = 0x00000008;
             private const int WS_EX_TOOLWINDOW = 0x00000080;
@@ -283,7 +284,11 @@ namespace IRIS.Agent.Logic
 
             protected override void WndProc(ref Message m)
             {
-                if (m.Msg == WM_WINDOWPOSCHANGING && m.LParam != IntPtr.Zero)
+                // Only clamp z-order when no message dialog is visible. When a
+                // message is showing we let Windows place us below it so the
+                // message always has the highest priority.
+                if (m.Msg == WM_WINDOWPOSCHANGING && m.LParam != IntPtr.Zero
+                    && RemoteMessageDialog.ActiveWindowHandle == IntPtr.Zero)
                 {
                     var wp = Marshal.PtrToStructure<WINDOWPOS>(m.LParam);
                     wp.hwndInsertAfter = HWND_TOPMOST;
@@ -327,7 +332,12 @@ namespace IRIS.Agent.Logic
                         return;
                     }
 
-                    SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+                    var msgHwnd = RemoteMessageDialog.ActiveWindowHandle;
+                    if (msgHwnd != IntPtr.Zero)
+                        // Yield to the message dialog: stay topmost but sit just below it.
+                        SetWindowPos(Handle, msgHwnd, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    else
+                        SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
                     // Pull focus back every ~1s (every 10th tick) so we recover from hijacks
                     // without stealing focus so aggressively that it breaks Ctrl+Alt+Del.
@@ -335,7 +345,8 @@ namespace IRIS.Agent.Logic
                     if (_tickCount >= 10)
                     {
                         _tickCount = 0;
-                        SetForegroundWindow(Handle);
+                        if (msgHwnd == IntPtr.Zero)
+                            SetForegroundWindow(Handle);
                     }
                 };
                 _topMostTimer.Start();

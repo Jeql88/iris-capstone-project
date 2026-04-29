@@ -59,7 +59,8 @@
                         <ui:Button x:Name="SettingsMenuBtn"
                                    Click="SettingsMenuBtn_Click"
                                    Style="{StaticResource DropdownMenuButtonStyle}"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                   Cursor="Hand">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="Settings24" FontSize="18" Margin="0,0,12,0"/>
                                 <TextBlock Text="Settings" VerticalAlignment="Center"/>
@@ -71,7 +72,8 @@
                         <ui:Button x:Name="LogoutMenuBtn"
                                    Click="LogoutMenuBtn_Click"
                                    Style="{StaticResource DropdownMenuButtonStyle}"
-                                   Foreground="#C0392B">
+                                   Foreground="#C0392B"
+                                   Cursor="Hand">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="SignOut24" FontSize="18" Margin="0,0,12,0"/>
                                 <TextBlock Text="Logout" VerticalAlignment="Center"/>

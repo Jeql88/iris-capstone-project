@@ -56,7 +56,7 @@
                     <ui:Button Content="Monitor Mode"
                                Icon="{ui:SymbolIcon Eye24}"
                                Click="MonitorModeToggle_Click"
-                               Margin="0,0,8,0">
+                               Margin="0,0,8,0" Cursor="Hand">
                         <ui:Button.Style>
                             <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                 <Style.Triggers>
@@ -69,7 +69,7 @@
                     </ui:Button>
 
                     <ui:DropDownButton Content="Bulk Actions"
-                                       Icon="{ui:SymbolIcon CheckmarkSquare24}">
+                                       Icon="{ui:SymbolIcon CheckmarkSquare24}" Cursor="Hand">
                         <ui:DropDownButton.Style>
                             <Style TargetType="ui:DropDownButton" BasedOn="{StaticResource {x:Type ui:DropDownButton}}">
                                 <Style.Triggers>
@@ -252,10 +252,10 @@
                         <ui:Button Content="Apply Filters"
                                    Command="{Binding ApplyFiltersCommand}"
                                    Appearance="Primary"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0" Cursor="Hand"/>
                         <ui:Button Content="Reset"
                                    Command="{Binding ResetFiltersCommand}"
-                                   Appearance="Secondary"/>
+                                   Appearance="Secondary" Cursor="Hand"/>
                     </StackPanel>
                 </StackPanel>
             </ui:Card>
@@ -473,7 +473,7 @@
 
                                                 <!-- More actions button with popup menu -->
                                                 <ui:Button Grid.Column="1" Padding="6,3" Appearance="Secondary" ToolTip="More actions"
-                                                           Click="MenuButton_Click">
+                                                           Click="MenuButton_Click" Cursor="Hand">
                                                     <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="12"/>
                                                 </ui:Button>
 
@@ -492,7 +492,7 @@
                                                         <StackPanel>
                                                             <ui:Button Padding="10,6" Appearance="Secondary"
                                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-                                                                       Click="RemoteDesktop_Click"
+                                                                       Click="RemoteDesktop_Click" Cursor="Hand"
                                                                        Visibility="{Binding DataContext.ShowRemoteDesktopQuickAction, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <ui:SymbolIcon Symbol="Desktop24" FontSize="14" Margin="0,0,8,0"/>
@@ -501,7 +501,7 @@
                                                             </ui:Button>
                                                             <ui:Button Padding="10,6" Appearance="Secondary"
                                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-                                                                       Click="Freeze_Click">
+                                                                       Click="Freeze_Click" Cursor="Hand">
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <ui:SymbolIcon Symbol="LockClosed24" FontSize="14" Margin="0,0,8,0"/>
                                                                     <TextBlock FontSize="12" VerticalAlignment="Center">
@@ -520,7 +520,7 @@
                                                             </ui:Button>
                                                             <ui:Button Padding="10,6" Appearance="Secondary"
                                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-                                                                       Click="Message_Click">
+                                                                       Click="Message_Click" Cursor="Hand">
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <ui:SymbolIcon Symbol="Chat24" FontSize="14" Margin="0,0,8,0"/>
                                                                     <TextBlock Text="Message" FontSize="12" VerticalAlignment="Center"/>
@@ -567,7 +567,7 @@
                                                 <StackPanel Grid.Row="8" Margin="0,8,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
                                                     <ui:Button Content="View Screen" Icon="{ui:SymbolIcon Eye24}" Appearance="Primary"
                                                                Command="{Binding DataContext.ViewScreenForPCCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                               CommandParameter="{Binding}" Padding="8,4" FontSize="11"/>
+                                                               CommandParameter="{Binding}" Padding="8,4" FontSize="11" Cursor="Hand"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -643,7 +643,7 @@
                             <ui:Button Grid.Column="3" Padding="4" Width="28" Height="28"
                                        Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary"
                                        Command="{Binding ClosePcAlertsPanelCommand}"
-                                       VerticalAlignment="Center"/>
+                                       VerticalAlignment="Center" Cursor="Hand"/>
                         </Grid>
                     </Border>
 
@@ -721,7 +721,7 @@
 
                             <ui:Button Grid.Column="1" Content="Dismiss All" Appearance="Danger"
                                        Icon="{ui:SymbolIcon DismissCircle24}"
-                                       Command="{Binding DismissAllAlertsCommand}"/>
+                                       Command="{Binding DismissAllAlertsCommand}" Cursor="Hand"/>
                         </Grid>
                     </Border>
                 </Grid>
@@ -755,9 +755,9 @@
                             <TextBlock Text="Past 24 hours" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
                         <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon ArrowClockwise24}" Appearance="Secondary"
-                                   Command="{Binding RefreshSelectedPcTimelineCommand}" Padding="4" Margin="0,0,6,0" ToolTip="Refresh timeline"/>
+                                   Command="{Binding RefreshSelectedPcTimelineCommand}" Padding="4" Margin="0,0,6,0" ToolTip="Refresh timeline" Cursor="Hand"/>
                         <ui:Button Grid.Column="3" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Secondary"
-                                   Command="{Binding CloseTimelinePanelCommand}" Padding="4"/>
+                                   Command="{Binding CloseTimelinePanelCommand}" Padding="4" Cursor="Hand"/>
                     </Grid>
 
                     <Grid Grid.Row="1">

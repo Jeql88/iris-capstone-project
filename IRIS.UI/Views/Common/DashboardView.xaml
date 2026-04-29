@@ -27,6 +27,7 @@
             <Setter Property="Margin" Value="0,2"/>
             <Setter Property="Padding" Value="12,10"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
     </UserControl.Resources>
     
@@ -217,13 +218,13 @@
                                            Icon="{ui:SymbolIcon Filter24}"
                                            Content="Apply"
                                            Appearance="Primary"
-                                           Command="{Binding ApplyDateFilterCommand}"/>
+                                           Command="{Binding ApplyDateFilterCommand}" Cursor="Hand"/>
 
                                 <ui:Button Margin="0,0,0,0" VerticalAlignment="Bottom"
                                            Icon="{ui:SymbolIcon ArrowDownload24}"
                                            Content="Export"
                                            Appearance="Secondary"
-                                           Command="{Binding ExportSelectedCommand}"/>
+                                           Command="{Binding ExportSelectedCommand}" Cursor="Hand"/>
                             </StackPanel>
                         </StackPanel>
                     </ui:Card>

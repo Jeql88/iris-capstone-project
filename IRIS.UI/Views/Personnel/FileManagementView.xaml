@@ -18,6 +18,7 @@
         <conv:InvertBoolConverter x:Key="InvertBoolConverter"/>
         <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
         <conv:PercentOfConverter x:Key="PercentOfConverter"/>
+        <conv:StatusToColorConverter x:Key="StatusToColorConverter"/>
 
         <!-- DataGrid row hover / selection highlight styles.
              Selected rows use the IRIS primary accent with a visible left-edge stroke
@@ -211,12 +212,12 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-                <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary"/>
+                <ui:Button Margin="12,0,0,0" Content="Refresh PCs" Command="{Binding RefreshPCsCommand}" Appearance="Secondary" Cursor="Hand"/>
                 <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Desktop24}"
                            Content="Remote Desktop"
                            Command="{Binding RemoteDesktopCommand}"
                            Appearance="Primary" Height="34" MinWidth="90"
-                           Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}"/>
+                           Visibility="{Binding CanModifyRemoteFiles, Converter={StaticResource BoolToVisConverter}}" Cursor="Hand"/>
             </StackPanel>
         </StackPanel>
 
@@ -255,15 +256,15 @@
                         </Grid.ColumnDefinitions>
 
                         <ui:Button Grid.Column="0" Margin="0,0,4,0" ToolTip="Drives"
-                                   Command="{Binding GoToLocalDrivesCommand}" Padding="6,4">
+                                   Command="{Binding GoToLocalDrivesCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="Home24"/>
                         </ui:Button>
                         <ui:Button Grid.Column="1" Margin="0,0,4,0" ToolTip="Up"
-                                   Command="{Binding NavigateUpLocalCommand}" Padding="6,4">
+                                   Command="{Binding NavigateUpLocalCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="ArrowUp24"/>
                         </ui:Button>
                         <ui:Button Grid.Column="2" Margin="0,0,4,0" ToolTip="Refresh"
-                                   Command="{Binding RefreshLocalCommand}" Padding="6,4">
+                                   Command="{Binding RefreshLocalCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="ArrowSync24"/>
                         </ui:Button>
                         <ui:TextBox Grid.Column="3"
@@ -271,7 +272,7 @@
                                     PlaceholderText="Path..."
                                     KeyDown="LocalPathBox_KeyDown"/>
                         <ui:Button Grid.Column="4" Margin="4,0,0,0" Content="Go"
-                                   Command="{Binding NavigateToLocalPathCommand}" Appearance="Secondary" Padding="10,4"/>
+                                   Command="{Binding NavigateToLocalPathCommand}" Appearance="Secondary" Padding="10,4" Cursor="Hand"/>
                     </Grid>
 
                     <!-- Search bar -->
@@ -375,15 +376,15 @@
                         </Grid.ColumnDefinitions>
 
                         <ui:Button Grid.Column="0" Margin="0,0,4,0" ToolTip="Drives"
-                                   Command="{Binding GoToRemoteDrivesCommand}" Padding="6,4">
+                                   Command="{Binding GoToRemoteDrivesCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="Home24"/>
                         </ui:Button>
                         <ui:Button Grid.Column="1" Margin="0,0,4,0" ToolTip="Up"
-                                   Command="{Binding NavigateUpRemoteCommand}" Padding="6,4">
+                                   Command="{Binding NavigateUpRemoteCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="ArrowUp24"/>
                         </ui:Button>
                         <ui:Button Grid.Column="2" Margin="0,0,4,0" ToolTip="Refresh"
-                                   Command="{Binding RefreshRemoteCommand}" Padding="6,4">
+                                   Command="{Binding RefreshRemoteCommand}" Padding="6,4" Cursor="Hand">
                             <ui:SymbolIcon Symbol="ArrowSync24"/>
                         </ui:Button>
                         <ui:TextBox Grid.Column="3"
@@ -391,7 +392,7 @@
                                     PlaceholderText="Remote path..."
                                     KeyDown="RemotePathBox_KeyDown"/>
                         <ui:Button Grid.Column="4" Margin="4,0,0,0" Content="Go"
-                                   Command="{Binding NavigateToRemotePathCommand}" Appearance="Secondary" Padding="10,4"/>
+                                   Command="{Binding NavigateToRemotePathCommand}" Appearance="Secondary" Padding="10,4" Cursor="Hand"/>
                     </Grid>
 
                     <!-- Search bar -->
@@ -522,12 +523,12 @@
                                 Text="{Binding BulkFolderName, UpdateSourceTrigger=PropertyChanged}"
                                 PlaceholderText="e.g. Assignment_01"/>
                     <ui:Button Grid.Column="2" Content="Browse Files" Margin="12,0,0,0"
-                               Command="{Binding BrowseBulkFilesCommand}" Appearance="Secondary"/>
+                               Command="{Binding BrowseBulkFilesCommand}" Appearance="Secondary" Cursor="Hand"/>
                     <TextBlock Grid.Column="3" VerticalAlignment="Center" Margin="12,0,0,0"
                                Text="{Binding BulkPendingFiles.Count, StringFormat='{}{0} file(s) selected'}"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <ui:Button Grid.Column="4" Content="Start Bulk Upload" Margin="12,0,0,0"
-                               Command="{Binding StartBulkUploadCommand}" Appearance="Primary"/>
+                               Command="{Binding StartBulkUploadCommand}" Appearance="Primary" Cursor="Hand"/>
                 </Grid>
 
                 <!-- Row 3: Target PC mode -->
@@ -546,10 +547,10 @@
                     <RadioButton Grid.Column="2" Content="Selected PCs only" Margin="0,0,12,0"
                                  IsChecked="{Binding BulkUploadToAll, Converter={StaticResource InvertBoolConverter}}" GroupName="BulkTarget"/>
                     <ui:Button Grid.Column="3" Content="Select All" Margin="0,0,4,0" Padding="8,2"
-                               Command="{Binding SelectAllPCsCommand}" Appearance="Secondary"
+                               Command="{Binding SelectAllPCsCommand}" Appearance="Secondary" Cursor="Hand"
                                Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}"/>
                     <ui:Button Grid.Column="4" Content="Deselect All" Padding="8,2"
-                               Command="{Binding DeselectAllPCsCommand}" Appearance="Secondary"
+                               Command="{Binding DeselectAllPCsCommand}" Appearance="Secondary" Cursor="Hand"
                                Visibility="{Binding BulkUploadToAll, Converter={StaticResource BoolToVisConverter}, ConverterParameter=Invert}"/>
                 </Grid>
 
@@ -565,7 +566,9 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,16,4">
-                                    <StackPanel Orientation="Horizontal">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                 Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
                                         <TextBlock Text="{Binding Hostname}"/>
                                         <TextBlock Text=" (" Foreground="Gray"/>
                                         <TextBlock Text="{Binding IPAddress}" Foreground="Gray"/>
@@ -608,7 +611,7 @@
                             <DataTemplate>
                                 <DockPanel Margin="0,1,0,1">
                                     <ui:Button DockPanel.Dock="Right" Content="✕" Padding="4,1" Margin="4,0,0,0"
-                                               Appearance="Secondary"
+                                               Appearance="Secondary" Cursor="Hand"
                                                Command="{Binding DataContext.RemoveBulkFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                CommandParameter="{Binding}"/>
                                     <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>

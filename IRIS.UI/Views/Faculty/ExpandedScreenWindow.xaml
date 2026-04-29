@@ -22,14 +22,14 @@
                            Foreground="White" VerticalAlignment="Center"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Command="{Binding RefreshScreenCommand}" 
+                    <Button Command="{Binding RefreshScreenCommand}"
                             Background="Transparent" BorderThickness="0" Padding="8"
-                            Foreground="White" Margin="0,0,8,0" ToolTip="Refresh">
+                            Foreground="White" Margin="0,0,8,0" ToolTip="Refresh" Cursor="Hand">
                         <TextBlock Text="🔄" FontSize="16"/>
                     </Button>
-                    <Button Click="CloseButton_Click" 
+                    <Button Click="CloseButton_Click"
                             Background="Transparent" BorderThickness="0" Padding="8"
-                            Foreground="White" ToolTip="Close (ESC)">
+                            Foreground="White" ToolTip="Close (ESC)" Cursor="Hand">
                         <TextBlock Text="✕" FontSize="16"/>
                     </Button>
                 </StackPanel>

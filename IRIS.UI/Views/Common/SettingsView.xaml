@@ -163,7 +163,7 @@
                                Appearance="Primary"
                                HorizontalAlignment="Left"
                                Padding="16,8"
-                               Click="ChangePassword_Click"/>
+                               Click="ChangePassword_Click" Cursor="Hand"/>
                 </StackPanel>
             </Border>
 
@@ -318,7 +318,7 @@
                                    Icon="{ui:SymbolIcon Save24}"
                                    Appearance="Primary"
                                    Padding="16,8"
-                                   Click="SaveSettings_Click"/>
+                                   Click="SaveSettings_Click" Cursor="Hand"/>
                         <Button Content="Run Cleanup Now"
                                Style="{StaticResource DangerButtonStyle}"
                                Margin="10,0,0,0"

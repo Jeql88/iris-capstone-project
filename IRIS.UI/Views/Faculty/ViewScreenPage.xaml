@@ -30,9 +30,9 @@
                         <TextBlock Text="View Screen" FontSize="32" FontWeight="Bold" 
                                    Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <ui:Button Command="{Binding BackCommand}" 
+                    <ui:Button Command="{Binding BackCommand}"
                                Appearance="Secondary" BorderThickness="0" Padding="0"
-                               Background="Transparent" HorizontalAlignment="Left">
+                               Background="Transparent" HorizontalAlignment="Left" Cursor="Hand">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="ArrowLeft24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
                             <TextBlock Text="Back to Tiled-View" FontSize="14" 
@@ -41,27 +41,6 @@
                     </ui:Button>
                 </StackPanel>
 
-                <!-- Connection Status -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="{DynamicResource OnlineStatusBrush}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsConnected}" Value="False">
-                                                <Setter Property="Fill" Value="{DynamicResource OfflineStatusBrush}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
-                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        <TextBlock Text="{Binding LastFrameUpdatedText}" Margin="18,3,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                    </StackPanel>
-                </StackPanel>
             </Grid>
 
             <!-- Screen Display Area -->
@@ -106,10 +85,10 @@
                                 <TextBlock Text="PC is Offline" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <TextBlock Text="The selected PC is not currently connected" 
                                            FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                <ui:Button Content="Retry Connection" 
+                                <ui:Button Content="Retry Connection"
                                            Icon="{ui:SymbolIcon ArrowClockwise24}"
                                            Command="{Binding RetryConnectionCommand}"
-                                           Appearance="Danger" Margin="0,20,0,0"/>
+                                           Appearance="Danger" Margin="0,20,0,0" Cursor="Hand"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -140,9 +119,26 @@
                             <StackPanel VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding PCName}" FontSize="20" FontWeight="Bold" Margin="0,0,10,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <Border Background="{DynamicResource IRISPrimaryBrush}" CornerRadius="4" Padding="8,2">
-                                        <TextBlock Text="{Binding PCNumber}" FontSize="11" Foreground="White"/>
-                                    </Border>
+                                    <StackPanel Margin="0,0,0,0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="{DynamicResource OnlineStatusBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                                                <Setter Property="Fill" Value="{DynamicResource OfflineStatusBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="13"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding LastFrameUpdatedText}" FontSize="11" Margin="16,2,0,0"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="{Binding RoomName}" FontSize="13" 
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
@@ -154,25 +150,28 @@
                             <ui:Button Icon="{ui:SymbolIcon ArrowClockwise24}"
                                        ToolTip="Refresh"
                                        Command="{Binding RefreshScreenCommand}"
-                                       Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="42"/>
+                                       Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="42" Cursor="Hand"/>
                             <ui:Button Icon="{ui:SymbolIcon Desktop24}"
                                        Content="Remote Desktop"
                                        Command="{Binding RemoteDesktopCommand}"
                                        Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"
-                                       Visibility="{Binding ShowRemoteDesktop, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                       Visibility="{Binding ShowRemoteDesktop, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       Cursor="Hand"/>
 
                             <!-- Standalone Freeze button for faculty (shown when More is hidden) -->
                             <ui:Button Icon="{ui:SymbolIcon LockClosed24}"
                                        Content="{Binding FreezeButtonText}"
                                        Command="{Binding ToggleFreezeCommand}"
                                        Appearance="Secondary" Margin="0,0,8,0" Height="34" MinWidth="90"
-                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       Cursor="Hand"/>
 
                             <ui:Button Icon="{ui:SymbolIcon Chat24}"
                                        Content="Message"
                                        Command="{Binding SendMessageCommand}"
                                        Appearance="Primary" Margin="0,0,8,0" Height="34" MinWidth="90"
-                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                       Visibility="{Binding IsFaculty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       Cursor="Hand"/>
 
                             <!-- More Actions Button with Popup (hidden for faculty) -->
                             <Grid Visibility="{Binding ShowPowerControls, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -180,7 +179,7 @@
                                            Icon="{ui:SymbolIcon MoreHorizontal24}"
                                            Content="More"
                                            Appearance="Secondary" Height="34" MinWidth="80"
-                                           Click="MoreActionsButton_Click"/>
+                                           Click="MoreActionsButton_Click" Cursor="Hand"/>
                                 <Popup x:Name="MoreActionsPopup"
                                        StaysOpen="False" AllowsTransparency="True"
                                        Placement="Top" PlacementTarget="{Binding ElementName=MoreActionsButton}"
@@ -197,7 +196,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding ShutdownPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click" Cursor="Hand">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="Power24" FontSize="16" Margin="0,0,10,0"
                                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}"/>
@@ -207,7 +206,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding RestartPCCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click" Cursor="Hand">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="Restart" FontSize="13" VerticalAlignment="Center"/>
@@ -216,7 +215,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding ToggleFreezeCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click" Cursor="Hand">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="LockClosed24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="{Binding FreezeButtonText}" FontSize="13" VerticalAlignment="Center"/>
@@ -225,7 +224,7 @@
                                             <ui:Button Padding="10,7" Appearance="Secondary"
                                                        HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
                                                        Command="{Binding SendMessageCommand}"
-                                                       Click="MoreActionsMenuItem_Click">
+                                                       Click="MoreActionsMenuItem_Click" Cursor="Hand">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Symbol="Chat24" FontSize="16" Margin="0,0,10,0"/>
                                                     <TextBlock Text="Message" FontSize="13" VerticalAlignment="Center"/>
@@ -241,9 +240,9 @@
                     <!-- Expandable Details Section -->
                     <StackPanel Grid.Row="1" Margin="0,15,0,0">
                         <!-- Toggle Details Button -->
-                        <ui:Button Command="{Binding ToggleDetailsCommand}" 
+                        <ui:Button Command="{Binding ToggleDetailsCommand}"
                                    Appearance="Secondary" BorderThickness="0"
-                                   Background="Transparent" HorizontalAlignment="Left" Padding="0">
+                                   Background="Transparent" HorizontalAlignment="Left" Padding="0" Cursor="Hand">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding ExpandIcon}" 
                                            Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"

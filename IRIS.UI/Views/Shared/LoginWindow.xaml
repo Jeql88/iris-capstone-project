@@ -90,14 +90,15 @@
                            Margin="0,0,0,20"/>
 
                 <!-- Login Button -->
-                <ui:Button Grid.Row="6" 
+                <ui:Button Grid.Row="6"
                           Appearance="Primary"
-                          Command="{Binding LoginCommand}" 
+                          Command="{Binding LoginCommand}"
                           HorizontalAlignment="Stretch"
                           Height="45"
                           FontSize="16"
                           FontWeight="SemiBold"
-                          Icon="{ui:SymbolIcon ArrowRight24}">
+                          Icon="{ui:SymbolIcon ArrowRight24}"
+                          Cursor="Hand">
                     <TextBlock Text="Sign In" Foreground="White"/>
                 </ui:Button>
             </Grid>

@@ -14,12 +14,12 @@
                         <TextBlock Text="User Management" FontSize="32" FontWeight="Bold" 
                                    Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <ui:Button Content="Add New User" 
+                    <ui:Button Content="Add New User"
                                Command="{Binding OpenAddModalCommand}"
                                Icon="{ui:SymbolIcon Add24}"
                                Appearance="Primary"
                                HorizontalAlignment="Right"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center" Cursor="Hand"/>
                 </Grid>
 
                 <!-- Search and Filters Card -->
@@ -61,10 +61,10 @@
                             <ui:Button Content="Apply Filters"
                                        Command="{Binding ApplyFiltersCommand}"
                                        Appearance="Primary"
-                                       Margin="0,0,10,0"/>
+                                       Margin="0,0,10,0" Cursor="Hand"/>
                             <ui:Button Content="Reset"
                                        Command="{Binding ResetFiltersCommand}"
-                                       Appearance="Secondary"/>
+                                       Appearance="Secondary" Cursor="Hand"/>
                         </StackPanel>
                     </StackPanel>
                 </ui:Card>
@@ -109,20 +109,20 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" Margin="5,0" HorizontalAlignment="Center">
-                                                    <ui:Button Content="Edit" 
+                                                    <ui:Button Content="Edit"
                                                                Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Edit24}"
                                                                Appearance="Secondary"
                                                                Padding="8,4"
-                                                               Margin="0,0,8,0"/>
-                                                    <ui:Button Content="Delete" 
+                                                               Margin="0,0,8,0" Cursor="Hand"/>
+                                                    <ui:Button Content="Delete"
                                                                Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Delete24}"
                                                                Appearance="Danger"
                                                                Foreground="White"
-                                                               Padding="8,4"/>
+                                                               Padding="8,4" Cursor="Hand"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -155,20 +155,20 @@
 
                         <!-- Pagination Controls -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                            <ui:Button Command="{Binding PreviousPageCommand}" 
-                                       Content="Previous" 
+                            <ui:Button Command="{Binding PreviousPageCommand}"
+                                       Content="Previous"
                                        Icon="{ui:SymbolIcon ChevronLeft24}"
                                        Appearance="Primary"
-                                       Margin="0,0,10,0"/>
-                            
-                            <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                       Margin="0,0,10,0" Cursor="Hand"/>
+
+                            <TextBlock Text="{Binding PageInfo}" FontSize="13"
                                        VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            
-                            <ui:Button Command="{Binding NextPageCommand}" 
-                                       Content="Next" 
+
+                            <ui:Button Command="{Binding NextPageCommand}"
+                                       Content="Next"
                                        Icon="{ui:SymbolIcon ChevronRight24}"
                                        Appearance="Primary"
-                                       Margin="10,0,0,0"/>
+                                       Margin="10,0,0,0" Cursor="Hand"/>
                         </StackPanel>
                     </Grid>
                 </ui:Card>
@@ -225,17 +225,17 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
-                        <ui:Button Content="Cancel" 
+                        <ui:Button Content="Cancel"
                                    Command="{Binding CloseAddModalCommand}"
                                    Icon="{ui:SymbolIcon Dismiss24}"
                                    Appearance="Secondary"
-                                   Margin="0,0,10,0"/>
-                        <ui:Button x:Name="AddUserButton" 
-                                   Content="Add User" 
+                                   Margin="0,0,10,0" Cursor="Hand"/>
+                        <ui:Button x:Name="AddUserButton"
+                                   Content="Add User"
                                    Icon="{ui:SymbolIcon Add24}"
                                    Appearance="Primary"
                                    IsEnabled="False"
-                                   Click="AddUser_Click"/>
+                                   Click="AddUser_Click" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -299,16 +299,16 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
-                        <ui:Button Content="Cancel" 
+                        <ui:Button Content="Cancel"
                                    Command="{Binding CloseEditModalCommand}"
                                    Icon="{ui:SymbolIcon Dismiss24}"
                                    Appearance="Secondary"
-                                   Margin="0,0,10,0"/>
-                        <ui:Button x:Name="EditUserButton" 
-                                   Content="Update User" 
+                                   Margin="0,0,10,0" Cursor="Hand"/>
+                        <ui:Button x:Name="EditUserButton"
+                                   Content="Update User"
                                    Icon="{ui:SymbolIcon Edit24}"
                                    Appearance="Primary"
-                                   Click="EditUser_Click"/>
+                                   Click="EditUser_Click" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>

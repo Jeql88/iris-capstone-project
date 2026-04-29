@@ -7,6 +7,9 @@ namespace IRIS.Agent.Logic
 {
     internal static class RemoteMessageDialog
     {
+        // Set when a MessageForm is visible so FreezeOverlayForm can yield to it.
+        internal static volatile IntPtr ActiveWindowHandle = IntPtr.Zero;
+
         public static Task ShowInfoAsync(string title, string message)
         {
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -170,7 +173,11 @@ namespace IRIS.Agent.Logic
                 okButton.Left = ClientSize.Width - okButton.Width - 16;
                 okButton.Top = ClientSize.Height - okButton.Height - 16;
 
-                Shown += (_, _) => ForceForeground();
+                Shown += (_, _) =>
+                {
+                    RemoteMessageDialog.ActiveWindowHandle = Handle;
+                    ForceForeground();
+                };
 
                 // Re-assert TOPMOST every 100 ms. Don't grab foreground here —
                 // that would steal focus while the user types or hovers other
@@ -184,7 +191,11 @@ namespace IRIS.Agent.Logic
                 };
                 _topMostTimer.Start();
 
-                FormClosed += (_, _) => _topMostTimer.Stop();
+                FormClosed += (_, _) =>
+                {
+                    _topMostTimer.Stop();
+                    RemoteMessageDialog.ActiveWindowHandle = IntPtr.Zero;
+                };
             }
 
             private void ForceForeground()

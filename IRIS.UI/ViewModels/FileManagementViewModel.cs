@@ -53,7 +53,7 @@ namespace IRIS.UI.ViewModels
 
         // Bulk upload state
         private RoomDto? _selectedBulkRoom;
-        private string _bulkFolderName = string.Empty;
+        private string _bulkFolderName = "IRIS";
         private bool _bulkUploadToAll = true;
         private string _bulkStatusMessage = string.Empty;
         private double _bulkProgress;

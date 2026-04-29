@@ -237,10 +237,10 @@
                     <ui:Button Content="Apply Filters"
                                Command="{Binding ApplyFiltersCommand}"
                                Appearance="Primary"
-                               Margin="0,0,10,0"/>
+                               Margin="0,0,10,0" Cursor="Hand"/>
                     <ui:Button Content="Reset"
                                Command="{Binding ResetFiltersCommand}"
-                               Appearance="Secondary"/>
+                               Appearance="Secondary" Cursor="Hand"/>
                 </StackPanel>
             </StackPanel>
         </ui:Card>
@@ -270,7 +270,7 @@
                     <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <ui:DropDownButton Icon="{ui:SymbolIcon Checkmark24}" Content="Acknowledge" Appearance="Secondary"
                                            ToolTip="Acknowledge visible or selected alerts"
-                                           Margin="0,0,6,4" Padding="10,6" FontSize="12">
+                                           Margin="0,0,6,4" Padding="10,6" FontSize="12" Cursor="Hand">
                             <ui:DropDownButton.Flyout>
                                 <ContextMenu>
                                     <MenuItem Header="Visible" Command="{Binding AcknowledgeVisibleCommand}">
@@ -284,7 +284,7 @@
                         </ui:DropDownButton>
                         <ui:DropDownButton Icon="{ui:SymbolIcon CheckmarkCircle24}" Content="Resolve" Appearance="Primary"
                                            ToolTip="Resolve visible or selected alerts"
-                                           Margin="0,0,12,4" Padding="10,6" FontSize="12">
+                                           Margin="0,0,12,4" Padding="10,6" FontSize="12" Cursor="Hand">
                             <ui:DropDownButton.Flyout>
                                 <ContextMenu>
                                     <MenuItem Header="Visible" Command="{Binding ResolveVisibleCommand}">
@@ -302,7 +302,7 @@
                                       ItemsSource="{Binding PageSizeOptions}"
                                       Width="70" Margin="0,0,5,0"/>
                             <TextBlock Text="entries" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Margin="8,0,0,0" Padding="10,6" FontSize="12"/>
+                            <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}" Content="Export" Appearance="Secondary" Command="{Binding ExportCommand}" Margin="8,0,0,0" Padding="10,6" FontSize="12" Cursor="Hand"/>
                         </StackPanel>
                     </WrapPanel>
                 </Grid>
@@ -368,7 +368,7 @@
                                Content="Previous"
                                Icon="{ui:SymbolIcon ChevronLeft24}"
                                Appearance="Primary"
-                               Margin="0,0,10,0"/>
+                               Margin="0,0,10,0" Cursor="Hand"/>
 
                     <TextBlock Text="{Binding PageInfo}" FontSize="13"
                                VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -377,7 +377,7 @@
                                Content="Next"
                                Icon="{ui:SymbolIcon ChevronRight24}"
                                Appearance="Primary"
-                               Margin="10,0,0,0"/>
+                               Margin="10,0,0,0" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
         </ui:Card>

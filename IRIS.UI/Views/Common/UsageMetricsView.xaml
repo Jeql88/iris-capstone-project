@@ -40,11 +40,11 @@
                                    Icon="{ui:SymbolIcon Apps24}"
                                    Appearance="Primary"
                                    Click="AppUsageTab_Click"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0" Cursor="Hand"/>
                         <ui:Button x:Name="WebUsageTab" Content="Website Usage"
                                    Icon="{ui:SymbolIcon Globe24}"
                                    Appearance="Secondary"
-                                   Click="WebUsageTab_Click"/>
+                                   Click="WebUsageTab_Click" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
 
@@ -79,7 +79,7 @@
                             <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}"
                                        Content="Export"
                                        Command="{Binding ExportAppUsageCommand}"
-                                       Appearance="Secondary"/>
+                                       Appearance="Secondary" Cursor="Hand"/>
                         </StackPanel>
                     </Grid>
 
@@ -165,10 +165,10 @@
                                 <ui:Button Content="Apply Filters"
                                            Command="{Binding ApplyAppFiltersCommand}"
                                            Appearance="Primary"
-                                           Margin="0,0,8,0"/>
+                                           Margin="0,0,8,0" Cursor="Hand"/>
                                 <ui:Button Content="Reset"
                                            Command="{Binding ResetAppFiltersCommand}"
-                                           Appearance="Secondary"/>
+                                           Appearance="Secondary" Cursor="Hand"/>
                             </StackPanel>
                         </StackPanel>
                     </ui:Card>
@@ -331,14 +331,14 @@
                                    Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"
                                    Appearance="Primary"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0" Cursor="Hand"/>
                         <TextBlock Text="{Binding AppPageInfo}" FontSize="13"
                                    VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:Button Command="{Binding AppNextPageCommand}"
                                    Content="Next"
                                    Icon="{ui:SymbolIcon ChevronRight24}"
                                    Appearance="Primary"
-                                   Margin="10,0,0,0"/>
+                                   Margin="10,0,0,0" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
 
@@ -372,7 +372,7 @@
                             <ui:Button Icon="{ui:SymbolIcon ArrowDownload24}"
                                        Content="Export"
                                        Command="{Binding ExportWebUsageCommand}"
-                                       Appearance="Secondary"/>
+                                       Appearance="Secondary" Cursor="Hand"/>
                         </StackPanel>
                     </Grid>
 
@@ -410,10 +410,10 @@
                                 <ui:Button Content="Apply Filters"
                                            Command="{Binding ApplyWebFiltersCommand}"
                                            Appearance="Primary"
-                                           Margin="0,0,8,0"/>
+                                           Margin="0,0,8,0" Cursor="Hand"/>
                                 <ui:Button Content="Reset"
                                            Command="{Binding ResetWebFiltersCommand}"
-                                           Appearance="Secondary"/>
+                                           Appearance="Secondary" Cursor="Hand"/>
                             </StackPanel>
                         </StackPanel>
                     </ui:Card>
@@ -479,14 +479,14 @@
                                    Content="Previous"
                                    Icon="{ui:SymbolIcon ChevronLeft24}"
                                    Appearance="Primary"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0" Cursor="Hand"/>
                         <TextBlock Text="{Binding WebPageInfo}" FontSize="13"
                                    VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <ui:Button Command="{Binding WebNextPageCommand}"
                                    Content="Next"
                                    Icon="{ui:SymbolIcon ChevronRight24}"
                                    Appearance="Primary"
-                                   Margin="10,0,0,0"/>
+                                   Margin="10,0,0,0" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
 

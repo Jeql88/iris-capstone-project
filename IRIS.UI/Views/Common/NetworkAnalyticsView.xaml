@@ -34,7 +34,7 @@
                 <ui:Button x:Name="BackButton"
                            Click="BackButton_Click"
                            Appearance="Secondary" BorderThickness="0" Padding="0"
-                           Background="Transparent" HorizontalAlignment="Left">
+                           Background="Transparent" HorizontalAlignment="Left" Cursor="Hand">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="ArrowLeft24" Foreground="{DynamicResource IRISSecondaryBrush}" Margin="0,0,6,0"/>
                         <TextBlock Text="Back to Tiled-View" FontSize="14"
@@ -121,7 +121,7 @@
                                Content="Previous"
                                Icon="{ui:SymbolIcon ChevronLeft24}"
                                Appearance="Primary"
-                               Margin="0,0,10,0"/>
+                               Margin="0,0,10,0" Cursor="Hand"/>
 
                     <TextBlock Text="{Binding PageInfo}" FontSize="13"
                                VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -130,7 +130,7 @@
                                Content="Next"
                                Icon="{ui:SymbolIcon ChevronRight24}"
                                Appearance="Primary"
-                               Margin="10,0,0,0"/>
+                               Margin="10,0,0,0" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
         </ui:Card>

@@ -199,7 +199,7 @@
                                         <ui:Button Grid.Column="1" Content="Browse"
                                                    Icon="{ui:SymbolIcon FolderOpen24}"
                                                    Command="{Binding BrowseWallpaperCommand}"
-                                                   Appearance="Primary" Margin="8,0,0,0"/>
+                                                   Appearance="Primary" Margin="8,0,0,0" Cursor="Hand"/>
                                     </Grid>
 
                                     <TextBlock Text="Fit Mode:" FontSize="12" Margin="0,12,0,6"/>
@@ -399,14 +399,14 @@
                                    IsClosable="False"
                                    Margin="0,0,0,15"/>
                         
-                        <ui:Button Command="{Binding ApplyPoliciesCommand}" 
+                        <ui:Button Command="{Binding ApplyPoliciesCommand}"
                                    Content="Deploy to Selected Laboratory"
                                    Icon="{ui:SymbolIcon Rocket24}"
                                    Appearance="Primary"
                                    HorizontalAlignment="Stretch"
                                    Height="45"
                                    FontSize="14"
-                                   FontWeight="SemiBold"/>
+                                   FontWeight="SemiBold" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>

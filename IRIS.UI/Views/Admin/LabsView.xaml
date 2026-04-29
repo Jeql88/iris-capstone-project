@@ -14,12 +14,13 @@
                         <TextBlock Text="Laboratories Management" FontSize="32" FontWeight="Bold" 
                                    Foreground="{DynamicResource IRISPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <ui:Button Content="Add New Laboratory" 
+                    <ui:Button Content="Add New Laboratory"
                                Command="{Binding OpenAddModalCommand}"
                                Icon="{ui:SymbolIcon Add24}"
                                Appearance="Primary"
                                HorizontalAlignment="Right"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center"
+                               Cursor="Hand"/>
                 </Grid>
 
                 <!-- Filter Card -->
@@ -60,10 +61,10 @@
                             <ui:Button Content="Apply Filters"
                                        Command="{Binding ApplyFiltersCommand}"
                                        Appearance="Primary"
-                                       Margin="0,0,10,0"/>
+                                       Margin="0,0,10,0" Cursor="Hand"/>
                             <ui:Button Content="Reset"
                                        Command="{Binding ResetFiltersCommand}"
-                                       Appearance="Secondary"/>
+                                       Appearance="Secondary" Cursor="Hand"/>
                         </StackPanel>
                     </StackPanel>
                 </ui:Card>
@@ -133,27 +134,27 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <ui:Button Content="View PCs" 
+                                                    <ui:Button Content="View PCs"
                                                                Command="{Binding DataContext.ViewAssignedPCsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding Id}"
                                                                Icon="{ui:SymbolIcon Laptop24}"
                                                                Appearance="Secondary"
                                                                Padding="6,4"
-                                                               Margin="0,0,8,0"/>
-                                                    <ui:Button Content="Edit" 
+                                                               Margin="0,0,8,0" Cursor="Hand"/>
+                                                    <ui:Button Content="Edit"
                                                                Command="{Binding DataContext.OpenEditModalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Edit24}"
                                                                Appearance="Secondary"
                                                                Padding="6,4"
-                                                               Margin="0,0,8,0"/>
-                                                    <ui:Button Content="Delete" 
+                                                               Margin="0,0,8,0" Cursor="Hand"/>
+                                                    <ui:Button Content="Delete"
                                                                Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                CommandParameter="{Binding}"
                                                                Icon="{ui:SymbolIcon Delete24}"
                                                                Appearance="Danger"
                                                                Foreground="White"
-                                                               Padding="6,4"/>
+                                                               Padding="6,4" Cursor="Hand"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -180,20 +181,20 @@
                         </Grid>
                         <!-- Pagination Controls -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                            <ui:Button Command="{Binding PreviousPageCommand}" 
-                                       Content="Previous" 
+                            <ui:Button Command="{Binding PreviousPageCommand}"
+                                       Content="Previous"
                                        Icon="{ui:SymbolIcon ChevronLeft24}"
                                        Appearance="Primary"
-                                       Margin="0,0,10,0"/>
-                            
-                            <TextBlock Text="{Binding PageInfo}" FontSize="13" 
+                                       Margin="0,0,10,0" Cursor="Hand"/>
+
+                            <TextBlock Text="{Binding PageInfo}" FontSize="13"
                                        VerticalAlignment="Center" Margin="15,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            
-                            <ui:Button Command="{Binding NextPageCommand}" 
-                                       Content="Next" 
+
+                            <ui:Button Command="{Binding NextPageCommand}"
+                                       Content="Next"
                                        Icon="{ui:SymbolIcon ChevronRight24}"
                                        Appearance="Primary"
-                                       Margin="10,0,0,0"/>
+                                       Margin="10,0,0,0" Cursor="Hand"/>
                         </StackPanel>
                     </Grid>
                 </ui:Card>
@@ -262,15 +263,15 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
-                        <ui:Button Content="Cancel" 
+                        <ui:Button Content="Cancel"
                                    Command="{Binding CloseAddModalCommand}"
                                    Icon="{ui:SymbolIcon Dismiss24}"
                                    Appearance="Secondary"
-                                   Margin="0,0,10,0"/>
-                        <ui:Button Content="Add Laboratory" 
+                                   Margin="0,0,10,0" Cursor="Hand"/>
+                        <ui:Button Content="Add Laboratory"
                                    Command="{Binding CreateCommand}"
                                    Icon="{ui:SymbolIcon Add24}"
-                                   Appearance="Primary"/>
+                                   Appearance="Primary" Cursor="Hand"/>
                     </StackPanel>
                 </Grid>
             </ui:Card>
@@ -340,15 +341,15 @@
 
                     <StackPanel Grid.Row="2" Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button Content="Cancel" 
+                            <ui:Button Content="Cancel"
                                        Command="{Binding CloseEditModalCommand}"
                                        Icon="{ui:SymbolIcon Dismiss24}"
                                        Appearance="Secondary"
-                                       Margin="0,0,10,0"/>
-                            <ui:Button Content="Update" 
+                                       Margin="0,0,10,0" Cursor="Hand"/>
+                            <ui:Button Content="Update"
                                        Command="{Binding UpdateCommand}"
                                        Icon="{ui:SymbolIcon Edit24}"
-                                       Appearance="Primary"/>
+                                       Appearance="Primary" Cursor="Hand"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -488,7 +489,7 @@
                             <ui:Button Content="{Binding UnassignedSelectionToggleText}"
                                        Command="{Binding ToggleUnassignedSelectionCommand}"
                                        Appearance="Secondary"
-                                       Margin="0,0,10,0">
+                                       Margin="0,0,10,0" Cursor="Hand">
                                 <ui:Button.Style>
                                     <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -503,7 +504,7 @@
                             <ui:Button Content="{Binding AssignedSelectionToggleText}"
                                        Command="{Binding ToggleAssignedSelectionCommand}"
                                        Appearance="Secondary"
-                                       Margin="0,0,10,0">
+                                       Margin="0,0,10,0" Cursor="Hand">
                                 <ui:Button.Style>
                                     <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -515,11 +516,11 @@
                                     </Style>
                                 </ui:Button.Style>
                             </ui:Button>
-                            <ui:Button Content="Assign Selected" 
+                            <ui:Button Content="Assign Selected"
                                        Command="{Binding AssignPCsToModalRoomCommand}"
                                        Icon="{ui:SymbolIcon Add24}"
                                        Appearance="Primary"
-                                       Margin="0,0,10,0">
+                                       Margin="0,0,10,0" Cursor="Hand">
                                 <ui:Button.Style>
                                     <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -531,12 +532,12 @@
                                     </Style>
                                 </ui:Button.Style>
                             </ui:Button>
-                            <ui:Button Content="Unassign Selected" 
+                            <ui:Button Content="Unassign Selected"
                                        Command="{Binding UnassignCommand}"
                                        Icon="{ui:SymbolIcon Delete24}"
                                        Appearance="Danger"
                                        Foreground="White"
-                                       Margin="0,0,10,0">
+                                       Margin="0,0,10,0" Cursor="Hand">
                                 <ui:Button.Style>
                                     <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -548,10 +549,10 @@
                                     </Style>
                                 </ui:Button.Style>
                             </ui:Button>
-                            <ui:Button Content="Close" 
+                            <ui:Button Content="Close"
                                        Click="CloseModal_Click"
                                        Icon="{ui:SymbolIcon Dismiss24}"
-                                       Appearance="Secondary"/>
+                                       Appearance="Secondary" Cursor="Hand"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>

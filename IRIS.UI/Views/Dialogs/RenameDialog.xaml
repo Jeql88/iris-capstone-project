@@ -30,9 +30,9 @@
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,0">
             <ui:Button Content="Rename" MinWidth="100" Margin="0,0,8,0" Click="OkButton_Click"
-                       Appearance="Primary" Icon="{ui:SymbolIcon Checkmark24}" IsDefault="True"/>
+                       Appearance="Primary" Icon="{ui:SymbolIcon Checkmark24}" IsDefault="True" Cursor="Hand"/>
             <ui:Button Content="Cancel" MinWidth="100" Click="CancelButton_Click"
-                       Appearance="Secondary" Icon="{ui:SymbolIcon Dismiss24}" IsCancel="True"/>
+                       Appearance="Secondary" Icon="{ui:SymbolIcon Dismiss24}" IsCancel="True" Cursor="Hand"/>
         </StackPanel>
     </Grid>
 </Window>
